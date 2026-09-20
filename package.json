@@ -1,0 +1,29 @@
+{
+  "name": "knowledge-platform",
+  "private": true,
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": "^22.13.0 || >=24.0.0",
+    "pnpm": ">=10"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @knowledge/app --filter @knowledge/server dev",
+    "dev:app": "pnpm --filter @knowledge/app dev",
+    "dev:server": "pnpm --filter @knowledge/server dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "eslint . --max-warnings 0",
+    "lint:fix": "eslint . --fix",
+    "test": "pnpm --filter @knowledge/server test",
+    "format": "pnpm lint:fix && prettier --write \"**/*.{css,html,md}\"",
+    "format:check": "pnpm lint && prettier --check \"**/*.{css,html,md}\""
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^9.5.1",
+    "@eslint-react/eslint-plugin": "^5.20.0",
+    "eslint": "^10.11.0",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "prettier": "^3.6.2",
+    "typescript": "~5.9.3"
+  }
+}

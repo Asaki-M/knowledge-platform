@@ -1,0 +1,11 @@
+minimumReleaseAgeExcludePrune: true
+trustPolicy: no-downgrade
+shellEmulator: true
+
+packages:
+  - app
+  - server
+
+onlyBuiltDependencies:
+  - esbuild
+  - '@tailwindcss/oxide'
