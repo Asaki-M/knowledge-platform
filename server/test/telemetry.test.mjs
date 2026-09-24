@@ -37,10 +37,21 @@ test('HTTP logs and spans reach OTLP with propagation, isolated contexts, errors
     await import('./dist/telemetry/sdk.js')
     const { app } = await import('./dist/core/app.js')
     const { log } = await import('./dist/telemetry/logger.js')
+    const { LlmClient } = await import('./dist/llm/index.js')
+    const { NormalizationClient, NextraMdxAdapter } = await import('./dist/rag/normalization/index.js')
+    const normalization = new NormalizationClient([new NextraMdxAdapter()])
+    const llm = new LlmClient([{
+      provider: 'test',
+      async generate(request) {
+        return { id: 'test', provider: 'test', model: request.model, text: 'private-answer', finishReason: 'stop', usage: null }
+      },
+    }])
     app.get('/test/failure', () => { throw new Error('test-only-failure') })
     app.get('/test/work/:id', async (c) => {
       await new Promise(resolve => setTimeout(resolve, Number(c.req.param('id'))))
       log.info('test.work', { 'work.id': c.req.param('id') })
+      await llm.generate({ provider: 'test', model: 'test-model', messages: [{ role: 'user', content: 'private-prompt' }] })
+      await normalization.normalize({ adapter: 'nextra-mdx', source: { id: 'private-source' }, content: '# private-document' })
       return c.text('ok')
     })
     await import('./dist/index.js')
@@ -126,14 +137,19 @@ test('HTTP logs and spans reach OTLP with propagation, isolated contexts, errors
       assert.equal(attributes(resource.resource)['service.name'], 'knowledge-test')
       return resource.scopeLogs.flatMap(scope => scope.logRecords)
     })
-  assert.equal(spans.length, 5)
+  const llmSpans = spans.filter(span => span.name === 'llm.generate')
+  const normalizationSpans = spans.filter(span => span.name === 'normalization.normalize')
+  assert.equal(normalizationSpans.length, 2)
+  const httpSpans = spans.filter(span => !['llm.generate', 'normalization.normalize'].includes(span.name))
+  assert.equal(llmSpans.length, 2)
+  assert.equal(httpSpans.length, 5)
   const healthSpan = spans.find(span => span.traceId === upstreamTrace)
   assert.equal(healthSpan.parentSpanId, upstreamSpan)
   assert.equal(healthSpan.name, 'GET /api/health')
   assert.equal(attributes(healthSpan)['request.id'], healthRequestId)
   const completed = logs.filter(log => log.body.stringValue === 'http.request.completed')
   assert.equal(completed.length, 5)
-  for (const span of spans) {
+  for (const span of httpSpans) {
     const log = completed.find(item => item.spanId === span.spanId)
     assert.equal(log.traceId, span.traceId)
     assert.ok(attributes(log)['http.server.request.duration_ms'] >= 0)
@@ -148,7 +164,22 @@ test('HTTP logs and spans reach OTLP with propagation, isolated contexts, errors
   for (const item of work) {
     const log = logs.find(log => attributes(log)['work.id'] === item.id)
     assert.equal(log.traceId, item.traceId)
-    assert.equal(spans.find(span => span.traceId === item.traceId).name, 'GET /test/work/:id')
+    const httpSpan = httpSpans.find(span => span.traceId === item.traceId)
+    assert.equal(httpSpan.name, 'GET /test/work/:id')
+    const llmSpan = llmSpans.find(span => span.traceId === item.traceId)
+    assert.equal(llmSpan.parentSpanId, httpSpan.spanId)
+    const llmLog = logs.find(log => log.spanId === llmSpan.spanId)
+    assert.equal(llmLog.body.stringValue, 'llm.generate.completed')
+    assert.equal(llmLog.traceId, item.traceId)
+    assert.ok(!JSON.stringify(llmLog).includes('private-prompt'))
+    assert.ok(!JSON.stringify(llmLog).includes('private-answer'))
+    const normalizationSpan = normalizationSpans.find(span => span.traceId === item.traceId)
+    assert.equal(normalizationSpan.parentSpanId, httpSpan.spanId)
+    const normalizationLog = logs.find(log => log.spanId === normalizationSpan.spanId)
+    assert.equal(normalizationLog.body.stringValue, 'normalization.completed')
+    assert.equal(normalizationLog.traceId, item.traceId)
+    assert.ok(!JSON.stringify([normalizationSpan, normalizationLog]).includes('private-document'))
+    assert.ok(!JSON.stringify([normalizationSpan, normalizationLog]).includes('private-source'))
   }
   assert.ok(logs.some(log => log.body.stringValue === 'server.stopped'))
   assert.ok(!JSON.stringify(exports).includes('must-not-be-logged'))

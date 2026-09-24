@@ -1,0 +1,7 @@
+export { ENRICHMENT_ERROR_CODES } from '../../error-codes.js'
+export type { EnrichmentErrorCode } from '../../error-codes.js'
+export { KnowledgeEnricher } from './enricher.js'
+export { extractSectionData } from './extraction.js'
+export { DEFAULT_KNOWLEDGE_TYPES } from './knowledge-types.js'
+export type { BuiltinKnowledgeType } from './knowledge-types.js'
+export type { EnrichedSection, EnrichmentOptions, Entity, ExtractedCodeBlock, ExtractedLink, ExtractedSectionData, Fact, KnowledgeEnrichment, KnowledgeType, Relation } from './types.js'
