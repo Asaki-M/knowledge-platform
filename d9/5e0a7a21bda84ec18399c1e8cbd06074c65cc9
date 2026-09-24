@@ -1,0 +1,234 @@
+server/src/llm/providers/openai/adapter.ts
+  s_8bc8e18da90d0f::t_a9cd6826700aca 4
+  s_8bc8e18da90d0f::t_1faebf220f7635 1-3,6-29,31,33,35-56
+  s_8bc8e18da90d0f::t_eb61f648328e71 5,30,32,34
+server/src/llm/providers/openai/mapping.ts
+  s_8bc8e18da90d0f::t_a9cd6826700aca 3
+  s_8bc8e18da90d0f::t_32b90f47f4a03f 4,26,28,30,52
+  s_8bc8e18da90d0f::t_1faebf220f7635 1-2,5-25,27,29,31-51,53-67
+server/src/rag/normalization/adapters/nextra-mdx/index.ts
+  s_8bc8e18da90d0f::t_910dfac9ea87d2 1
+server/src/rag/enrichment/README.md
+  s_8bc8e18da90d0f::t_5b7b7fbf8b918b 3,7-13,38-42,45,47-48,50-54,63,65,67-68,79,83,88,91,93,95,97-102,104-106,108,110,112,114,118-125
+  s_8bc8e18da90d0f::t_744e3059c82aae 21-32,35-36,55-61,85-87,89
+  s_8bc8e18da90d0f::t_5893219e939e49 1-2,4-6,14-20,33-34,37,43-44,46,49,62,64,66,69-78,80-82,84,90,92,94,96,103,107,109,111,113,115-117
+README.md
+  s_8bc8e18da90d0f::t_5b7b7fbf8b918b 295
+  s_8bc8e18da90d0f::t_c594dfa613148d 52,82,150,263-267
+  s_8bc8e18da90d0f::t_8b2e3b0a663c68 67-71,191-192,249
+  s_8bc8e18da90d0f::t_5c5c0bb0f471b5 39,79,269-272
+  s_8bc8e18da90d0f::t_8132bf9961c3eb 80
+  s_8bc8e18da90d0f::t_5893219e939e49 53,78,292-294
+  s_8bc8e18da90d0f::t_28ca9f14e9260d 117-118
+  s_8bc8e18da90d0f::t_9cf3d0290973d8 63-66,81,187-190,193-211,215-233,242-244,248,250-253
+  s_8bc8e18da90d0f::t_16e416ebdd57ab 246-247
+  s_8bc8e18da90d0f::t_dd81c3711c5e47 212-214
+  s_8bc8e18da90d0f::t_b521b162450806 38,72,245,273-286,288-291
+  s_8bc8e18da90d0f::t_5374036405342b 3,50,56,77,112,268,296-299
+  s_8bc8e18da90d0f::t_5ec26ce67b38c2 234-241
+  s_8bc8e18da90d0f::t_21eff26b6832b4 254,287
+server/src/llm/providers/openai/normalize-error.ts
+  s_8bc8e18da90d0f::t_32b90f47f4a03f 1-37
+server/src/rag/normalization/adapters/nextra-mdx/table.ts
+  s_8bc8e18da90d0f::t_0368e0ae6fb0e1 1-57
+server/src/rag/enrichment/types.ts
+  s_8bc8e18da90d0f::t_06a8b37af2a83e 82-83
+  s_8bc8e18da90d0f::t_27fcb4bd0be803 2-3,33-45,48-54,57,86
+  s_8bc8e18da90d0f::t_07da1bd62ae167 1,4-32,46-47,55-56,58-81,84-85,87-95
+server/src/rag/enrichment/enricher.ts
+  s_8bc8e18da90d0f::t_06a8b37af2a83e 6-7,41-43,65-68,70,73-74
+  s_8bc8e18da90d0f::t_ec5b27d9753e58 1-5,8-37,39,44-64,69,71-72,75-84
+  s_8bc8e18da90d0f::t_9a2e56a7865b3d 38
+  s_8bc8e18da90d0f::t_a2dd333e0863a5 40
+server/src/llm/client.ts
+  s_8bc8e18da90d0f::t_a9cd6826700aca 3
+  s_8bc8e18da90d0f::t_5945545a5504cb 9,26,30,36,44,47,52,56,62,77,92
+  s_8bc8e18da90d0f::t_e2d6a7cfc7fd30 1-2,5-8,10,12-25,27-29,31-35,37-38,40-43,45-46,48-50,53,55,57-61,63-76,79,81-91,93-97
+  s_8bc8e18da90d0f::t_573503e4721fea 4,11,39,51,54,78,80
+server/src/rag/normalization/adapters/nextra-mdx/adapter.ts
+  s_8bc8e18da90d0f::t_2f8526e82480b9 1-13,15-26,28-32,34,36-38
+  s_8bc8e18da90d0f::t_0bcbbef53a300a 14,27,33,35
+server/test/chunk-build.test.mjs
+  s_8bc8e18da90d0f::t_9af0f66df7e9a9 1-6,9-10,12-13,15-20,22-23,26-112,114-165,167-168,171-177
+  s_8bc8e18da90d0f::t_3bc1fac2787a8e 14,21,24-25
+  s_8bc8e18da90d0f::t_d107eba95bcccf 169-170
+  s_8bc8e18da90d0f::t_3876627f346fc8 7-8,11
+  s_8bc8e18da90d0f::t_dbe0bcfa746d4b 113
+  s_8bc8e18da90d0f::t_75f3a2a2024bd1 166
+server/src/rag/normalization/adapters/nextra-mdx/tree.ts
+  s_8bc8e18da90d0f::t_6c7a6d217f98e8 1,3
+  s_8bc8e18da90d0f::t_0368e0ae6fb0e1 2,4-17,19,21-38
+  s_8bc8e18da90d0f::t_77718391362e3b 18,20
+server/src/llm/index.ts
+  s_8bc8e18da90d0f::t_5945545a5504cb 1
+  s_8bc8e18da90d0f::t_e2d6a7cfc7fd30 4
+  s_8bc8e18da90d0f::t_6cb60df0df1795 2
+  s_8bc8e18da90d0f::t_1faebf220f7635 5-6
+  s_8bc8e18da90d0f::t_cf670921c0b621 7
+  s_8bc8e18da90d0f::t_a2a3e7b733ea16 3
+server/src/rag/chunking/index.ts
+  s_8bc8e18da90d0f::t_cca04f2abfd22e 4
+  s_8bc8e18da90d0f::t_68e1459fa4c70d 1-3,6
+  s_8bc8e18da90d0f::t_8d67e18692a4a7 5
+server/src/rag/enrichment/extraction.ts
+  s_8bc8e18da90d0f::t_27fcb4bd0be803 1-87
+server/package.json
+  s_8bc8e18da90d0f::t_ab63c92aa8dfbf 18
+  s_8bc8e18da90d0f::t_56fdddb0c5ef25 19-28,31-33,35
+server/src/llm/types.ts
+  s_8bc8e18da90d0f::t_32b90f47f4a03f 49
+  s_8bc8e18da90d0f::t_5945545a5504cb 1,7,9,12,14,16,20,27,30,32,35,37,40,42,44,48,50-51,53,58
+  s_8bc8e18da90d0f::t_e2d6a7cfc7fd30 2-6,8,10-11,13,15,17-19,21-26,28-29,31,33-34,36,38-39,41,43,45-47,52,54-57,59-61
+server/test/normalization.test.mjs
+  s_8bc8e18da90d0f::t_c594dfa613148d 6
+  s_8bc8e18da90d0f::t_cebb65cad8696c 1-5,9-120,122-136,138-150,152-154
+  s_8bc8e18da90d0f::t_f64fc0bd91bd94 7-8,121,137,151
+server/src/rag/normalization/adapters/nextra-mdx/transform.ts
+  s_8bc8e18da90d0f::t_a271b36daf0254 163-165
+  s_8bc8e18da90d0f::t_0bd6e01c9b3a12 125-126,128
+  s_8bc8e18da90d0f::t_32b90f47f4a03f 5,138
+  s_8bc8e18da90d0f::t_2f8526e82480b9 1-4,6-124,127,129-137,139-162,166,168-180
+  s_8bc8e18da90d0f::t_9bf036849684c2 167
+server/src/rag/enrichment/validation.ts
+  s_8bc8e18da90d0f::t_ec5b27d9753e58 2-31,33-45,47-92
+  s_8bc8e18da90d0f::t_01bb4f755d91e3 1,32,46
+server/src/rag/chunking/fragments.ts
+  s_8bc8e18da90d0f::t_1add631a46384b 1-110
+server/src/rag/chunking/section-split.ts
+  s_8bc8e18da90d0f::t_cca04f2abfd22e 1-11,13-49,51-69,71-77,79-80,82-83
+  s_8bc8e18da90d0f::t_27fcb4bd0be803 50
+  s_8bc8e18da90d0f::t_545d66b9bda75d 12
+  s_8bc8e18da90d0f::t_524b0d53a92873 70
+  s_8bc8e18da90d0f::t_e743c3959809b4 78
+  s_8bc8e18da90d0f::t_4d9cb4f06b0539 81
+server/src/rag/chunking/README.md
+  s_8bc8e18da90d0f::t_b521b162450806 74
+  s_8bc8e18da90d0f::t_5c5c0bb0f471b5 2-4,6-64,66-73
+  s_8bc8e18da90d0f::t_5374036405342b 1,5,75-93,95-139
+  s_8bc8e18da90d0f::t_5b7b7fbf8b918b 65,94
+server/src/rag/normalization/adapters/nextra-mdx/parser.ts
+  s_8bc8e18da90d0f::t_0368e0ae6fb0e1 1-7,9-22,24-25
+  s_8bc8e18da90d0f::t_32b90f47f4a03f 8,23
+server/src/rag/enrichment/knowledge-types.ts
+  s_8bc8e18da90d0f::t_07da1bd62ae167 1-21
+server/.env.example
+  s_8bc8e18da90d0f::t_e2d6a7cfc7fd30 4-10
+server/src/rag/normalization/adapters/nextra-mdx/static-value.ts
+  s_8bc8e18da90d0f::t_0451f630801ef3 1,5,40-56,59-67
+  s_8bc8e18da90d0f::t_0368e0ae6fb0e1 2-4,6-39,57-58,68-69,71-76
+  s_8bc8e18da90d0f::t_0bd6e01c9b3a12 70
+server/src/rag/chunking/references.ts
+  s_8bc8e18da90d0f::t_cca04f2abfd22e 1-36,42-57,62-68
+  s_8bc8e18da90d0f::t_7c7743b5c7f936 37-41,58-61
+server/src/rag/enrichment/prompt.ts
+  s_8bc8e18da90d0f::t_07da1bd62ae167 1-2,4-5,7-9,12-13,15-16,21-29,31-37,43-47
+  s_8bc8e18da90d0f::t_06a8b37af2a83e 3,6,10-11,14,17-20,30,38-42
+server/src/rag/normalization/client.ts
+  s_8bc8e18da90d0f::t_910dfac9ea87d2 1-19,21-26,28-30,32,34-40,42-51,53,55-64
+  s_8bc8e18da90d0f::t_5f87585a8e96a0 20,27,31,33,41,52,54
+AGENTS.md
+  s_8bc8e18da90d0f::t_8132bf9961c3eb 18-19
+  s_8bc8e18da90d0f::t_5374036405342b 12-13,104,115-122
+  s_8bc8e18da90d0f::t_8b2e3b0a663c68 88,158
+  s_8bc8e18da90d0f::t_5b7b7fbf8b918b 127-128,130-131
+  s_8bc8e18da90d0f::t_7fd12bb24d4763 157
+  s_8bc8e18da90d0f::t_a0cd74bac203cd 1-11,14-17,20-26,37-61,64-77,79-86,91-96,134-154
+  s_8bc8e18da90d0f::t_e62d7ed76b4888 27-36
+  s_8bc8e18da90d0f::t_c594dfa613148d 97-103,105-106
+  h_8d050896203f0f 155-156
+  s_8bc8e18da90d0f::t_b521b162450806 62,87,89-90
+  s_8bc8e18da90d0f::t_5c5c0bb0f471b5 63,107-114
+  s_8bc8e18da90d0f::t_5893219e939e49 78,123-126,129,132-133
+server/src/llm/README.md
+  s_8bc8e18da90d0f::t_b521b162450806 9,17,23,28,32,45,59,61
+  s_8bc8e18da90d0f::t_8b2e3b0a663c68 1-8,10-16,18-22,25-27,29-31,33-44,46-58,60
+  s_8bc8e18da90d0f::t_16e416ebdd57ab 24
+server/src/errors.ts
+  s_8bc8e18da90d0f::t_abea224aa30a2a 1-37
+server/src/error-codes.ts
+  s_8bc8e18da90d0f::t_910dfac9ea87d2 44-56,58-61
+  s_8bc8e18da90d0f::t_6cb60df0df1795 1-2,4-43
+  s_8bc8e18da90d0f::t_cca04f2abfd22e 62-68
+  s_8bc8e18da90d0f::t_ec5b27d9753e58 72-89
+  s_8bc8e18da90d0f::t_8132bf9961c3eb 57
+  s_8bc8e18da90d0f::t_5c5c0bb0f471b5 3
+  s_8bc8e18da90d0f::t_abea224aa30a2a 69-70
+  s_8bc8e18da90d0f::t_443043467a314c 71,90-102
+server/src/rag/enrichment/deduplication.ts
+  s_8bc8e18da90d0f::t_27fcb4bd0be803 1-63
+server/src/rag/normalization/types.ts
+  s_8bc8e18da90d0f::t_8132bf9961c3eb 8
+  s_8bc8e18da90d0f::t_910dfac9ea87d2 1-7,9-49
+server/src/core/app.ts
+  s_8bc8e18da90d0f::t_a9cd6826700aca 4,16,26,35
+server/test/llm.test.mjs
+  s_8bc8e18da90d0f::t_d20757bc627462 1-5,10-88,97-100,107-122,124-132,134-164
+  s_8bc8e18da90d0f::t_0a7b6ccb21aff0 8
+  s_8bc8e18da90d0f::t_d1e93b90c21fd7 89-96,101-106
+  s_8bc8e18da90d0f::t_e5ff1a6cad1c3a 6-7,9,123,133
+server/src/rag/chunking/chunk-build.ts
+  s_8bc8e18da90d0f::t_8d67e18692a4a7 31,33,36,38
+  s_8bc8e18da90d0f::t_68e1459fa4c70d 1-24,27-30,32,34,37,39-155
+  s_8bc8e18da90d0f::t_06a8b37af2a83e 35
+  s_8bc8e18da90d0f::t_78d4d20b88d02c 25-26
+server/src/rag/markdown.ts
+  s_8bc8e18da90d0f::t_cca04f2abfd22e 1-25
+server/test/telemetry.test.mjs
+  s_8bc8e18da90d0f::t_d20757bc627462 40,43-48,53,140,144-145,152,167-175
+  s_8bc8e18da90d0f::t_c594dfa613148d 41-42,54,141-143,176-182
+server/src/rag/chunking/types.ts
+  s_8bc8e18da90d0f::t_cca04f2abfd22e 1-2,5-17,20-35,92
+  s_8bc8e18da90d0f::t_443043467a314c 3,36-91
+  s_8bc8e18da90d0f::t_27fcb4bd0be803 4,18-19
+server/src/rag/enrichment/index.ts
+  s_8bc8e18da90d0f::t_ec5b27d9753e58 1-3,5-6
+  s_8bc8e18da90d0f::t_27fcb4bd0be803 4,7
+server/src/rag/chunking/tokens.ts
+  s_8bc8e18da90d0f::t_1add631a46384b 1-11
+server/src/rag/normalization/README.md
+  s_8bc8e18da90d0f::t_c594dfa613148d 1-9,12-28,30-31,33-38,40-52,54-69,71-86,88,90,92,94-98,100-103
+  s_8bc8e18da90d0f::t_5374036405342b 93
+  s_8bc8e18da90d0f::t_b521b162450806 87,99
+  s_8bc8e18da90d0f::t_8132bf9961c3eb 11,32,53,89,91
+  s_8bc8e18da90d0f::t_5c5c0bb0f471b5 10,29
+  s_8bc8e18da90d0f::t_e8c87d3c2004d9 39,70
+server/src/rag/normalization/index.ts
+  s_8bc8e18da90d0f::t_910dfac9ea87d2 1-5
+server/test/section-split.test.mjs
+  s_8bc8e18da90d0f::t_9f033314fb08bf 149-159
+  s_8bc8e18da90d0f::t_6c7a6d217f98e8 1-144,146-148
+  s_8bc8e18da90d0f::t_b3131950db8e31 145
+server/src/llm/providers/openai/index.ts
+  s_8bc8e18da90d0f::t_1faebf220f7635 1-3
+server/test/enrichment.test.mjs
+  s_8bc8e18da90d0f::t_6b2bcff5a06341 57-60,98
+  s_8bc8e18da90d0f::t_9f033314fb08bf 197-298,303-315,325
+  s_8bc8e18da90d0f::t_1effb62af5edea 1-10,12,14-56,61-78,81-82,85-89,94-97,99-112,115-127,129-130,132,136-196
+  s_8bc8e18da90d0f::t_3bc1fac2787a8e 13,79-80,83-84,113-114,128,131,133-135
+  s_8bc8e18da90d0f::t_d107eba95bcccf 299-302,316-324
+  s_8bc8e18da90d0f::t_459281132291d3 11
+  s_8bc8e18da90d0f::t_d8d9aca164762d 90-93
+pnpm-lock.yaml
+  s_8bc8e18da90d0f::t_6b7f2dbc675018 99-128,130-138,142-144,1166-1168,1201-1203,1332-1334,1339-1341,1382-1387,1391-1393,1784-1789,1800-1802,1936-1941,1946-1948,1961-1963,1968-1971,1979-1981,2163-2174,2217-2231,2238-2240,2271-2273,2336-2359,2383-2385,2488-2502,2570-2572,2619-2621,2661-2663,2667-2669,2702-2707,3788-3791,3824-3825,3997-3998,4001-4002,4039-4042,4045-4046,4550-4556,4563-4564,4667-4673,4678-4679,4688-4689,4695-4696,4701-4704,4932-4980,5098-5148,5162-5173,5226-5235,5316-5319,5345-5354,5452-5493,5578-5582,5625-5626,5655-5664,5669-5672,5709-5718
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d95e0a7a21bda84ec18399c1e8cbd06074c65cc9",
+  "prompts": {},
+  "humans": {
+    "h_8d050896203f0f": {
+      "author": "qinghuan <1041220793@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_8bc8e18da90d0f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0bcd1-2b9e-7103-978d-263ac5e634b5",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "qinghuan <1041220793@qq.com>"
+    }
+  }
+}
