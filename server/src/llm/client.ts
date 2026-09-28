@@ -3,13 +3,14 @@ import { SpanStatusCode, trace } from '@opentelemetry/api'
 import { LLM_ERROR_CODES } from '../error-codes.js'
 import { AppError } from '../errors.js'
 import { log } from '../telemetry/logger.js'
+import { isNonEmptyString } from '../utils/type-guards.js'
 
 const tracer = trace.getTracer('knowledge-server.llm')
 
 /** 只校验通用输入约束；模型是否支持某个参数仍由具体适配器或上游判断。 */
 function validateRequest(request: LlmGenerateRequest) {
   const invalid = (message: string) => new AppError(LLM_ERROR_CODES.INVALID_REQUEST, message, { provider: request.provider })
-  if (typeof request.model !== 'string' || !request.model.trim())
+  if (!isNonEmptyString(request.model))
     throw invalid('A model is required')
   if (!Array.isArray(request.messages) || request.messages.length === 0)
     throw invalid('At least one message is required')

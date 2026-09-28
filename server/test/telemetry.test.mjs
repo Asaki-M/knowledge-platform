@@ -38,8 +38,15 @@ test('HTTP logs and spans reach OTLP with propagation, isolated contexts, errors
     const { app } = await import('./dist/core/app.js')
     const { log } = await import('./dist/telemetry/logger.js')
     const { LlmClient } = await import('./dist/llm/index.js')
+    const { EmbeddingClient } = await import('./dist/rag/embedding/index.js')
     const { NormalizationClient, NextraMdxAdapter } = await import('./dist/rag/normalization/index.js')
     const normalization = new NormalizationClient([new NextraMdxAdapter()])
+    const embedding = new EmbeddingClient([{
+      provider: 'test',
+      async embed(request) {
+        return { provider: 'test', model: request.model, embeddings: [[0.123456789]], dimensions: 1, usage: null }
+      },
+    }])
     const llm = new LlmClient([{
       provider: 'test',
       async generate(request) {
@@ -52,6 +59,7 @@ test('HTTP logs and spans reach OTLP with propagation, isolated contexts, errors
       log.info('test.work', { 'work.id': c.req.param('id') })
       await llm.generate({ provider: 'test', model: 'test-model', messages: [{ role: 'user', content: 'private-prompt' }] })
       await normalization.normalize({ adapter: 'nextra-mdx', source: { id: 'private-source' }, content: '# private-document' })
+      await embedding.embed({ provider: 'test', model: 'test-embedding-model', input: ['private-embedding-text'] })
       return c.text('ok')
     })
     await import('./dist/index.js')
@@ -139,8 +147,10 @@ test('HTTP logs and spans reach OTLP with propagation, isolated contexts, errors
     })
   const llmSpans = spans.filter(span => span.name === 'llm.generate')
   const normalizationSpans = spans.filter(span => span.name === 'normalization.normalize')
+  const embeddingSpans = spans.filter(span => span.name === 'embedding.embed')
+  assert.equal(embeddingSpans.length, 2)
   assert.equal(normalizationSpans.length, 2)
-  const httpSpans = spans.filter(span => !['llm.generate', 'normalization.normalize'].includes(span.name))
+  const httpSpans = spans.filter(span => !['llm.generate', 'normalization.normalize', 'embedding.embed'].includes(span.name))
   assert.equal(llmSpans.length, 2)
   assert.equal(httpSpans.length, 5)
   const healthSpan = spans.find(span => span.traceId === upstreamTrace)
@@ -180,7 +190,17 @@ test('HTTP logs and spans reach OTLP with propagation, isolated contexts, errors
     assert.equal(normalizationLog.traceId, item.traceId)
     assert.ok(!JSON.stringify([normalizationSpan, normalizationLog]).includes('private-document'))
     assert.ok(!JSON.stringify([normalizationSpan, normalizationLog]).includes('private-source'))
+    const embeddingSpan = embeddingSpans.find(span => span.traceId === item.traceId)
+    assert.equal(embeddingSpan.parentSpanId, httpSpan.spanId)
+    const embeddingLog = logs.find(log => log.spanId === embeddingSpan.spanId)
+    assert.equal(embeddingLog.body.stringValue, 'embedding.completed')
+    assert.equal(embeddingLog.traceId, item.traceId)
+    assert.equal(attributes(embeddingLog)['embedding.dimensions'], 1)
+    assert.equal(attributes(embeddingLog)['embedding.input_tokens'], undefined)
   }
+  // 子进程的 process.command_args 资源属性包含上面的测试脚本；这里只检查业务 span 和日志。
+  assert.ok(!JSON.stringify([spans, logs]).includes('private-embedding-text'))
+  assert.ok(!JSON.stringify([spans, logs]).includes('0.123456789'))
   assert.ok(logs.some(log => log.body.stringValue === 'server.stopped'))
   assert.ok(!JSON.stringify(exports).includes('must-not-be-logged'))
 })

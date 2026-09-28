@@ -1,11 +1,13 @@
 import type { Root, RootContent } from 'mdast'
-import type { EnrichedSection } from '../enrichment/types.js'
-import type { ChunkBuildOptions, ChunkBuildResult, ChunkPart, DocumentChunk, DocumentSection } from './types.js'
+import type { DocumentSection } from '../sections/types.js'
+import type { ChunkBuildOptions, ChunkBuildResult, ChunkPart, DocumentChunk } from './types.js'
 import { CHUNK_BUILD_ERROR_CODES as CODES } from '../../error-codes.js'
 import { AppError } from '../../errors.js'
+import { isRecord } from '../../utils/type-guards.js'
 import { plainText, renderMarkdown } from '../markdown.js'
+import { indexDefinitions, withReferences } from '../references.js'
+import { assertSection } from '../sections/index.js'
 import { fragmentBlock } from './fragments.js'
-import { indexDefinitions, withReferences } from './references.js'
 import { countChunkTokens } from './tokens.js'
 
 interface Fragment {
@@ -21,8 +23,8 @@ function removePositions(node: Root | RootContent) {
 }
 
 /** 只做确定性的内容构建；不调用模型，不拼 embeddingText，不提前生成数据库记录。 */
-export function buildChunks(section: DocumentSection, enrichment: EnrichedSection, options: ChunkBuildOptions = {}): ChunkBuildResult {
-  if (!options || typeof options !== 'object' || Array.isArray(options))
+export function buildChunks(section: DocumentSection, options: ChunkBuildOptions = {}): ChunkBuildResult {
+  if (!isRecord(options))
     throw new AppError(CODES.INVALID_OPTIONS, 'Chunk options must be an object')
   const maxTokens = options.maxTokens ?? 800
   const overlapTokens = options.overlapTokens ?? 0
@@ -31,10 +33,11 @@ export function buildChunks(section: DocumentSection, enrichment: EnrichedSectio
     || !['keep', 'error'].includes(oversized) || (options.countTokens !== undefined && typeof options.countTokens !== 'function')) {
     throw new AppError(CODES.INVALID_OPTIONS, 'Invalid chunk token budget, overlap or oversized policy')
   }
-  if (!section || typeof section.id !== 'string' || !section.id.trim() || typeof section.source?.id !== 'string' || !section.source.id.trim() || section.ast?.type !== 'root' || !Array.isArray(section.ast.children) || !Array.isArray(section.headingPath)
-    || !enrichment || enrichment.schemaVersion !== 2 || enrichment.sectionId !== section.id || enrichment.source?.id !== section.source.id || !enrichment.enrichment || !enrichment.extracted
-    || (section.source.path !== undefined && enrichment.source.path !== undefined && section.source.path !== enrichment.source.path)) {
-    throw new AppError(CODES.INVALID_INPUT, 'Section and enrichment must have matching section and source IDs')
+  try {
+    assertSection(section)
+  }
+  catch {
+    throw new AppError(CODES.INVALID_INPUT, 'A current section with valid content is required')
   }
 
   try {
@@ -57,7 +60,7 @@ export function buildChunks(section: DocumentSection, enrichment: EnrichedSectio
       return total
     }
     const definitions = indexDefinitions(section.ast)
-    const headingIndex = section.ast.children.findIndex(node => node.type === 'heading')
+    const headingIndex = section.depth === 0 ? -1 : section.ast.children.findIndex(node => node.type === 'heading' && node.depth === section.depth)
     const heading = headingIndex < 0 ? [] : [section.ast.children[headingIndex]]
     const originalBlocks = section.ast.children.flatMap((node, blockIndex) => blockIndex === headingIndex || node.type === 'definition' || node.type === 'footnoteDefinition' ? [] : [{ node, blockIndex }])
     const render = (nodes: RootContent[], includeHeading = true) => {
@@ -76,8 +79,12 @@ export function buildChunks(section: DocumentSection, enrichment: EnrichedSectio
       chunks.push({
         id: `${section.id}#chunk-${index}`,
         sectionId: section.id,
+        documentId: section.documentId,
+        sectionRevision: section.revision,
+        previousChunkId: null,
+        nextChunkId: null,
         index,
-        source: { ...section.source },
+        sourcePath: section.sourcePath,
         documentTitle: section.documentTitle,
         headingPath: structuredClone(section.headingPath),
         parts: structuredClone(fragments.map(fragment => fragment.part)),
@@ -137,10 +144,16 @@ export function buildChunks(section: DocumentSection, enrichment: EnrichedSectio
       else if (!chunks.length && heading.length)
         emit([])
     }
+    // 全部 chunk 生成后再建立双向顺序引用，避免失败途中出现悬空的后继 ID。
+    for (const [index, chunk] of chunks.entries()) {
+      chunk.previousChunkId = chunks[index - 1]?.id ?? null
+      chunk.nextChunkId = chunks[index + 1]?.id ?? null
+    }
     return {
-      schemaVersion: 1,
+      schemaVersion: 3,
       sectionId: section.id,
-      sectionEnrichment: structuredClone(enrichment),
+      documentId: section.documentId,
+      sectionRevision: section.revision,
       tokenizer: options.countTokens ? 'custom' : 'cl100k_base',
       maxTokens,
       overlapTokens,

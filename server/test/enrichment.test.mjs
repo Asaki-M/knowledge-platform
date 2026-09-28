@@ -1,18 +1,15 @@
 import assert from 'node:assert/strict'
-import { Buffer } from 'node:buffer'
-import { once } from 'node:events'
-import { createServer } from 'node:http'
 import { test } from 'node:test'
 // eslint-disable-next-line antfu/no-import-dist -- Verify the compiled pipeline and shared error contract.
 import { AppError } from '../dist/errors.js'
 // eslint-disable-next-line antfu/no-import-dist -- Exercise the real LlmClient with SDK or local adapters.
-import { LlmClient, OpenAIAdapter } from '../dist/llm/index.js'
-// eslint-disable-next-line antfu/no-import-dist -- Exercise the compiled public pipeline.
-import { buildChunks, splitSections } from '../dist/rag/chunking/index.js'
+import { LlmClient } from '../dist/llm/index.js'
 // eslint-disable-next-line antfu/no-import-dist -- Exercise the public enrichment API.
 import { DEFAULT_KNOWLEDGE_TYPES, extractSectionData, KnowledgeEnricher } from '../dist/rag/enrichment/index.js'
 // eslint-disable-next-line antfu/no-import-dist -- Exercise the compiled public pipeline.
 import { NextraMdxAdapter, NormalizationClient } from '../dist/rag/normalization/index.js'
+// eslint-disable-next-line antfu/no-import-dist -- Exercise the compiled public pipeline.
+import { splitSections } from '../dist/rag/sections/index.js'
 
 const markdown = '# Atlas 接口\n\nAtlas 调用 Gateway。\n\n生产环境必须使用 HTTPS。\n\n支持 Linux，版本 v2，示例使用 Go。'
 const normalized = await new NormalizationClient([new NextraMdxAdapter()]).normalize({ adapter: 'nextra-mdx', source: { id: 'kb/atlas', path: 'private/local/path.mdx' }, content: markdown })
@@ -29,9 +26,9 @@ function enrichment() {
       { id: 'e1', name: 'Atlas', type: 'product', aliases: [], description: '调用 Gateway 的产品', evidence: ['Atlas 调用 Gateway。'] },
       { id: 'e2', name: 'Gateway', type: 'service', aliases: [], description: '被 Atlas 调用的服务', evidence: ['Atlas 调用 Gateway。'] },
     ],
-    concepts: ['HTTPS'],
+    concepts: [{ id: 'c1', name: 'HTTPS', aliases: [], description: '生产环境协议要求', evidence: ['生产环境必须使用 HTTPS。'] }],
     relations: [{ sourceId: 'e1', targetId: 'e2', type: 'calls', description: 'Atlas 调用 Gateway', evidence: ['Atlas 调用 Gateway。'] }],
-    facts: [{ statement: 'Atlas 调用 Gateway', entityIds: ['e1', 'e2'], evidence: ['Atlas 调用 Gateway。'] }],
+    facts: [{ statement: 'Atlas 调用 Gateway', nodeIds: ['e1', 'e2'], evidence: ['Atlas 调用 Gateway。'] }],
     knowledgeType: 'security-rule',
   }
 }
@@ -44,53 +41,24 @@ function create(generate, config = {}) {
   return new KnowledgeEnricher(new LlmClient([{ provider: 'test', generate }]), { ...options, ...config })
 }
 
-test('normalized section enriches through the official SDK and retains provenance and structured fields', async (t) => {
+test('enrichment uses an in-memory model and binds output to the section revision', async () => {
   let request
-  const server = createServer(async (req, res) => {
-    const chunks = []
-    for await (const chunk of req)
-      chunks.push(chunk)
-    request = JSON.parse(Buffer.concat(chunks).toString())
-    res.setHeader('content-type', 'application/json')
-    res.setHeader('x-request-id', 'req_enrichment')
-    res.end(JSON.stringify({
-      id: 'response_enrichment',
-      object: 'response',
-      status: 'completed',
-      model: 'actual-model',
-      output: [{ type: 'message', id: 'message_enrichment', role: 'assistant', status: 'completed', content: [{ type: 'output_text', text: JSON.stringify(enrichment()), annotations: [] }] }],
-      usage: { input_tokens: 150, output_tokens: 100, total_tokens: 250 },
-    }))
-  })
-  server.listen(0, '127.0.0.1')
-  await once(server, 'listening')
-  t.after(() => {
-    server.closeAllConnections()
-    return new Promise(resolve => server.close(resolve))
-  })
-  const llm = new LlmClient([new OpenAIAdapter({ apiKey: 'test-key', baseURL: `http://127.0.0.1:${server.address().port}/v1`, maxRetries: 0 })])
-  const enricher = new KnowledgeEnricher(llm, { provider: 'openai', model: 'configured-model', maxOutputTokens: 3000 })
   const before = structuredClone(section)
-  const result = await enricher.enrich(section)
-  assert.equal(request.model, 'configured-model')
-  assert.equal(request.max_output_tokens, 3000)
-  assert.equal(request.store, false)
-  assert.deepEqual(request.input.map(message => message.role), ['system', 'user'])
-  assert.deepEqual(JSON.parse(request.input[1].content).extracted.metadata, {})
-  assert.equal(JSON.stringify(request).includes('kb/atlas'), false)
-  assert.equal(JSON.parse(request.input[1].content).markdown, section.markdown)
+  const result = await create(async (input) => {
+    request = input
+    return response()
+  }).enrich(section)
+  assert.equal(request.model, 'test-model')
+  assert.deepEqual(request.messages.map(message => message.role), ['system', 'user'])
+  assert.equal(JSON.parse(request.messages[1].content).markdown, section.markdown)
   assert.equal(JSON.stringify(request).includes('private/local/path.mdx'), false)
-  assert.equal(result.schemaVersion, 2)
+  assert.equal(JSON.stringify(request).includes(section.id), false)
+  assert.equal(result.schemaVersion, 3)
+  assert.equal(result.documentId, section.documentId)
+  assert.equal(result.sectionRevision, section.revision)
   assert.deepEqual(result.extracted, extractSectionData(section))
-  assert.equal(result.sectionId, section.id)
-  assert.deepEqual(result.source, section.source)
   assert.deepEqual(result.enrichment, { ...enrichment(), keywords: ['Atlas', 'HTTPS'] })
-  assert.deepEqual(result.generation, { provider: 'openai', model: 'actual-model', responseId: 'response_enrichment', requestId: 'req_enrichment', usage: { inputTokens: 150, outputTokens: 100, totalTokens: 250 } })
   assert.deepEqual(section, before)
-  const built = buildChunks(section, result)
-  assert.deepEqual(built.sectionEnrichment, result)
-  assert.equal(built.chunks[0].sectionId, result.sectionId)
-  assert.ok(built.chunks[0].markdown.includes('生产环境必须使用 HTTPS'))
 })
 
 test('knowledge type dictionary extends without changing adapters and rejects unregistered types', async () => {
@@ -124,7 +92,7 @@ test('invalid model schemas, entity links, categories and evidence fail without 
     value => value.extra = 'secret-model-output',
     value => value.entities.push({ ...value.entities[0] }),
     value => value.relations[0].targetId = 'missing-entity',
-    value => value.facts[0].entityIds = ['missing-entity'],
+    value => value.facts[0].nodeIds = ['missing-entity'],
     value => value.constraints = [],
     value => value.entities[0].evidence = ['secret-model-output'],
     value => value.relations[0].evidence = [],
@@ -165,7 +133,7 @@ test('invalid configuration, input size and pre-cancellation fail before invokin
   for (const config of [{ model: '' }, { provider: '' }, { maxInputCharacters: 0 }, { maxOutputTokens: -1 }, { knowledgeTypes: { 'Bad Type': 'x' } }, { knowledgeTypes: { custom: '' } }])
     assert.throws(() => create(generate, config), { code: 'ENRICHMENT_CONFIGURATION_ERROR' })
   const enricher = create(generate)
-  for (const input of [null, { ...section, markdown: '' }, { ...section, headingPath: [null] }, { ...section, source: { id: '' } }])
+  for (const input of [null, { ...section, markdown: '' }, { ...section, headingPath: [null] }, { ...section, documentId: '' }])
     await assert.rejects(enricher.enrich(input), { code: 'ENRICHMENT_INVALID_INPUT' })
   await assert.rejects(create(generate, { maxInputCharacters: 10 }).enrich(section), { code: 'ENRICHMENT_INPUT_TOO_LARGE' })
   await assert.rejects(enricher.enrich(section, { signal: AbortSignal.abort() }), { code: 'ABORTED' })
@@ -182,13 +150,13 @@ test('cancellation propagates; source snapshots and upstream AppErrors retain th
   const mutable = structuredClone(section)
   const enricher = create(async () => {
     mutable.id = 'modified'
-    mutable.source.id = 'modified'
+    mutable.documentId = 'modified'
     mutable.markdown = 'changed while awaiting'
     return response()
   })
   const result = await enricher.enrich(mutable)
   assert.equal(result.sectionId, section.id)
-  assert.equal(result.source.id, section.source.id)
+  assert.equal(result.documentId, section.documentId)
   const original = new AppError('RATE_LIMITED', 'Rate limited', { provider: 'test', status: 429, retryable: true, requestId: 'req_limit' })
   await assert.rejects(create(async () => {
     throw original
@@ -254,8 +222,6 @@ test('rules retain frontmatter, nested code and reference links before semantic 
   assert.deepEqual(result.enrichment.keywords, ['Guide'])
   assert.equal(Object.hasOwn(result.enrichment, 'metadata'), false)
   assert.equal(Object.hasOwn(result.enrichment, 'constraints'), false)
-  const built = buildChunks(before, result)
-  assert.deepEqual(built.sectionEnrichment.extracted, result.extracted)
 })
 
 test('validated duplicate entities remap references before relation and fact deduplication', async () => {
@@ -263,10 +229,10 @@ test('validated duplicate entities remap references before relation and fact ded
   value.entities.push({ ...value.entities[0], id: 'e3', aliases: ['Atlas', 'Atlas'], evidence: ['Atlas'] })
   value.entities.push({ ...value.entities[0], id: 'e4', description: '不同角色的 Atlas' })
   value.relations.push({ ...value.relations[0], sourceId: 'e3', evidence: ['Gateway'] })
-  value.facts.push({ ...value.facts[0], entityIds: ['e2', 'e3', 'e3'], evidence: ['Gateway'] })
+  value.facts.push({ ...value.facts[0], nodeIds: ['e2', 'e3', 'e3'], evidence: ['Gateway'] })
   value.aliases = [' Atlas ', 'Atlas']
   value.questions.push(value.questions[0])
-  value.concepts.push(' HTTPS ')
+  value.concepts.push({ ...value.concepts[0], id: 'c2', name: ' HTTPS ' })
   const result = (await create(async () => response(value)).enrich(section)).enrichment
   assert.deepEqual(result.entities.map(entity => entity.id), ['e1', 'e2', 'e4'])
   assert.deepEqual(result.entities[0].aliases, ['Atlas'])
@@ -274,11 +240,11 @@ test('validated duplicate entities remap references before relation and fact ded
   assert.equal(result.relations.length, 1)
   assert.equal(result.relations[0].sourceId, 'e1')
   assert.equal(result.facts.length, 1)
-  assert.deepEqual(result.facts[0].entityIds, ['e1', 'e2'])
+  assert.deepEqual(result.facts[0].nodeIds, ['e1', 'e2'])
   assert.deepEqual(result.facts[0].evidence, ['Atlas 调用 Gateway。', 'Gateway'])
   assert.deepEqual(result.aliases, ['Atlas'])
   assert.equal(result.questions.length, 1)
-  assert.deepEqual(result.concepts, ['HTTPS'])
+  assert.deepEqual(result.concepts, enrichment().concepts)
   assert.equal(value.entities.length, 4)
 })
 
@@ -322,4 +288,26 @@ test('merged evidence limits are rechecked without dropping distinct quotes', as
   value.entities[0].evidence = quotes.slice(0, 6)
   value.entities.push({ ...value.entities[0], id: 'e3', evidence: quotes.slice(6) })
   await assert.rejects(create(async () => response(value)).enrich(section), { code: 'ENRICHMENT_INVALID_OUTPUT' })
+})
+
+test('concept deduplication remaps both relationship endpoints and fact node references', async () => {
+  const value = enrichment()
+  value.concepts.push({ ...value.concepts[0], id: 'c2', evidence: ['HTTPS'] })
+  value.relations.push({ sourceId: 'e1', targetId: 'c2', type: 'requires', description: '生产要求', evidence: ['生产环境必须使用 HTTPS。'] })
+  value.facts.push({ statement: '生产环境必须使用 HTTPS', nodeIds: ['c2', 'c1'], evidence: ['生产环境必须使用 HTTPS。'] })
+  const result = (await create(async () => response(value)).enrich(section)).enrichment
+  assert.equal(result.concepts.length, 1)
+  assert.deepEqual(result.concepts[0].evidence, ['生产环境必须使用 HTTPS。', 'HTTPS'])
+  assert.equal(result.relations[1].targetId, 'c1')
+  assert.deepEqual(result.facts[1].nodeIds, ['c1'])
+  for (const mutate of [
+    item => item.concepts[0].id = 'e1',
+    item => item.concepts = ['HTTPS'],
+    item => item.concepts[0].evidence = [],
+    item => item.concepts[0].evidence = ['原文不存在的概念'],
+  ]) {
+    const malformed = enrichment()
+    mutate(malformed)
+    await assert.rejects(create(async () => response(malformed)).enrich(section), { code: 'ENRICHMENT_INVALID_OUTPUT' })
+  }
 })

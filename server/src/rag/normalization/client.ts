@@ -3,6 +3,7 @@ import { SpanStatusCode, trace } from '@opentelemetry/api'
 import { NORMALIZATION_ERROR_CODES as CODES } from '../../error-codes.js'
 import { AppError } from '../../errors.js'
 import { log } from '../../telemetry/logger.js'
+import { isNonEmptyString } from '../../utils/type-guards.js'
 
 const tracer = trace.getTracer('knowledge-server.normalization')
 
@@ -16,14 +17,14 @@ export class NormalizationClient {
   }
 
   register(adapter: NormalizationAdapter): this {
-    if (!adapter || typeof adapter.name !== 'string' || !adapter.name.trim() || typeof adapter.normalize !== 'function' || this.adapters.has(adapter.name))
+    if (!adapter || !isNonEmptyString(adapter.name) || typeof adapter.normalize !== 'function' || this.adapters.has(adapter.name))
       throw new AppError(CODES.CONFIGURATION_ERROR, 'Adapter name must be non-empty and unique, with a normalize method')
     this.adapters.set(adapter.name, adapter)
     return this
   }
 
   async normalize(request: NormalizeRequest): Promise<NormalizedDocument> {
-    if (!request || typeof request.adapter !== 'string' || !request.adapter.trim() || typeof request.source?.id !== 'string' || !request.source.id.trim() || typeof request.content !== 'string')
+    if (!request || !isNonEmptyString(request.adapter) || !isNonEmptyString(request.source?.id) || typeof request.content !== 'string')
       throw new AppError(CODES.INVALID_INPUT, 'Adapter, source ID and string content are required')
     const { adapter: name, ...input } = request
     const adapter = this.adapters.get(name)

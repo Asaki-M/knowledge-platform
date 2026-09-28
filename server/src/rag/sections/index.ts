@@ -1,0 +1,5 @@
+export { SECTION_SPLIT_ERROR_CODES } from '../../error-codes.js'
+export type { SectionSplitErrorCode } from '../../error-codes.js'
+export { assertSection, sectionRevision } from './revision.js'
+export { splitSections } from './section-split.js'
+export type { DocumentSection, SectionHeading } from './types.js'

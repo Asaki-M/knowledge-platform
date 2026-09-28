@@ -1,19 +1,22 @@
 import type { LlmUsage } from '../../llm/types.js'
-import type { SectionHeading } from '../chunking/types.js'
-import type { DocumentSource, NormalizedDocument } from '../normalization/types.js'
+import type { NormalizedDocument } from '../normalization/types.js'
+import type { SectionHeading } from '../sections/types.js'
 
 /** 分类是可配置字典的 key，运行时校验是否已注册，不让模型自由创造分类。 */
 export type KnowledgeType = string
 
-export interface Entity {
+export interface Concept {
   /** 仅在本节内唯一；跨节合并实体由后续 Wiki/KG 阶段处理。 */
   id: string
   name: string
-  type: string
   aliases: string[]
   description: string
   /** 来自本节 Markdown 的连续原文片段，不是模型改写的说明。 */
   evidence: string[]
+}
+
+export interface Entity extends Concept {
+  type: string
 }
 
 export interface Relation {
@@ -26,7 +29,7 @@ export interface Relation {
 
 export interface Fact {
   statement: string
-  entityIds: string[]
+  nodeIds: string[]
   evidence: string[]
 }
 
@@ -61,7 +64,7 @@ export interface KnowledgeEnrichment {
   aliases: string[]
   questions: string[]
   entities: Entity[]
-  concepts: string[]
+  concepts: Concept[]
   relations: Relation[]
   facts: Fact[]
   knowledgeType: KnowledgeType
@@ -79,10 +82,11 @@ export interface EnrichmentOptions {
 
 /** 与 section 通过 ID 关联，不覆盖原文，也不将模型输出冒充原始文档事实。 */
 export interface EnrichedSection {
-  /** v2 区分规则数据和语义补充，不兼容旧版模型 metadata / constraints。 */
-  schemaVersion: 2
+  /** v3 支持有证据的概念和实体统一引用，并绑定输入内容版本。 */
+  schemaVersion: 3
   sectionId: string
-  source: DocumentSource
+  documentId: string
+  sectionRevision: string
   extracted: ExtractedSectionData
   enrichment: KnowledgeEnrichment
   generation: {

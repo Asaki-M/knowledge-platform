@@ -68,7 +68,7 @@ export const SECTION_SPLIT_ERROR_CODES = {
 export type SectionSplitErrorCode = typeof SECTION_SPLIT_ERROR_CODES[keyof typeof SECTION_SPLIT_ERROR_CODES]
 
 /** 所有业务异常共用的错误码类型，具体字符串与中文含义仍在上面的分组中维护。 */
-export type AppErrorCode = HttpErrorCode | LlmErrorCode | NormalizationErrorCode | SectionSplitErrorCode | EnrichmentErrorCode | ChunkBuildErrorCode
+export type AppErrorCode = HttpErrorCode | LlmErrorCode | NormalizationErrorCode | SectionSplitErrorCode | EnrichmentErrorCode | ChunkBuildErrorCode | EmbeddingErrorCode | WikiErrorCode | IngestionErrorCode
 
 /** 知识补充阶段的错误；上游网络、鉴权和取消错误继续沿用 LLM 错误码。 */
 export const ENRICHMENT_ERROR_CODES = {
@@ -91,7 +91,7 @@ export type EnrichmentErrorCode = typeof ENRICHMENT_ERROR_CODES[keyof typeof ENR
 export const CHUNK_BUILD_ERROR_CODES = {
   /** Token 预算、重叠预算、超限策略或计数函数配置不合法。 */
   INVALID_OPTIONS: 'CHUNK_BUILD_INVALID_OPTIONS',
-  /** 输入不是有效 section，或 enrichment 不属于该 section/来源。 */
+  /** 输入不是有效 Section，或内容与版本不一致。 */
   INVALID_INPUT: 'CHUNK_BUILD_INVALID_INPUT',
   /** 自定义 Token 计数失败或没有返回非负安全整数。 */
   TOKEN_COUNT_FAILED: 'CHUNK_BUILD_TOKEN_COUNT_FAILED',
@@ -100,3 +100,49 @@ export const CHUNK_BUILD_ERROR_CODES = {
 } as const
 
 export type ChunkBuildErrorCode = typeof CHUNK_BUILD_ERROR_CODES[keyof typeof CHUNK_BUILD_ERROR_CODES]
+
+/** 文本向量化的统一错误分类，不依赖通用文本生成能力。 */
+export const EMBEDDING_ERROR_CODES = {
+  /** 凭据、超时或适配器注册配置无效。 */
+  CONFIGURATION_ERROR: 'EMBEDDING_CONFIGURATION_ERROR',
+  /** 未注册请求指定的向量供应商。 */
+  PROVIDER_NOT_FOUND: 'EMBEDDING_PROVIDER_NOT_FOUND',
+  /** 模型、文本、维度或批量大小无效，或上游拒绝参数。 */
+  INVALID_REQUEST: 'EMBEDDING_INVALID_REQUEST',
+  /** 上游响应缺失向量、索引重复、维度不一致或包含无效数值。 */
+  INVALID_RESPONSE: 'EMBEDDING_INVALID_RESPONSE',
+  /** 上游鉴权失败或账号无权限。 */
+  AUTHENTICATION_ERROR: 'EMBEDDING_AUTHENTICATION_ERROR',
+  /** 上游请求频率或配额受限。 */
+  RATE_LIMITED: 'EMBEDDING_RATE_LIMITED',
+  /** 单次调用超过配置的等待时限。 */
+  TIMEOUT: 'EMBEDDING_TIMEOUT',
+  /** 调用方主动取消操作。 */
+  ABORTED: 'EMBEDDING_ABORTED',
+  /** 无法建立或维持上游连接。 */
+  CONNECTION_ERROR: 'EMBEDDING_CONNECTION_ERROR',
+  /** 上游服务异常或未分类的适配器错误。 */
+  PROVIDER_ERROR: 'EMBEDDING_PROVIDER_ERROR',
+} as const
+
+export type EmbeddingErrorCode = typeof EMBEDDING_ERROR_CODES[keyof typeof EMBEDDING_ERROR_CODES]
+
+/** Wiki 语义聚合与来源引用的错误分类。 */
+export const WIKI_ERROR_CODES = {
+  /** section 与知识提取结果不匹配、内容无效或输入重复。 */
+  INVALID_INPUT: 'WIKI_INVALID_INPUT',
+  /** 身份映射重复、过期、引用缺失或实体/概念类型不匹配。 */
+  INVALID_MAPPING: 'WIKI_INVALID_MAPPING',
+  /** Wiki 节点缺失、已被修改或不属于当前 section / enrichment 版本。 */
+  INVALID_ASSOCIATION: 'WIKI_INVALID_ASSOCIATION',
+} as const
+
+export type WikiErrorCode = typeof WIKI_ERROR_CODES[keyof typeof WIKI_ERROR_CODES]
+
+/** 入库前的纯函数影响计算，不执行数据库或模型操作。 */
+export const INGESTION_ERROR_CODES = {
+  /** Section 快照内容无效、版本不匹配或身份重复。 */
+  INVALID_SNAPSHOT: 'INGESTION_INVALID_SNAPSHOT',
+} as const
+
+export type IngestionErrorCode = typeof INGESTION_ERROR_CODES[keyof typeof INGESTION_ERROR_CODES]

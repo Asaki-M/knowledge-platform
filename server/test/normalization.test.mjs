@@ -152,3 +152,18 @@ test('new document adapters register without MDX dependencies; invalid input and
   }])
   await assert.rejects(broken.normalize({ ...request, adapter: 'broken' }), { code: 'NORMALIZATION_TRANSFORM_ERROR', message: 'Document normalization failed' })
 })
+
+test('source mapping distinguishes precise fragments, synthesized envelopes and missing positions', async () => {
+  const { sourceFragment } = await import('../dist/rag/normalization/source.js')
+  const document = await normalize('<ZoomImage src="/image.png" alt="图" />')
+  assert.equal(document.schemaVersion, 2)
+  assert.equal(document.blockSources[0].text, document.originalContent)
+  assert.equal(document.blockSources[0].exact, false)
+  const missing = sourceFragment({ type: 'paragraph', children: [{ type: 'text', value: 'text' }] }, 'text')
+  assert.deepEqual(missing, { text: null, exact: false })
+  const heading = await normalize('# Heading')
+  assert.equal(heading.blockSources[0].exact, true)
+  assert.equal(heading.blockSources[0].text, '# Heading')
+  heading.blockSources[0].position.start.line = 999
+  assert.equal(heading.ast.children[0].position.start.line, 1)
+})

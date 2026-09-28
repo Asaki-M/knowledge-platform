@@ -1,6 +1,7 @@
 import type { KnowledgeEnrichment } from './types.js'
 import { ENRICHMENT_ERROR_CODES } from '../../error-codes.js'
 import { AppError } from '../../errors.js'
+import { isNonEmptyString, isRecord } from '../../utils/type-guards.js'
 
 function invalid(path: string): never {
   // path 仅由本文件中的固定字段名组成，不拼接模型返回值或解析器错误正文。
@@ -8,16 +9,15 @@ function invalid(path: string): never {
 }
 
 function object(value: unknown, path: string, required: readonly string[], optional: readonly string[] = []): Record<string, unknown> {
-  if (!value || typeof value !== 'object' || Array.isArray(value))
+  if (!isRecord(value))
     invalid(path)
-  const record = value as Record<string, unknown>
-  if (required.some(key => !Object.hasOwn(record, key)) || Object.keys(record).some(key => !required.includes(key) && !optional.includes(key)))
+  if (required.some(key => !Object.hasOwn(value, key)) || Object.keys(value).some(key => !required.includes(key) && !optional.includes(key)))
     invalid(path)
-  return record
+  return value
 }
 
 function text(value: unknown, path: string): string {
-  if (typeof value !== 'string' || !value.trim() || value.length > 4000)
+  if (!isNonEmptyString(value) || value.length > 4000)
     invalid(path)
   return value.trim()
 }
@@ -57,22 +57,30 @@ export function parseEnrichment(output: string, markdown: string, knowledgeTypes
       invalid('entities.id')
     return { id, name: text(item.name, 'entities.name'), type: text(item.type, 'entities.type'), aliases: strings(item.aliases, 'entities.aliases'), description: text(item.description, 'entities.description'), evidence: evidence(item.evidence) }
   })
-  const entityIds = new Set(entities.map(entity => entity.id))
-  if (entityIds.size !== entities.length)
-    invalid('entities.id')
-  const entityId = (value: unknown): string => {
-    const id = text(value, 'entity reference')
-    if (!entityIds.has(id))
-      invalid('entity reference')
+  const concepts = array(root.concepts, 'concepts').map((value) => {
+    const item = object(value, 'concepts', ['id', 'name', 'aliases', 'description', 'evidence'])
+    const id = text(item.id, 'concepts.id')
+    if (!/^[\w-]{1,80}$/.test(id))
+      invalid('concepts.id')
+    return { id, name: text(item.name, 'concepts.name'), aliases: strings(item.aliases, 'concepts.aliases'), description: text(item.description, 'concepts.description'), evidence: evidence(item.evidence) }
+  })
+  const nodes = [...entities, ...concepts]
+  const nodeIds = new Set(nodes.map(node => node.id))
+  if (nodeIds.size !== nodes.length)
+    invalid('nodes.id')
+  const nodeId = (value: unknown): string => {
+    const id = text(value, 'node reference')
+    if (!nodeIds.has(id))
+      invalid('node reference')
     return id
   }
   const relations = array(root.relations, 'relations').map((value) => {
     const item = object(value, 'relations', ['sourceId', 'targetId', 'type', 'description', 'evidence'])
-    return { sourceId: entityId(item.sourceId), targetId: entityId(item.targetId), type: text(item.type, 'relations.type'), description: text(item.description, 'relations.description'), evidence: evidence(item.evidence) }
+    return { sourceId: nodeId(item.sourceId), targetId: nodeId(item.targetId), type: text(item.type, 'relations.type'), description: text(item.description, 'relations.description'), evidence: evidence(item.evidence) }
   })
   const facts = array(root.facts, 'facts').map((value) => {
-    const item = object(value, 'facts', ['statement', 'entityIds', 'evidence'])
-    return { statement: text(item.statement, 'facts.statement'), entityIds: strings(item.entityIds, 'facts.entityIds').map(entityId), evidence: evidence(item.evidence) }
+    const item = object(value, 'facts', ['statement', 'nodeIds', 'evidence'])
+    return { statement: text(item.statement, 'facts.statement'), nodeIds: strings(item.nodeIds, 'facts.nodeIds').map(nodeId), evidence: evidence(item.evidence) }
   })
   const knowledgeType = text(root.knowledgeType, 'knowledgeType')
   if (!Object.hasOwn(knowledgeTypes, knowledgeType))
@@ -83,7 +91,7 @@ export function parseEnrichment(output: string, markdown: string, knowledgeTypes
     keywords: strings(root.keywords, 'keywords'),
     aliases: strings(root.aliases, 'aliases'),
     questions: strings(root.questions, 'questions'),
-    concepts: strings(root.concepts, 'concepts'),
+    concepts,
     entities,
     relations,
     facts,

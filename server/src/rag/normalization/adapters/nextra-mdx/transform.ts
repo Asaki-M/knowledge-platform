@@ -3,6 +3,7 @@ import type { MetadataValue, NormalizationWarning } from '../../types.js'
 import { parseDocument } from 'yaml'
 import { NORMALIZATION_ERROR_CODES } from '../../../../error-codes.js'
 import { AppError } from '../../../../errors.js'
+import { isRecord } from '../../../../utils/type-guards.js'
 import { readExpression } from './static-value.js'
 import { expandableTable } from './table.js'
 import { asBlocks, asInline } from './tree.js'
@@ -126,7 +127,7 @@ export function normalizeTree(tree: Root) {
           if (document.errors.length)
             throw new Error('Invalid YAML')
           const value: unknown = document.toJS({ maxAliasCount: 100 })
-          if (value !== null && (typeof value !== 'object' || Array.isArray(value)))
+          if (value !== null && !isRecord(value))
             throw new Error('Frontmatter must be an object')
           metadata = JSON.parse(JSON.stringify(value ?? {}, (_key, item) => {
             if (typeof item === 'number' && !Number.isFinite(item))

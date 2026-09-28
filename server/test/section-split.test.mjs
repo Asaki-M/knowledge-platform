@@ -2,10 +2,10 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 // eslint-disable-next-line antfu/no-import-dist -- Exercise the shared error identity across compiled modules.
 import { AppError } from '../dist/errors.js'
-// eslint-disable-next-line antfu/no-import-dist -- Exercise the compiled public module in integration tests.
-import { splitSections } from '../dist/rag/chunking/index.js'
 // eslint-disable-next-line antfu/no-import-dist -- Exercise the compiled normalization-to-split pipeline.
 import { NextraMdxAdapter, NormalizationClient } from '../dist/rag/normalization/index.js'
+// eslint-disable-next-line antfu/no-import-dist -- Exercise the compiled public module in integration tests.
+import { splitSections } from '../dist/rag/sections/index.js'
 
 const client = new NormalizationClient([new NextraMdxAdapter()])
 const normalize = content => client.normalize({ adapter: 'nextra-mdx', source: { id: 'kb/guide.mdx', path: 'guide.mdx' }, content })
@@ -23,13 +23,13 @@ function nodes(tree) {
 }
 
 test('sections retain preamble, hierarchy, skipped levels, repeated titles and exclusive ownership', async () => {
-  const document = await normalize('开场说明\n\n# 指南\n\n简介\n\n## 安装\n\n安装正文\n\n#### 配置\n\n配置正文\n\n## 安装\n\n第二种安装\n\n# 附录')
+  const document = await normalize('开场说明\n\n# 指南\n\n简介\n\n## 安装\n\n安装正文\n\n### 配置\n\n配置正文\n\n## 安装\n\n第二种安装\n\n# 附录')
   const sections = splitSections(document)
   assert.deepEqual(sections.map(section => section.title), [null, '指南', '安装', '配置', '安装', '附录'])
-  assert.deepEqual(sections.map(section => section.depth), [0, 1, 2, 4, 2, 1])
+  assert.deepEqual(sections.map(section => section.depth), [0, 1, 2, 3, 2, 1])
   assert.deepEqual(sections.map(section => section.parentId), [null, null, sections[1].id, sections[2].id, sections[1].id, null])
   assert.deepEqual(sections[3].headingPath.map(heading => heading.title), ['指南', '安装', '配置'])
-  assert.deepEqual(sections[3].headingPath.map(heading => heading.depth), [1, 2, 4])
+  assert.deepEqual(sections[3].headingPath.map(heading => heading.depth), [1, 2, 3])
   assert.equal(new Set(sections.map(section => section.id)).size, sections.length)
   assert.deepEqual(sections.map(section => section.index), [0, 1, 2, 3, 4, 5])
   assert.equal(sections[1].documentTitle, '指南')
@@ -41,7 +41,7 @@ test('sections retain preamble, hierarchy, skipped levels, repeated titles and e
   sections.slice(1).forEach((section, index) => assert.equal(section.blockRange.start, sections[index].blockRange.end))
   assert.equal(sections[2].position.start.line, 7)
   assert.equal(sections[2].position.end.line, 9)
-  assert.equal(sections[2].source.id, 'kb/guide.mdx')
+  assert.equal(sections[2].documentId, 'kb/guide.mdx')
   assert.deepEqual(splitSections(document), sections)
 })
 
@@ -126,11 +126,11 @@ test('cross-section links, images and recursive footnotes retain their definitio
 test('split leaves input immutable and isolates AST, source and heading paths between sections', async () => {
   const document = freeze(await normalize('# 指南\n\n[帮助][help]\n\n## 子节\n\n[帮助][help]\n\n[help]: /help'))
   const sections = splitSections(document)
-  sections[0].source.id = 'changed'
+  sections[0].documentId = 'changed'
   sections[0].headingPath[0].title = 'changed'
   nodes(sections[0].ast).find(node => node.type === 'definition').url = '/changed'
   assert.equal(document.source.id, 'kb/guide.mdx')
-  assert.equal(sections[1].source.id, 'kb/guide.mdx')
+  assert.equal(sections[1].documentId, 'kb/guide.mdx')
   assert.equal(sections[1].headingPath[0].title, '指南')
   assert.equal(nodes(sections[1].ast).find(node => node.type === 'definition').url, '/help')
   const noPositions = structuredClone(document)
@@ -141,7 +141,7 @@ test('split leaves input immutable and isolates AST, source and heading paths be
 
 test('invalid document and malformed heading fail with centralized error codes', async () => {
   const document = await normalize('# 指南')
-  for (const input of [null, {}, { ...document, schemaVersion: 2 }, { ...document, source: { id: '' } }, { ...document, ast: { type: 'root' } }])
+  for (const input of [null, {}, { ...document, schemaVersion: 1 }, { ...document, source: { id: '' } }, { ...document, ast: { type: 'root' } }])
     assert.throws(() => splitSections(input), error => error instanceof AppError && error.code === 'SECTION_SPLIT_INVALID_DOCUMENT')
   document.ast.children[0].depth = 7
   assert.throws(() => splitSections(document), { code: 'SECTION_SPLIT_INVALID_DOCUMENT' })
@@ -156,4 +156,46 @@ test('frontmatter travels to sections as independent rule metadata', async () =>
   assert.deepEqual(document.metadata.version, ['v2'])
   assert.deepEqual(sections[1].metadata.version, ['v2'])
   assert.equal(sections[1].metadata.custom.flag, true)
+})
+
+test('H4-H6 remain content and raw source fragments preserve MDX rather than regenerated Markdown', async () => {
+  const content = '# Guide\n\n<Download href="/file">下载</Download>\n\n#### Detail\n\n正文\n\n###### Last\n\n尾部'
+  const document = await normalize(content)
+  const [section] = splitSections(document)
+  assert.equal(splitSections(document).length, 1)
+  assert.deepEqual(section.ast.children.filter(node => node.type === 'heading').map(node => node.depth), [1, 4, 6])
+  assert.equal(document.originalContent, content)
+  assert.equal(document.blockSources.length, document.ast.children.length)
+  assert.ok(section.sourceFragments.some(item => item.text.includes('<Download')))
+  assert.ok(!section.markdown.includes('<Download'))
+  for (const fragment of section.sourceFragments) {
+    if (fragment.position)
+      assert.equal(fragment.text, content.slice(fragment.position.start.offset, fragment.position.end.offset))
+  }
+})
+
+test('insertions preserve unrelated section identities and revisions despite line shifts', async () => {
+  const prefix = '---\ntitle: 固定文档标题\n---\n'
+  const before = splitSections(await normalize(`${prefix}# A\n\n正文 A\n\n# B\n\n正文 B`))
+  const after = splitSections(await normalize(`${prefix}# New\n\n新节\n\n# A\n\n正文 A\n\n# B\n\n正文 B`))
+  for (const old of before) {
+    const current = after.find(section => section.title === old.title)
+    assert.equal(current.id, old.id)
+    assert.equal(current.revision, old.revision)
+    assert.notDeepEqual(current.position, old.position)
+  }
+  const changed = splitSections(await normalize(`${prefix}# A\n\n正文更新\n\n# B\n\n正文 B`))
+  assert.equal(changed[0].id, before[0].id)
+  assert.notEqual(changed[0].revision, before[0].revision)
+  assert.equal(changed[1].revision, before[1].revision)
+})
+
+test('cross-section reference origins are separate and reference changes invalidate dependent sections', async () => {
+  const make = url => `# A\n\n[help][ref]\n\n# B\n\n[ref]: ${url}`
+  const first = splitSections(await normalize(make('/old')))
+  const second = splitSections(await normalize(make('/new')))
+  assert.equal(first[0].referenceSources.length, 1)
+  assert.equal(first[0].referenceSources[0].source.text, '[ref]: /old')
+  assert.ok(first[0].sourceFragments.every(item => !item.text.includes('[ref]:')))
+  assert.notEqual(first[0].revision, second[0].revision)
 })

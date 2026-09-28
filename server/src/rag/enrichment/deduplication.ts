@@ -1,4 +1,4 @@
-import type { Entity, ExtractedSectionData, Fact, KnowledgeEnrichment, Relation } from './types.js'
+import type { Concept, Entity, ExtractedSectionData, Fact, KnowledgeEnrichment, Relation } from './types.js'
 
 const unique = (values: string[]) => [...new Set(values)]
 
@@ -28,7 +28,20 @@ export function deduplicateEnrichment(input: KnowledgeEnrichment): KnowledgeEnri
       entities.set(key, { ...entity, aliases: unique(entity.aliases), evidence: unique(entity.evidence) })
     }
   }
-  // 先重映射实体引用，再合并关系/事实，避免去重后产生悬空 ID。
+  const concepts = new Map<string, Concept>()
+  for (const concept of input.concepts) {
+    const key = JSON.stringify([concept.name, concept.description])
+    const previous = concepts.get(key)
+    ids.set(concept.id, previous?.id ?? concept.id)
+    if (previous) {
+      previous.aliases = unique([...previous.aliases, ...concept.aliases])
+      previous.evidence = unique([...previous.evidence, ...concept.evidence])
+    }
+    else {
+      concepts.set(key, { ...concept, aliases: unique(concept.aliases), evidence: unique(concept.evidence) })
+    }
+  }
+  // 先重映射实体和概念引用，再合并关系/事实，避免去重后产生悬空 ID。
   const relations = new Map<string, Relation>()
   for (const relation of input.relations) {
     const sourceId = ids.get(relation.sourceId)!
@@ -42,20 +55,20 @@ export function deduplicateEnrichment(input: KnowledgeEnrichment): KnowledgeEnri
   }
   const facts = new Map<string, Fact>()
   for (const fact of input.facts) {
-    const entityIds = unique(fact.entityIds.map(id => ids.get(id)!))
-    const key = JSON.stringify([fact.statement, [...entityIds].sort()])
+    const nodeIds = unique(fact.nodeIds.map(id => ids.get(id)!))
+    const key = JSON.stringify([fact.statement, [...nodeIds].sort()])
     const previous = facts.get(key)
     if (previous)
       previous.evidence = unique([...previous.evidence, ...fact.evidence])
     else
-      facts.set(key, { ...fact, entityIds, evidence: unique(fact.evidence) })
+      facts.set(key, { ...fact, nodeIds, evidence: unique(fact.evidence) })
   }
   return {
     ...input,
     keywords: unique(input.keywords),
     aliases: unique(input.aliases),
     questions: unique(input.questions),
-    concepts: unique(input.concepts),
+    concepts: [...concepts.values()],
     entities: [...entities.values()],
     relations: [...relations.values()],
     facts: [...facts.values()],

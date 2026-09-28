@@ -24,7 +24,10 @@ export interface NormalizationWarning {
 }
 
 export interface NormalizedDocument {
-  schemaVersion: 1
+  schemaVersion: 2
+  originalContent: string
+  /** 与 ast.children 一一对应；exact=false 表示只能定位到来源包围范围。 */
+  blockSources: SourceFragment[]
   source: DocumentSource
   adapter: string
   title: string | null
@@ -46,4 +49,11 @@ export interface NormalizationAdapter {
 
 export interface NormalizeRequest extends NormalizationInput {
   adapter: string
+}
+
+/** 原始输入中的片段；缺少来源位置时明确为空，不反向生成原文。 */
+export interface SourceFragment {
+  text: string | null
+  position?: Position
+  exact: boolean
 }

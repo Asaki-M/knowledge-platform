@@ -1,6 +1,6 @@
 # 知序 · Knowledge Platform
 
-pnpm monorepo 的 Wiki RAG 知识库起步项目。当前包含前端工作台、HTTP 服务、OpenTelemetry、统一 LLM 适配接口、OpenAI SDK 接入，可扩展的文档标准化接入层、按标题的 Section Split 、结构化 Knowledge Enrichment 及 Chunk Build；其余 RAG 业务能力仍为目录占位。
+pnpm monorepo 的 Wiki RAG 知识库起步项目。当前包含前端工作台、HTTP 服务、OpenTelemetry、统一 LLM 适配接口、OpenAI SDK 接入，可扩展的文档标准化接入层、按标题的 Section Split 、结构化 Knowledge Enrichment、跨节 Wiki 聚合、独立 Chunk Build、增量影响计算及 SiliconFlow / Google Embedding 接入；其余 RAG 业务能力仍为目录占位。
 
 ## 启动
 
@@ -37,6 +37,8 @@ pnpm dev
 │   │   ├── index.ts                # 启动、端口监听、优雅关闭
 │   │   ├── errors.ts               # 服务端共用 AppError 与可选错误信息
 │   │   ├── error-codes.ts          # HTTP / LLM / RAG 错误码与中文含义
+│   │   ├── utils/                  # 跨模块通用工具，当前为基础类型守卫
+│   │   │   └── type-guards.ts      # 非空白字符串、非数组对象判断
 │   │   ├── core/                   # HTTP/API 层
 │   │   │   ├── app.ts              # Hono 应用组装与错误响应
 │   │   │   ├── router/             # HTTP 路由，目前只有 health
@@ -47,17 +49,18 @@ pnpm dev
 │   │   │       ├── documents/      # 文档持久化
 │   │   │       ├── wiki-nodes/     # Wiki 节点持久化
 │   │   │       └── models/         # 数据库记录模型
-│   │   ├── rag/                    # Wiki RAG 独立能力，Normalize / Split / Enrichment / Chunk Build 已实现
-│   │   │   ├── ingestion/          # 入库链路编排
+│   │   ├── rag/                    # Wiki RAG 独立能力，Normalize / Split / Enrichment / Wiki / Chunk Build 已实现
+│   │   │   ├── ingestion/          # 增量影响计算，完整入库编排待实现
 │   │   │   ├── normalization/      # 统一文档接入层与 Nextra MDX → AST 标准化
 │   │   │   ├── enrichment/         # LLM 结构化知识补充及校验
-│   │   │   ├── wiki/               # Wiki 化
+│   │   │   ├── wiki/               # 跨节 Entity/Concept 聚合与增量更新
 │   │   │   │   └── nodes/          # 节点构建与关联
-│   │   │   ├── chunking/           # 按标题 Section Split 与 Token 预算 Chunk Build
-│   │   │   ├── embedding/          # 向量化及对应模型接入
+│   │   │   ├── sections/           # H1–H3 分节、来源与内容版本
+│   │   │   ├── chunking/           # 独立的 Token 预算 Chunk Build
+│   │   │   ├── embedding/          # SiliconFlow / Google 文本向量化接口
 │   │   │   ├── vector-store/       # RAG 向量存储与访问
 │   │   │   ├── query/              # 问答链路编排
-│   │   │   ├── retrieval/          # Top 30 检索与 Wiki 上下文
+│   │   │   ├── retrieval/          # Chunk 检索与 Section/语义节点回查（待实现）
 │   │   │   ├── rerank/             # Top 3 重排及对应模型接入
 │   │   │   └── generation/         # 基于上下文生成答案
 │   │   ├── llm/                    # 独立于具体 SDK 的文本生成能力
@@ -75,6 +78,8 @@ pnpm dev
 │   │       └── logger.ts           # 带当前 trace 上下文的日志 API
 │   └── test/
 │       ├── chunk-build.test.mjs    # Token 预算、结构切分、重叠及来源
+│       ├── wiki.test.mjs           # 语义聚合、来源、身份映射与增量更新
+│       ├── embedding.test.mjs      # 两家 Embedding SDK 的本地 API 集成测试
 │       ├── enrichment.test.mjs     # 知识提取、分类扩展和输出校验
 │       ├── section-split.test.mjs   # 层级切分、完整性、引用与不变性测试
 │       ├── normalization.test.mjs   # MDX 转换与扩展契约测试
@@ -92,6 +97,7 @@ pnpm dev
 - `rag` 负责入库和问答能力；Embedding、Rerank 接入各自归所属模块，向量存储也归 RAG 所有。
 - `llm` 负责通用大模型调用，可被 Wiki 化、答案生成等能力复用。
 - `telemetry` 负责 SDK 与通用日志，HTTP 追踪放在 `core/middleware/tracing.ts`。
+- `utils` 只收纳跨模块复用且不依赖业务的工具；AST、元数据和知识处理规则保留在所属 RAG 模块。
 
 ```text
 HTTP → core/router → core/service → core/dao
@@ -109,14 +115,15 @@ HTTP → core/router → core/service → core/dao
 - `GET /api/health` 返回 `status`、`service`、`timestamp`；未知路由返回 JSON 404；错误响应带请求 ID。
 - 文档与统计当前为空状态，占位数值为 0；导入与发送按钮禁用，不执行上传或模型调用。
 
-已提供通用文本生成接口和 OpenAI SDK 适配器。已实现可扩展的 Normalization 接口和 Nextra MDX 适配器。已实现按标题的 Section Split、结构化 Knowledge Enrichment 和 Chunk Build。尚未实现 Wiki 化、Metadata Build、Embedding、向量数据库、检索、Rerank、RAG 答案编排或持久化，也没有固定具体模型或数据库。
+已提供通用文本生成接口和 OpenAI SDK 适配器。已实现可扩展的 Normalization 接口和 Nextra MDX 适配器。已实现 H1–H3 分节、来源版本、结构化知识提取、跨节语义聚合、独立 Chunk Build 和增量影响计算。已接入 SiliconFlow 与 Google 的文本 Embedding，推荐模型见下文。尚未实现 Wiki 页面与持久化、Metadata Build、embeddingText、向量数据库、检索、Rerank、RAG 答案编排或持久化。
 
 计划中的链路：
 
 ```text
-MDX → Normalized Document → Section Split → Knowledge Enrichment
-    → Chunk Build → Metadata Build → Embedding → Vector Record → Vector DB
-问题 → Search Top 30 + Wiki Node → Rerank Top 3 → Answer
+MDX → Normalized Document → Section（事实来源）
+Section → Chunk（检索单元）→ Metadata Build → Embedding → Vector Record → Vector DB
+Section → Knowledge Enrichment → Concept / Entity → Wiki / KG
+问题 → Chunk 检索 → Section → 语义节点 → Graph Expand → Rerank / Context → Answer
 ```
 
 ## 检查与构建
@@ -195,7 +202,7 @@ API Service / RAG → LlmClient → LlmAdapter → OpenAI SDK
                                          → 其他模型 SDK（后续实现）
 ```
 
-当前实现为非流式、无服务端会话状态的文本生成，支持 `system` / `user` / `assistant` 消息。每次调用传入所需的完整文本历史；不重放模型内部推理或工具调用记录。流式、多模态、工具调用、结构化输出和 Embedding 尚未接入。
+当前实现为非流式、无服务端会话状态的文本生成，支持 `system` / `user` / `assistant` 消息。每次调用传入所需的完整文本历史；不重放模型内部推理或工具调用记录。通用 LLM 的流式、多模态、工具调用和结构化输出尚未接入；Embedding 由独立的 `rag/embedding` 模块提供。
 
 在 `server/.env` 配置 `OPENAI_API_KEY`，并将 `OPENAI_MODEL` 设为账号可用的模型 ID。`OPENAI_BASE_URL` 可选，默认使用 SDK 的 OpenAI 地址；自定义地址必须支持 Responses API，仅兼容 Chat Completions 的服务不能直接使用此适配器。
 
@@ -265,11 +272,11 @@ pnpm dlx shadcn@latest add dialog
 
 `server/src/rag/normalization` 沿用 LLM 的 Adapter 注册模式，当前接入 `nextra-docs` 的 MDX：先解析 AST，再输出标准 Markdown / GFM AST、Markdown、纯文本、元数据和处理提示。支持图片、下载链接、Callout、嵌套字段表格等组件；不执行文档代码。
 
-使用示例、扩展约定和阅读顺序见 [Normalization 文档](server/src/rag/normalization/README.md)。本阶段只提供可调用的文档标准化接入层，没有 CLI 或目录导入。`Section Split`、`Knowledge Enrichment` 和 `Chunk Build` 已实现，后续按 `Metadata Build → Embedding → Vector Record → Vector DB` 逐步实现；embeddingText 拼装与 pgvector 写入尚未实现。
+使用示例、扩展约定和阅读顺序见 [Normalization 文档](server/src/rag/normalization/README.md)。本阶段只提供可调用的文档标准化接入层，没有 CLI 或目录导入。`Section Split`、`Knowledge Enrichment` 和 `Chunk Build` 已实现，独立 Embedding SDK 接入已实现；后续补齐 Metadata Build、embeddingText 拼装、Vector Record、pgvector 写入及链路编排。
 
 ## 按标题切分
 
-`splitSections(document)` 消费标准化文档，返回按原文顺序排列的 section，保留标题路径、父级、来源位置与完整 AST 块。直接调用纯函数，不需要 Adapter。使用方式和输出示例见 [Section Split 文档](server/src/rag/chunking/README.md)。
+`rag/sections` 的 `splitSections(document)` 只按 H1–H3 分节，保留标准正文、原始源片段、documentId、sourcePath、标题层级及内容 revision。Section 是事实来源，位置移动不触发内容重建。详见 [Section 文档](server/src/rag/sections/README.md)。
 
 ## 统一业务异常
 
@@ -292,8 +299,20 @@ throw new AppError(
 
 ## 知识补充
 
-`KnowledgeEnricher.enrich(section)` 先规则提取 title、headingPath、metadata、codeBlocks、links，再复用 `LlmClient` 补充 summary、keywords、aliases、questions、entities、concepts、relations、facts、knowledgeType，最后校验并去重。规则结果保存在 `extracted`，语义结果保存在 `enrichment`，已移除 constraints 和模型生成的 metadata。输出为 `EnrichedSection` v2，Chunk Build 同步消费新版结果。字段定义与阅读顺序见 [Knowledge Enrichment 文档](server/src/rag/enrichment/README.md)。
+`KnowledgeEnricher.enrich(section)` 先规则提取 title、headingPath、metadata、codeBlocks、links，再复用 `LlmClient` 补充 summary、keywords、aliases、questions、entities、concepts、relations、facts、knowledgeType，最后校验并去重。规则结果保存在 `extracted`，语义结果保存在 `enrichment`，已移除 constraints 和模型生成的 metadata。输出为绑定 Section revision 的 `EnrichedSection` v3，Concept 具有局部 ID 和逐字证据，关系和事实可引用实体或概念。Chunk Build 独立消费 Section。字段定义与阅读顺序见 [Knowledge Enrichment 文档](server/src/rag/enrichment/README.md)。
+
+## Wiki 构建
+
+`buildWiki(inputs, options)` 通过调用方显式 canonical 身份映射跨节聚合 Entity/Concept，保留每条描述、事实、关系的 Section 证据与生成来源，确定性渲染 Wiki Markdown。`updateWiki` 撤销和替换各节贡献，支持待重建状态和来源刷新。未映射同名对象保持独立，标题层级仍属于 Section。详见 [Wiki 构建](server/src/rag/wiki/README.md)。页面与数据库尚未接入。
 
 ## Chunk Build
 
-`buildChunks(section, enrichedSection, options)` 按完整 Markdown 的 Token 预算构建 chunk，保留结构、标题上下文、来源片段和引用。支持 overlap、自定义 Token 计数及显式超限策略，enrichment 仍保留 section 级作用域。默认 800 Token、无 overlap；详见 [Chunk Build](server/src/rag/chunking/README.md#chunk-build)。当前不生成 embeddingText 或数据库记录。
+`buildChunks(section, options?)` 独立按完整 Markdown 的 Token 预算构建检索 Chunk。结果仅关联 documentId、sectionId、sectionRevision 及同节前后片段，不携带 Wiki 或 enrichment。默认 800 Token、无 overlap；详见 [Chunk Build](server/src/rag/chunking/README.md)。当前不生成 embeddingText 或数据库记录。
+
+## 增量影响计算
+
+`planSectionChanges(previous, next)` 比较前后完整 Section 快照，安排新增/修改节的 Chunk 与 enrichment 重建、删除节的贡献撤销，以及仅位置/路径变化的来源刷新。它不执行任务或持久化；完整入库和查询链路仍未实现。详见 [增量影响计算](server/src/rag/ingestion/README.md)。
+
+## Embedding
+
+`rag/embedding` 提供 `EmbeddingClient`、`SiliconFlowEmbeddingAdapter` 和 `GoogleEmbeddingAdapter`，统一将文本数组转换为有序向量，支持输出维度校验、取消、超时、错误转换和追踪。SiliconFlow 沿用 `EMBEDDING_*` 配置，推荐免费模型 `BAAI/bge-m3`；Google 使用 `GOOGLE_API_KEY` / `GOOGLE_EMBEDDING_MODEL`，推荐 `gemini-embedding-2`，标准接口在 Free Tier 下免费。模型每次显式传入，付费项目按平台计费层级处理。完整配置、官方价格来源与调用示例见 [Embedding 文档](server/src/rag/embedding/README.md)。当前仅完成独立 SDK 能力，未接入 embeddingText 构建、向量数据库或入库流程。

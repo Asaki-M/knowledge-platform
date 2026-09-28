@@ -1,5 +1,6 @@
 import type { PhrasingContent, Table, TableCell, TableRow } from 'mdast'
 import type { MetadataValue } from '../../types.js'
+import { isRecord } from '../../../../utils/type-guards.js'
 import { markdownParser } from './parser.js'
 import { asInline } from './tree.js'
 
@@ -12,17 +13,13 @@ const defaultColumns = [
   { key: 'extra', label: '其他信息' },
 ]
 
-function object(value: MetadataValue): value is Record<string, MetadataValue> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-}
-
 /** 展开所有嵌套字段，name 使用完整路径，避免丢失父子关系或被 UI 折叠状态过滤。 */
 export function expandableTable(rows: MetadataValue | undefined, columns: MetadataValue | undefined): Table {
   const selected = columns ?? defaultColumns
   if (!Array.isArray(rows) || !Array.isArray(selected) || !selected.length)
     throw new Error('Static rows and columns are required')
   const schema = selected.map((column) => {
-    if (!object(column) || typeof column.key !== 'string' || typeof column.label !== 'string')
+    if (!isRecord(column) || typeof column.key !== 'string' || typeof column.label !== 'string')
       throw new Error('Invalid table columns')
     return { key: column.key, label: column.label }
   })
@@ -30,7 +27,7 @@ export function expandableTable(rows: MetadataValue | undefined, columns: Metada
   const output: TableRow[] = [{ type: 'tableRow', children: schema.map(column => cell([{ type: 'text', value: column.label }])) }]
   const visit = (items: MetadataValue[], parent: string) => {
     for (const row of items) {
-      if (!object(row))
+      if (!isRecord(row))
         throw new Error('Invalid table row')
       const name = typeof row.name === 'string' ? row.name : ''
       const path = [parent, name].filter(Boolean).join('.')

@@ -8,7 +8,7 @@ NormalizationClient.normalize({ adapter, source, content })
   → normalizeTree：组件与表达式 → 标准 Markdown / GFM mdast
   → NormalizedDocument：ast + markdown + text + metadata + warnings
   → Section Split（已实现）→ Knowledge Enrichment → Chunk Build
-  → Metadata Build → Embedding → Vector Record → Vector DB（后续逐步实现）
+  → Metadata Build → Embedding → Vector Record → Vector DB（后续编排；Embedding SDK 已接入）
 ```
 
 ## 目录与阅读顺序
@@ -54,7 +54,8 @@ const { ast, markdown, text, warnings } = document
 
 ## 输出约定
 
-- `schemaVersion: 1`：输出版本；新增格式仍返回相同契约。
+- `schemaVersion: 2`：输出版本；新增格式仍返回相同契约。
+- `originalContent` 与 `blockSources`：输入原文和每个标准顶层块的源片段、位置、精确性标记；合成节点不伪造位置。
 - `source`：原样保留调用方提供的来源，用于回溯。
 - `title`：优先 YAML `title`，其次第一个一级标题，无标题为 `null`。
 - `metadata`：YAML frontmatter 的 JSON 元数据，不混入正文。
@@ -90,7 +91,7 @@ MDX 语法或 YAML 错误会抛出公共 [AppError](../../errors.ts)，保留错
 
 本阶段只实现 `Normalized Document`：调用方传入来源和正文，得到统一文档。没有 CLI、目录导入、HTTP 接口或自动扫描路径。`nextra-docs` 用于验证适配规则，不会硬编码到运行时。
 
-标准化后可调用 [splitSections](../chunking/README.md) 完成 Section Split。Section Split 后可调用 [KnowledgeEnricher](../enrichment/README.md) 补充结构化知识。之后可调用 [buildChunks](../chunking/README.md#chunk-build) 构建 chunk。后续按 `Metadata Build → Embedding → Vector Record → Vector DB` 逐步接入。按标题切分、summary / keywords / wiki node / links 补充、embeddingText 拼装和 pgvector 写入都不属于当前 normalization 的职责。这里的 `metadata` 只保留原文 frontmatter，后续 Metadata Build 再构建检索所需的元数据。
+标准化后可调用 [splitSections](../sections/README.md) 完成 H1–H3 分节。语义分支通过 [KnowledgeEnricher](../enrichment/README.md) 与 [buildWiki](../wiki/README.md) 聚合实体、概念；检索分支独立调用 [buildChunks](../chunking/README.md)。独立 [Embedding SDK](../embedding/README.md) 已接入，Metadata Build、embeddingText、Vector Record、向量数据库与完整编排仍待实现。`metadata` 只保留原文 frontmatter。
 
 ## 接入下一种格式
 

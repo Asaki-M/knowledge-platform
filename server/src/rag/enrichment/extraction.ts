@@ -1,9 +1,10 @@
 import type { Definition, Root, RootContent } from 'mdast'
-import type { DocumentSection } from '../chunking/types.js'
 import type { MetadataValue } from '../normalization/types.js'
+import type { DocumentSection } from '../sections/types.js'
 import type { ExtractedSectionData } from './types.js'
 import { ENRICHMENT_ERROR_CODES as CODES } from '../../error-codes.js'
 import { AppError } from '../../errors.js'
+import { isRecord } from '../../utils/type-guards.js'
 import { plainText } from '../markdown.js'
 
 function invalid(): never {
@@ -44,9 +45,9 @@ const nullableText = (value: unknown) => value === undefined || value === null |
 export function extractSectionData(section: DocumentSection): ExtractedSectionData {
   try {
     if (!section || (section.title !== null && typeof section.title !== 'string')
-      || !Array.isArray(section.headingPath) || section.headingPath.some(heading => !heading || typeof heading.sectionId !== 'string' || typeof heading.title !== 'string' || !Number.isInteger(heading.depth) || heading.depth < 1 || heading.depth > 6)
+      || !Array.isArray(section.headingPath) || section.headingPath.some(heading => !heading || typeof heading.sectionId !== 'string' || typeof heading.title !== 'string' || !Number.isInteger(heading.depth) || heading.depth < 1 || heading.depth > 3)
       || section.ast?.type !== 'root' || !Array.isArray(section.ast.children)
-      || !section.metadata || typeof section.metadata !== 'object' || Array.isArray(section.metadata) || !validateMetadata(section.metadata)) {
+      || !isRecord(section.metadata) || !validateMetadata(section.metadata)) {
       invalid()
     }
     const result: ExtractedSectionData = {

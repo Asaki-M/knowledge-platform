@@ -1,39 +1,6 @@
-import type { Heading, Root } from 'mdast'
+import type { Root } from 'mdast'
 import type { Position } from 'unist'
-import type { EnrichedSection } from '../enrichment/types.js'
-import type { DocumentSource, NormalizedDocument } from '../normalization/types.js'
-
-export interface SectionHeading {
-  sectionId: string
-  title: string
-  depth: Heading['depth']
-}
-
-/** 按文档顺序排列的 section；后续知识补充和 Chunk Build 使用此结构。 */
-export interface DocumentSection {
-  /** 同一文档、同一顺序下可复现；插入/删除章节后序号可能变化，不是内容哈希。 */
-  id: string
-  source: DocumentSource
-  documentTitle: string | null
-  /** 原文 frontmatter 的独立副本，供后续规则提取使用，不由模型推断。 */
-  metadata: NormalizedDocument['metadata']
-  /** 从 0 开始的文档内顺序。 */
-  index: number
-  /** 无标题的前言为 null，depth 为 0；不伪造标题节点。 */
-  title: string | null
-  depth: 0 | Heading['depth']
-  parentId: string | null
-  /** 从祖先标题到当前标题；跳级时不补造缺失的层级。 */
-  headingPath: SectionHeading[]
-  /** 本节拥有的原文顶层块区间，[start, end)，不包含补入的跨节引用定义。 */
-  blockRange: { start: number, end: number }
-  /** 本节原文范围；缺少端点位置时不推测，补入的引用定义不扩大此范围。 */
-  position?: Position
-  /** 包含本节标题与正文，以及独立使用所需的链接/图片/脚注定义。 */
-  ast: Root
-  markdown: string
-  text: string
-}
+import type { SectionHeading } from '../sections/types.js'
 
 export interface ChunkBuildOptions {
   /** 完整 chunk Markdown 的预算，包括本节标题、表头、代码围栏和引用定义。默认 800。 */
@@ -68,8 +35,13 @@ export interface ChunkPart {
 export interface DocumentChunk {
   id: string
   sectionId: string
+  documentId: string
+  sectionRevision: string
+  /** 同一 section 内的顺序关联，不跨节猜测相邻 chunk。 */
+  previousChunkId: string | null
+  nextChunkId: string | null
   index: number
-  source: DocumentSource
+  sourcePath: string | null
   documentTitle: string | null
   headingPath: SectionHeading[]
   parts: ChunkPart[]
@@ -81,10 +53,10 @@ export interface DocumentChunk {
 }
 
 export interface ChunkBuildResult {
-  schemaVersion: 1
+  schemaVersion: 3
   sectionId: string
-  /** 补充信息只存一份，作用域仍是 section，不伪装成每个 chunk 的局部事实。 */
-  sectionEnrichment: EnrichedSection
+  documentId: string
+  sectionRevision: string
   tokenizer: 'cl100k_base' | 'custom'
   maxTokens: number
   overlapTokens: number

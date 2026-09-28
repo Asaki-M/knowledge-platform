@@ -1,0 +1,7 @@
+export { EMBEDDING_ERROR_CODES } from '../../error-codes.js'
+export { EmbeddingClient } from './client.js'
+export { GoogleEmbeddingAdapter } from './providers/google/index.js'
+export type { GoogleEmbeddingAdapterOptions } from './providers/google/index.js'
+export { SiliconFlowEmbeddingAdapter } from './providers/siliconflow/index.js'
+export type { SiliconFlowEmbeddingAdapterOptions } from './providers/siliconflow/index.js'
+export type { EmbeddingAdapter, EmbeddingRequest, EmbeddingResponse, EmbeddingUsage, EmbedRequest } from './types.js'

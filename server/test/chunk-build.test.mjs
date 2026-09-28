@@ -3,29 +3,20 @@ import { test } from 'node:test'
 // eslint-disable-next-line antfu/no-import-dist -- Exercise the compiled shared exception identity.
 import { AppError } from '../dist/errors.js'
 // eslint-disable-next-line antfu/no-import-dist -- Exercise the public section-to-chunk API.
-import { buildChunks, countChunkTokens, splitSections } from '../dist/rag/chunking/index.js'
-// eslint-disable-next-line antfu/no-import-dist -- Rules produce the current enrichment input contract.
-import { extractSectionData } from '../dist/rag/enrichment/index.js'
+import { buildChunks, countChunkTokens } from '../dist/rag/chunking/index.js'
 // eslint-disable-next-line antfu/no-import-dist -- Project original and reconstructed AST content independently.
 import { plainText } from '../dist/rag/markdown.js'
-
 // eslint-disable-next-line antfu/no-import-dist -- Exercise actual normalization before building chunks.
 import { NextraMdxAdapter, NormalizationClient } from '../dist/rag/normalization/index.js'
+
+// eslint-disable-next-line antfu/no-import-dist -- 验证新的 Section 公共入口。
+import { sectionRevision, splitSections } from '../dist/rag/sections/index.js'
 
 const normalization = new NormalizationClient([new NextraMdxAdapter()])
 async function input(content) {
   const document = await normalization.normalize({ adapter: 'nextra-mdx', source: { id: 'kb/doc', path: 'doc.mdx' }, content })
   const section = splitSections(document)[0]
-  // Chunk Build 不调用模型；此处使用符合已校验 EnrichedSection 契约的固定测试结果。
-  const enrichment = {
-    schemaVersion: 2,
-    sectionId: section.id,
-    source: { ...section.source },
-    extracted: extractSectionData(section),
-    enrichment: { summary: '测试摘要', keywords: ['测试'], aliases: [], questions: [], entities: [], concepts: [], relations: [], facts: [], knowledgeType: 'guide' },
-    generation: { provider: 'test', model: 'test', responseId: 'r1', usage: null },
-  }
-  return { section, enrichment }
+  return { section }
 }
 
 const characterCount = value => Array.from(value).length
@@ -50,8 +41,8 @@ function withinBudget(result, counter) {
 
 test('default tokenizer and paragraph fragmentation preserve Unicode and formatting under the full Markdown budget', async () => {
   const text = '中文说明与 👨‍👩‍👧‍👦 emoji，保留每一个字符。'.repeat(35)
-  const { section, enrichment } = await input(`# 标题\n\n**${text}**`)
-  const result = buildChunks(section, enrichment, { maxTokens: 100 })
+  const { section } = await input(`# 标题\n\n**${text}**`)
+  const result = buildChunks(section, { maxTokens: 100 })
   assert.equal(result.tokenizer, 'cl100k_base')
   assert.ok(result.chunks.length > 1)
   withinBudget(result, countChunkTokens)
@@ -71,8 +62,8 @@ test('code splits by complete lines, tables repeat headers and ordered lists ret
   const code = Array.from({ length: 12 }, (_, index) => `const value${index} = ${index}`).join('\n')
   const tableRows = Array.from({ length: 10 }, (_, index) => `| row${index} | 说明${index} |`).join('\n')
   const list = Array.from({ length: 10 }, (_, index) => `${index + 3}. item-${index} description`).join('\n')
-  const { section, enrichment } = await input(`# 标题\n\n\`\`\`ts title="demo"\n${code}\n\`\`\`\n\n| 字段 | 说明 |\n| --- | --- |\n${tableRows}\n\n${list}`)
-  const result = buildChunks(section, enrichment, { maxTokens: 140, countTokens: characterCount })
+  const { section } = await input(`# 标题\n\n\`\`\`ts title="demo"\n${code}\n\`\`\`\n\n| 字段 | 说明 |\n| --- | --- |\n${tableRows}\n\n${list}`)
+  const result = buildChunks(section, { maxTokens: 140, countTokens: characterCount })
   withinBudget(result, characterCount)
   const output = result.chunks.flatMap(chunk => chunk.ast.children)
   const codes = output.filter(node => node.type === 'code')
@@ -93,8 +84,8 @@ test('code splits by complete lines, tables repeat headers and ordered lists ret
 })
 
 test('overlap repeats only labeled trailing parts and never loses new content or exceeds the budget', async () => {
-  const { section, enrichment } = await input(`# Heading\n\n${Array.from({ length: 8 }, (_, index) => `Paragraph ${index} with detail.`).join('\n\n')}`)
-  const result = buildChunks(section, enrichment, { maxTokens: 100, overlapTokens: 30, countTokens: characterCount })
+  const { section } = await input(`# Heading\n\n${Array.from({ length: 8 }, (_, index) => `Paragraph ${index} with detail.`).join('\n\n')}`)
+  const result = buildChunks(section, { maxTokens: 100, overlapTokens: 30, countTokens: characterCount })
   withinBudget(result, characterCount)
   assert.ok(result.chunks.length > 1)
   assert.ok(result.chunks.slice(1).some(chunk => chunk.parts.some(part => part.overlap)))
@@ -109,8 +100,8 @@ test('overlap repeats only labeled trailing parts and never loses new content or
 })
 
 test('reference definitions are restored in each chunk and included in the token budget', async () => {
-  const { section, enrichment } = await input('# 标题\n\n[帮助][help] 的第一段说明。\n\n[帮助][help] 的第二段说明。\n\n[help]: https://example.test/help')
-  const result = buildChunks(section, enrichment, { maxTokens: characterCount(section.markdown) - 1, countTokens: characterCount })
+  const { section } = await input('# 标题\n\n[帮助][help] 的第一段说明。\n\n[帮助][help] 的第二段说明。\n\n[help]: https://example.test/help')
+  const result = buildChunks(section, { maxTokens: characterCount(section.markdown) - 1, countTokens: characterCount })
   withinBudget(result, characterCount)
   assert.equal(result.chunks.length, 2)
   for (const chunk of result.chunks) {
@@ -123,55 +114,69 @@ test('reference definitions are restored in each chunk and included in the token
 test('indivisible content and oversized headings are explicit, with an optional strict failure policy', async () => {
   const longLine = 'x'.repeat(200)
   for (const content of [`# Title\n\n\`\`\`txt\n${longLine}\n\`\`\``, `# ${longLine}\n\n正文`, `# Title\n\n| Key | Value |\n| --- | --- |\n| a | ${longLine} |`, `# Title\n\n1. ${longLine}`]) {
-    const { section, enrichment } = await input(content)
+    const { section } = await input(content)
     const config = { maxTokens: 50, countTokens: characterCount }
-    const result = buildChunks(section, enrichment, config)
+    const result = buildChunks(section, config)
     assert.ok(result.chunks.some(chunk => chunk.oversized))
     assert.ok(result.chunks.some(chunk => chunk.markdown.includes(longLine)))
-    assert.throws(() => buildChunks(section, enrichment, { ...config, oversized: 'error' }), { code: 'CHUNK_BUILD_OVERSIZED_CONTENT' })
+    assert.throws(() => buildChunks(section, { ...config, oversized: 'error' }), { code: 'CHUNK_BUILD_OVERSIZED_CONTENT' })
   }
 })
 
-test('build is deterministic, keeps enrichment scoped to the section and isolates returned objects', async () => {
-  const { section, enrichment } = await input('# Title\n\n第一段正文。\n\n第二段正文。')
+test('build is deterministic, has only section references and isolates returned objects', async () => {
+  const { section } = await input('# Title\n\n第一段正文。\n\n第二段正文。')
   freeze(section)
-  freeze(enrichment)
   const options = { maxTokens: 23, countTokens: characterCount }
-  const result = buildChunks(section, enrichment, options)
-  assert.deepEqual(buildChunks(section, enrichment, options), result)
-  assert.deepEqual(result.sectionEnrichment, enrichment)
+  const result = buildChunks(section, options)
+  assert.deepEqual(buildChunks(section, options), result)
+  assert.equal(Object.hasOwn(result, 'sectionEnrichment'), false)
+  assert.equal(result.schemaVersion, 3)
   assert.ok(result.chunks.length > 1)
-  result.sectionEnrichment.enrichment.keywords.push('new')
   result.chunks[0].headingPath[0].title = 'changed'
-  result.chunks[0].source.id = 'changed'
+  result.chunks[0].documentId = 'changed'
   result.chunks[0].ast.children[0].children[0].value = 'changed'
-  assert.deepEqual(enrichment.enrichment.keywords, ['测试'])
   assert.equal(result.chunks[1].headingPath[0].title, 'Title')
-  assert.equal(result.chunks[1].source.id, section.source.id)
+  assert.equal(result.chunks[1].documentId, section.documentId)
   assert.equal(section.ast.children[0].children[0].value, 'Title')
 })
 
 test('heading-only and empty sections do not invent body content', async () => {
-  const { section, enrichment } = await input('# 仅标题')
-  const result = buildChunks(section, enrichment)
+  const { section } = await input('# 仅标题')
+  const result = buildChunks(section)
   assert.equal(result.chunks.length, 1)
   assert.deepEqual(result.chunks[0].parts, [])
   assert.equal(result.chunks[0].text, '仅标题')
-  const empty = { ...section, ast: { type: 'root', children: [] } }
-  assert.deepEqual(buildChunks(empty, enrichment).chunks, [])
+  const empty = { ...section, title: null, depth: 0, headingPath: [], markdown: '', text: '', ast: { type: 'root', children: [] } }
+  empty.revision = sectionRevision(empty)
+  assert.deepEqual(buildChunks(empty).chunks, [])
 })
 
-test('invalid options, mismatched enrichment and broken counters fail as AppError without leaking content', async () => {
-  const { section, enrichment } = await input('# Title\n\n正文')
+test('invalid options, stale sections and broken counters fail as AppError without leaking content', async () => {
+  const { section } = await input('# Title\n\n正文')
   for (const options of [null, { maxTokens: 0 }, { maxTokens: 1.5 }, { overlapTokens: -1 }, { maxTokens: 10, overlapTokens: 10 }, { oversized: 'drop' }, { countTokens: 3 }])
-    assert.throws(() => buildChunks(section, enrichment, options), error => error instanceof AppError && error.code === 'CHUNK_BUILD_INVALID_OPTIONS')
-  assert.throws(() => buildChunks(section, { ...enrichment, sectionId: 'other' }), { code: 'CHUNK_BUILD_INVALID_INPUT' })
-  assert.throws(() => buildChunks(section, { ...enrichment, schemaVersion: 1 }), { code: 'CHUNK_BUILD_INVALID_INPUT' })
-  assert.throws(() => buildChunks(section, { ...enrichment, extracted: undefined }), { code: 'CHUNK_BUILD_INVALID_INPUT' })
-  assert.throws(() => buildChunks(section, { ...enrichment, source: { id: 'other' } }), { code: 'CHUNK_BUILD_INVALID_INPUT' })
-  assert.throws(() => buildChunks(null, enrichment), { code: 'CHUNK_BUILD_INVALID_INPUT' })
+    assert.throws(() => buildChunks(section, options), error => error instanceof AppError && error.code === 'CHUNK_BUILD_INVALID_OPTIONS')
+  assert.throws(() => buildChunks({ ...section, markdown: 'tampered' }), { code: 'CHUNK_BUILD_INVALID_INPUT' })
+  assert.throws(() => buildChunks(null), { code: 'CHUNK_BUILD_INVALID_INPUT' })
   for (const countTokens of [() => -1, () => Number.NaN, () => 1.5, () => {
     throw new Error('private-content')
   }])
-    assert.throws(() => buildChunks(section, enrichment, { countTokens }), error => error instanceof AppError && error.code === 'CHUNK_BUILD_TOKEN_COUNT_FAILED' && !error.message.includes('private-content'))
+    assert.throws(() => buildChunks(section, { countTokens }), error => error instanceof AppError && error.code === 'CHUNK_BUILD_TOKEN_COUNT_FAILED' && !error.message.includes('private-content'))
+})
+
+test('short sections use one chunk and H4-H6 remain body blocks rather than repeated headings', async () => {
+  const { section } = await input('#### Detail\n\n正文\n\n###### Last\n\n尾部')
+  assert.equal(section.depth, 0)
+  const result = buildChunks(section)
+  assert.equal(result.chunks.length, 1)
+  const chunk = result.chunks[0]
+  assert.equal(chunk.documentId, section.documentId)
+  assert.equal(chunk.sectionRevision, section.revision)
+  assert.equal(Object.hasOwn(chunk, 'wiki'), false)
+  assert.deepEqual(chunk.ast.children.filter(node => node.type === 'heading').map(node => node.depth), [4, 6])
+  const split = buildChunks(section, { maxTokens: 22, countTokens: characterCount })
+  assert.equal(split.chunks.flatMap(item => item.ast.children).filter(node => node.type === 'heading' && node.depth === 4).length, 1)
+  for (const [index, item] of split.chunks.entries()) {
+    assert.equal(item.previousChunkId, split.chunks[index - 1]?.id ?? null)
+    assert.equal(item.nextChunkId, split.chunks[index + 1]?.id ?? null)
+  }
 })

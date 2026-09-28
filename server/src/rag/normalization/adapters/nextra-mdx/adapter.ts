@@ -2,6 +2,7 @@ import type { NormalizationAdapter, NormalizationInput, NormalizedDocument } fro
 import { NORMALIZATION_ERROR_CODES } from '../../../../error-codes.js'
 import { AppError } from '../../../../errors.js'
 import { plainText, renderMarkdown } from '../../../markdown.js'
+import { sourceFragment } from '../../source.js'
 import { parseMdx } from './parser.js'
 import { normalizeTree } from './transform.js'
 
@@ -18,7 +19,9 @@ export class NextraMdxAdapter implements NormalizationAdapter {
       const heading = ast.children.find(node => node.type === 'heading' && node.depth === 1)
       const title = typeof metadata.title === 'string' ? metadata.title : heading ? plainText(heading) : null
       return {
-        schemaVersion: 1,
+        schemaVersion: 2,
+        originalContent: input.content,
+        blockSources: ast.children.map(node => sourceFragment(node, input.content)),
         source: { ...input.source },
         adapter: this.name,
         title,

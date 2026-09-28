@@ -10,14 +10,15 @@
 - `server/`：Hono、OpenTelemetry、统一 LLM Adapter、OpenAI 官方 SDK。
 - 保持工作区名称 `@knowledge/app` 与 `@knowledge/server`，不自行将 `server/` 改为 `api/`。
 - 已实现基础页面、健康检查、日志追踪、非流式文本生成适配器、可扩展的文档标准化接入层、按标题的 Section Split、Knowledge Enrichment 和 Chunk Build。
-- RAG 中 normalization 已实现 Nextra MDX 的 AST 标准化，chunking 已实现按标题的 Section Split 和结构化 Chunk Build，enrichment 已实现通过 LLM 提取结构化知识；其余 RAG、文档入库、Wiki 构建和持久化目前仍是目录占位。不要将占位页面或目录描述为已实现功能，也不要在无关任务中补写这些能力。
+- RAG 中 normalization 已实现 Nextra MDX 的 AST 标准化，sections 已实现 H1–H3 分节与来源版本，chunking 已实现独立 Chunk Build，enrichment 已实现通过 LLM 提取结构化知识，wiki 已实现显式身份映射的跨节语义聚合及增量更新，ingestion 已实现纯函数影响计算，embedding 已接入 SiliconFlow / Google 文本向量化 SDK；其余 RAG、完整文档入库及持久化目前仍是目录占位，Wiki 页面尚未接入后端节点。不要将占位页面或目录描述为已实现功能，也不要在无关任务中补写这些能力。
 
 计划链路：
 
 ```text
-MDX → Normalized Document → Section Split → Knowledge Enrichment
-    → Chunk Build → Metadata Build → Embedding → Vector Record → Vector DB
-问题 → Retrieval Top 30 + Wiki Nodes → Rerank Top 3 → Generation
+MDX → Normalized Document → Section（事实来源）
+Section → Chunk（检索单元）→ Metadata Build → Embedding → Vector Record → Vector DB
+Section → Knowledge Enrichment → Concept / Entity → Wiki / KG
+问题 → Chunk 检索 → Section → 语义节点 → Graph Expand → Rerank / Context → Generation
 ```
 
 ## 环境与命令
@@ -75,7 +76,7 @@ server/src/
 - `core` 只承载 HTTP/API 及直接支持它的业务层，不作为所有后端能力的容器。
 - 路由保持轻量，在 `core/router/index.ts` 注册；不要在路由里编写数据库查询、模型调用或完整业务流程。
 - API 服务协调 DAO、RAG 和 LLM；独立能力不反向依赖 HTTP 路由或中间件，DAO 不依赖服务层。
-- RAG 模块沿用 `normalization`、`enrichment`、`wiki/nodes`、`chunking`、`embedding`、`vector-store`、`retrieval`、`rerank`、`generation`；`ingestion` 和 `query` 分别承担入库和问答编排。
+- RAG 模块沿用 `normalization`、`sections`、`enrichment`、`wiki/nodes`、`chunking`、`embedding`、`vector-store`、`retrieval`、`rerank`、`generation`；`ingestion` 当前提供增量影响计算，完整入库编排和 `query` 问答编排仍待实现。
 - Embedding、Rerank 的 SDK 接入归各自能力模块，通用大模型 SDK 归 `llm`。不要重新引入通用 `core/manager` 层。
 - 不为简单操作增加 controller、DTO、mapper 等额外分层。
 - 服务端使用 ESM / NodeNext，TypeScript 相对导入写 `.js` 扩展名；不要套用前端的 `@/` 别名。
@@ -98,39 +99,61 @@ server/src/
 ## Normalization 扩展约定
 
 - 公共入口为 `server/src/rag/normalization/index.ts`；调用方通过 `NormalizationClient` 显式选择适配器。
-- `types.ts` 定义统一输入、输出与 `NormalizationAdapter`。输出标准 Markdown / GFM mdast、Markdown、纯文本、元数据、来源与 warnings，不泄露具体格式的原始 AST。
+- `types.ts` 定义统一输入、输出与 `NormalizationAdapter`。输出标准 Markdown / GFM mdast、Markdown、纯文本、元数据、来源、originalContent、blockSources 与 warnings，不泄露具体格式的原始 AST。
 - 各格式解析与标准化规则放在 `normalization/adapters/<格式>/`，通过构造参数或 `register()` 注册；不把格式分支塞入客户端。
 - 当前 `nextra-mdx` 覆盖 nextra-docs 的 ZoomImage、Download、Callout、ExpandableTable 等；只读取静态 AST，禁止执行 MDX、import 或表达式。不能提取的内容要留 warning，不静默丢弃。
-- 内容加载由调用方负责，适配器不绑定用户目录或 HTTP。用户明确要求没有 CLI，按既定流程一步一步实现；当前已完成 Normalized Document、Section Split、Knowledge Enrichment 和 Chunk Build，不提前实现 embeddingText、Embedding 或 pgvector 写入。
+- 内容加载由调用方负责，适配器不绑定用户目录或 HTTP。用户明确要求没有 CLI，按既定流程一步一步实现；当前已完成 Normalized Document、Section Split、Knowledge Enrichment、Chunk Build 及独立 Embedding SDK 接入，不提前实现 embeddingText 或 pgvector 写入。
 - 错误码继续统一在 `src/error-codes.ts`；追踪由客户端负责，日志不记录来源路径和文档正文。
 - 语义转换修改需覆盖代码、表格、链接、组件、动态表达式、错误与扩展契约，不能只检查是否成功解析。
 
 ## Section Split 约定
 
-- `rag/chunking/index.ts` 导出 `splitSections(document)` 同步纯函数，不需要适配层。
-- 只按标准 AST 顶层标题切分，保留前言、标题层级、原文位置与完整块；父节正文不重复包含子节内容。
+- `rag/sections/index.ts` 导出 `splitSections(document)` 同步纯函数，不需要适配层。
+- 只按标准 AST 顶层 H1–H3 切分，H4–H6 保留在正文，保留前言、标题层级、原文位置与完整块；父节正文不重复包含子节内容。
 - 输出 `DocumentSection[]`，用 `parentId`、`headingPath` 表达层级；补齐独立使用所需的跨节链接与脚注定义。
+- Section 显式保留 documentId、sourcePath、原始源片段和 revision；ID 来自标题路径及同父级重名序号，改名/换父级按删除加新增处理。位置和路径不参与内容 revision。
 - `rag/markdown.ts` 维护 Normalization 和 Split 共用的标准 AST 投影，后续阶段不依赖具体适配器的内部文件。
 - 当前不做 Token 长度切分或 overlap，不构建 embeddingText，不调用 LLM 或数据库；对应逻辑在后续阶段按需实现。
 
 ## Chunk Build 约定
 
-- `rag/chunking/index.ts` 导出 `buildChunks(section, enrichedSection, options?)` 同步纯函数，不新增适配层或 CLI。
+- `rag/chunking/index.ts` 导出 `buildChunks(section, options?)` 同步纯函数，不新增适配层或 CLI。
 - 预算计算完整 Markdown（含标题、引用定义、代码围栏和重复表头），默认 cl100k_base；可传入目标模型的 `countTokens`。
 - 按 AST 拆段落、代码行、表格数据行与列表项；保留超长原子内容并显式标记，严格策略下报错，不能静默丢弃。
 - 通过 parts 记录原块、片段范围和 overlap，拆分片段不伪造源文档精确行列。
-- Enrichment 保存在结果外层，仍为 section 级；不复制成各 chunk 的局部事实，不提前拼接 embeddingText 或数据库字段。
+- ChunkBuildResult 使用 schemaVersion 3；Chunk 仅关联 documentId、sectionId、sectionRevision 及同节前后片段，不依赖 Wiki/enrichment，不提前拼接 embeddingText 或数据库字段。
 
 ## Knowledge Enrichment 约定
 
 - `rag/enrichment/index.ts` 导出 `KnowledgeEnricher`，单节调用已有 `LlmClient`，不再增加模型或文档适配层。
 - 按规则提取 → LLM 补充 → 校验去重 → 复查执行。`extractSectionData` 从 AST / Split 元数据提取 title、headingPath、metadata、codeBlocks、links；模型只输出语义字段。
-- `EnrichedSection` 使用 schemaVersion 2，外层保留 section ID、来源、规则结果 extracted 与生成元数据；语义结果在 enrichment 中。移除 constraints，metadata 只取原文 frontmatter，不由模型猜测；Chunk Build 只消费 v2。
+- `EnrichedSection` 使用 schemaVersion 3，绑定 documentId、sectionId、sectionRevision，保留 extracted 和生成元数据；语义结果在 enrichment 中。Concept 为带局部 ID、别名、描述和证据的结构，主题归入 Concept。metadata 只取原文 frontmatter。
 - `knowledgeType` 使用内置字典加调用方扩展，运行时只接受配置过的分类，不让模型自由增加类型。
-- 实体、关系、事实保留逐字原文证据；关系与 entityIds 校验本节实体引用。证据存在不等于语义蕴含，不能宣称自动事实核验。
+- 实体、概念、关系、事实保留逐字原文证据；关系端点和事实 nodeIds 可引用本节实体或概念。证据存在不等于语义蕴含，不能宣称自动事实核验。
 - 去重在校验之后进行，实体合并需重映射关系与事实的引用，再复查证据数量等边界。不用模糊匹配合并不同含义的实体。
 - 字段缺失、无效 JSON、拒答、截断、超长输入均明确失败，不自动修复、补事实或叠加重试。错误继续共用 AppError 与统一错误码。
 - 不在本阶段构建 Wiki/KG 实体全局 ID、chunk、embeddingText 或数据库写入；常规验证使用本地模拟模型。
+
+## Wiki 构建与增量更新约定
+
+- `rag/wiki/index.ts` 导出 `buildWiki(inputs, options)`、`updateWiki(previous, update, options)` 和 `getWikiNodesForSection`，与 Chunk 分支独立。
+- Wiki 节点为 entity/concept，通过显式知识库命名空间、canonical 定义及绑定 Section revision 的映射跨节聚合；未映射项保持独立，不按同名/别名自动归并。
+- WikiBuildResult 使用 schemaVersion 2，保留节点、语义关系边、Section 关联、各节贡献和 pending 状态。标题父子关系只属于 Section。
+- 描述、事实和关系逐项保留 Section ID/revision、证据与生成来源。Markdown 确定性汇编并转义模型文本，不额外调用模型写文章、不向所有节点复制整节摘要。
+- 增量更新先撤销旧节贡献再加入新结果；共享节点保留其他节来源，无剩余贡献的节点和边删除。待提取节显式标记 pending，不能沿用旧知识。
+- `rag/ingestion` 的 `planSectionChanges` 比较相同范围的前后完整 Section 快照，输出内容重建、来源刷新与失效范围。完整入库编排尚未实现。
+- 直接替换旧契约，不保留兼容入口或旧 schema 转换。核心模块验证使用内存 stub 的单测，不启动服务连调。
+- 不提前实现 Wiki 页面/数据库接入、自动实体消歧、embeddingText、向量写入或完整入库编排。错误继续共用 AppError 与统一错误码。
+
+## Embedding 约定
+
+- 公共入口为 `rag/embedding/index.ts`，通过 `EmbeddingClient.embed()` 显式传入 provider、model 和文本数组；每条文本对应一个向量。
+- SDK 位于 `embedding/providers/siliconflow` 和 `embedding/providers/google`，通用类型不引入 SDK 类型，也不反向依赖 `llm` 或 HTTP。
+- SiliconFlow 沿用 `EMBEDDING_*` 配置；Google 使用 `GOOGLE_API_KEY` / `GOOGLE_EMBEDDING_MODEL`。模型环境变量由调用方读取，客户端不自动选择模型。
+- 保留批量顺序、用量缺失、维度约束、取消和超时语义；拒绝缺失/重复索引与非法向量，不静默丢文本、截断或自动重试。
+- Google Embedding 2 每条文本包装为独立 Content，避免字符串列表被合并为单个向量。当前只接收准备好的文本，不拼接检索指令或 embeddingText。
+- 错误继续共用 AppError 与 EMBEDDING_ERROR_CODES；追踪由客户端负责，日志不记录文本或向量。
+- 常规验证用真实 SDK 对本地模拟服务；不在导入模块或启动 HTTP 时调用模型。Metadata Build、Vector Record、向量写入和入库编排仍未实现。
 
 ## 日志与配置
 
