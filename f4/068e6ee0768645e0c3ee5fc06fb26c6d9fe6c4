@@ -1,0 +1,239 @@
+server/src/rag/enrichment/validation.ts
+  s_25a935da17ab31::t_b2493b7aa47e93 4,12,14,16,20
+  s_8fb35e9e4aca34::t_a665bc0e6ffeee 60-74,79,82-83,94
+server/src/rag/embedding/types.ts
+  s_25a935da17ab31::t_da6f07e76d078a 1-37
+server/src/rag/embedding/providers/siliconflow/adapter.ts
+  s_25a935da17ab31::t_e3d44f0b6e29f7 1-58
+server/src/rag/embedding/providers/siliconflow/mapping.ts
+  s_25a935da17ab31::t_e3d44f0b6e29f7 1-27
+server/src/rag/normalization/README.md
+  s_8fb35e9e4aca34::t_32de052dd827c5 57-58,94
+  s_25a935da17ab31::t_e3052424a0b0a6 11
+server/src/rag/enrichment/types.ts
+  s_8fb35e9e4aca34::t_f17986ba32d011 3
+  s_8fb35e9e4aca34::t_a665bc0e6ffeee 2,8,18-21,32,67,85-86,88-89
+server/src/rag/embedding/providers/google/mapping.ts
+  s_25a935da17ab31::t_e3d44f0b6e29f7 1-19
+server/src/rag/normalization/adapters/nextra-mdx/transform.ts
+  s_25a935da17ab31::t_b2493b7aa47e93 6,130
+server/package.json
+  s_25a935da17ab31::t_e720149ec5fea5 14
+server/src/rag/embedding/providers/siliconflow/index.ts
+  s_25a935da17ab31::t_e3d44f0b6e29f7 1-2
+app/src/features/wiki/wiki-view.tsx
+  s_25a935da17ab31::t_9f13573a9b41ad 24
+server/src/rag/enrichment/README.md
+  s_8fb35e9e4aca34::t_f17986ba32d011 28
+  s_8fb35e9e4aca34::t_5242a4e0f759a5 88,90,94
+  s_8fb35e9e4aca34::t_32bfd798b2fe79 11,13,76,98-99,102,105,109,111,119,126
+server/test/section-split.test.mjs
+  s_8fb35e9e4aca34::t_f17986ba32d011 7-8
+  s_8fb35e9e4aca34::t_8fd3da218341ba 26,29,32,44,129,133,144,160-201
+server/src/rag/embedding/providers/siliconflow/normalize-error.ts
+  s_25a935da17ab31::t_e3d44f0b6e29f7 1-23
+server/src/utils/type-guards.ts
+  s_25a935da17ab31::t_d3ef3d240c1faa 7
+  s_25a935da17ab31::t_867ab5cb0abeb0 1-6,8-9
+server/src/rag/normalization/adapters/nextra-mdx/table.ts
+  s_25a935da17ab31::t_b2493b7aa47e93 3,22,30
+server/src/rag/embedding/client.ts
+  s_25a935da17ab31::t_da6f07e76d078a 2-52,60-85
+  s_25a935da17ab31::t_e62a9787a08788 53-58
+  h_8d050896203f0f 1
+  s_25a935da17ab31::t_a174c6bf1864cc 59
+server/src/rag/embedding/providers/google/adapter.ts
+  s_25a935da17ab31::t_e3d44f0b6e29f7 1-59
+server/src/rag/enrichment/enricher.ts
+  s_8fb35e9e4aca34::t_e2ae10bc83f762 2
+  s_25a935da17ab31::t_b2493b7aa47e93 6,20,26,29
+  s_8fb35e9e4aca34::t_a665bc0e6ffeee 7,38-44,46-47,55-56,78,80-81
+README.md
+  s_25a935da17ab31::t_eb3d6a1920c065 40-41,100
+  s_8fb35e9e4aca34::t_5242a4e0f759a5 3,53,56,58-59,63,81,118,123-126,279,302,306,310-314
+  s_25a935da17ab31::t_e3052424a0b0a6 60,82,205,275,315-318
+  s_25a935da17ab31::t_cc285fcdf07581 52,304-305
+  s_8fb35e9e4aca34::t_14896a242679f3 303
+server/test/wiki.test.mjs
+  s_8fb35e9e4aca34::t_875e5fc3980ec5 188-195
+  s_25a935da17ab31::t_77ad190070c0f7 1-2,11,31,35-42,49,65,70-71,82-83,98,112-113,129-130,175-176,187
+  s_8fb35e9e4aca34::t_549bf72dceb573 124-125
+  s_8fb35e9e4aca34::t_8fd3da218341ba 5-8,12-16,30,32,34,43-48,50-64,66-69,72-81,84-97,99-111,114-123,126-128,131-174,177-186
+  s_8fb35e9e4aca34::t_f17986ba32d011 3-4,9-10,17-29,33
+server/src/rag/references.ts
+  s_8fb35e9e4aca34::t_e2ae10bc83f762 1-68
+server/src/rag/enrichment/index.ts
+  s_8fb35e9e4aca34::t_f17986ba32d011 7
+server/src/rag/chunking/chunk-build.ts
+  s_25a935da17ab31::t_a024ead5d2ad20 84-85,147-151
+  s_8fb35e9e4aca34::t_f17986ba32d011 8
+  s_8fb35e9e4aca34::t_f6d004378d62fe 2-3,6,9,26,36-40,63,82-83,87,153,155-156
+  s_25a935da17ab31::t_b2493b7aa47e93 27
+server/test/chunk-build.test.mjs
+  s_8fb35e9e4aca34::t_8fd3da218341ba 6,19,44-45,65-66,87-88,103-104,117,119,122,126-127,130-133,136,139,144-145,150-151,154-155,157-159,163-181
+  s_8fb35e9e4aca34::t_f17986ba32d011 12-13
+  s_25a935da17ab31::t_a64101f2e9babd 149
+  s_8fb35e9e4aca34::t_03bfc33e360b33 14
+server/src/rag/ingestion/index.ts
+  s_8fb35e9e4aca34::t_2007be8dad850e 1-4
+server/src/rag/chunking/index.ts
+  s_8fb35e9e4aca34::t_e2ae10bc83f762 1-2,5
+server/src/rag/sections/section-split.ts
+  s_8fb35e9e4aca34::t_e2ae10bc83f762 6,10
+  s_8fb35e9e4aca34::t_f6d004378d62fe 7,15,24,41-44,54-56,58-64,67,81-83,92-93
+  s_8fb35e9e4aca34::t_f17986ba32d011 9,11
+  s_8fb35e9e4aca34::t_58ddc2b4429562 1,21,32,65-66
+server/src/rag/chunking/README.md
+  s_8fb35e9e4aca34::t_d4aa0237a1b1f7 1,3,8,10,15,17-22,24,26,28,30,32,34,36
+server/src/rag/embedding/validation.ts
+  h_8d050896203f0f 1
+  s_25a935da17ab31::t_da6f07e76d078a 2-34
+server/test/enrichment.test.mjs
+  s_8fb35e9e4aca34::t_f17986ba32d011 6,11-12,29,31,44,47-53,55-58,95,136,153,159,232,235,243,247
+  s_8fb35e9e4aca34::t_875e5fc3980ec5 292-313
+server/src/rag/sections/index.ts
+  s_8fb35e9e4aca34::t_f6d004378d62fe 1-5
+server/src/rag/embedding/http-error.ts
+  s_25a935da17ab31::t_e3d44f0b6e29f7 1-22
+app/src/features/pipeline/ingestion-steps.ts
+  s_25a935da17ab31::t_9f13573a9b41ad 7-16,20,23-25
+  s_8fb35e9e4aca34::t_303d0d925bddd1 35
+server/src/rag/sections/types.ts
+  s_8fb35e9e4aca34::t_e2ae10bc83f762 2-7,9-26,28-39
+  s_8fb35e9e4aca34::t_58ddc2b4429562 1,8,27
+server/test/ingestion.test.mjs
+  s_8fb35e9e4aca34::t_8fd3da218341ba 1-15,17-49
+  s_8fb35e9e4aca34::t_1fb22893a8c754 16
+AGENTS.md
+  s_8fb35e9e4aca34::t_d6b984551efa12 13,18-21,79,102,111-112,114,120,124,130,132,137-146
+  s_25a935da17ab31::t_e3052424a0b0a6 105,147-156
+  s_8fb35e9e4aca34::t_cde718eb4c4148 157
+server/src/rag/ingestion/changes.ts
+  s_8fb35e9e4aca34::t_2007be8dad850e 1-49,51-55
+  s_8fb35e9e4aca34::t_f17986ba32d011 50
+server/src/rag/enrichment/extraction.ts
+  s_25a935da17ab31::t_b2493b7aa47e93 7,50
+  s_8fb35e9e4aca34::t_f17986ba32d011 3
+  s_8fb35e9e4aca34::t_58ddc2b4429562 48
+server/src/rag/embedding/index.ts
+  s_25a935da17ab31::t_da6f07e76d078a 1-6
+  h_8d050896203f0f 7
+server/src/rag/wiki/README.md
+  s_8fb35e9e4aca34::t_549bf72dceb573 52
+  s_25a935da17ab31::t_9f13573a9b41ad 2,4,6,10,12-13,25-27,29,31,33,40,42,44,46,53,55
+  s_8fb35e9e4aca34::t_d4aa0237a1b1f7 1,3,5,7-9,11,14-16,28,30,32,34-39,41,43,45,47-51,54,56
+  s_8fb35e9e4aca34::t_5242a4e0f759a5 17-24
+server/src/rag/wiki/nodes/markdown.ts
+  s_25a935da17ab31::t_0468b7cdaa35b6 3-4,8,14-16,21
+  s_25a935da17ab31::t_898e6021943351 7
+  s_8fb35e9e4aca34::t_67feeee36188f6 1-2,5-6,9-13,17-20
+server/src/rag/wiki/nodes/build.ts
+  s_25a935da17ab31::t_a024ead5d2ad20 91
+  s_8fb35e9e4aca34::t_549bf72dceb573 96,100-112
+  s_8fb35e9e4aca34::t_1fb22893a8c754 39-41,117-118,120-125
+  s_25a935da17ab31::t_0468b7cdaa35b6 2-3,6-7,33-34,85,97,99,126,128
+  s_8fb35e9e4aca34::t_6d8271df5e1c1b 81
+  s_8fb35e9e4aca34::t_f17986ba32d011 65-71,127
+  s_8fb35e9e4aca34::t_67feeee36188f6 1,4-5,8-32,35-38,42-64,72-80,82-84,86-90,92-95,98,113-116,119
+server/src/rag/normalization/source.ts
+  s_8fb35e9e4aca34::t_6f9b6f7fcafd2d 1-22
+server/src/rag/enrichment/prompt.ts
+  s_8fb35e9e4aca34::t_a665bc0e6ffeee 15,17-18,27,29
+  s_8fb35e9e4aca34::t_e2ae10bc83f762 2
+  s_8fb35e9e4aca34::t_f82ba886b553aa 28
+server/src/rag/embedding/providers/google/index.ts
+  s_25a935da17ab31::t_e3d44f0b6e29f7 1-2
+server/src/llm/client.ts
+  s_25a935da17ab31::t_b2493b7aa47e93 6,13
+server/src/rag/ingestion/README.md
+  s_8fb35e9e4aca34::t_d4aa0237a1b1f7 1-18
+server/src/rag/content-hash.ts
+  s_8fb35e9e4aca34::t_6f9b6f7fcafd2d 1-9
+server/src/rag/sections/revision.ts
+  s_8fb35e9e4aca34::t_f82ba886b553aa 6,34-41
+  s_8fb35e9e4aca34::t_f6d004378d62fe 1-5,7-33,42-51
+server/src/rag/embedding/README.md
+  s_25a935da17ab31::t_d6aee6dfad60e2 9-12
+  s_25a935da17ab31::t_d39ddd1c92d147 1-8,13-76
+server/src/rag/normalization/index.ts
+  s_8fb35e9e4aca34::t_58ddc2b4429562 5
+server/src/rag/wiki/index.ts
+  s_8fb35e9e4aca34::t_2007be8dad850e 3-4
+  s_25a935da17ab31::t_0468b7cdaa35b6 1-2
+server/src/rag/chunking/types.ts
+  s_25a935da17ab31::t_a024ead5d2ad20 40-42
+  s_8fb35e9e4aca34::t_e2ae10bc83f762 1,3,38-39,44,56,58-59
+server/src/rag/wiki/build.ts
+  s_25a935da17ab31::t_0468b7cdaa35b6 2-3,8,10,14,24,70,74,81,89
+  s_8fb35e9e4aca34::t_1fb22893a8c754 15-23,25
+  s_8fb35e9e4aca34::t_2007be8dad850e 1,4-7,9,11-13,26-45,52-61,64-69,71-73,75-80,82-88
+  s_8fb35e9e4aca34::t_f82ba886b553aa 46-51,62-63
+server/src/rag/sections/README.md
+  s_8fb35e9e4aca34::t_32de052dd827c5 19
+  s_8fb35e9e4aca34::t_d4aa0237a1b1f7 1-18,20-29
+server/test/normalization.test.mjs
+  s_8fb35e9e4aca34::t_875e5fc3980ec5 155-169
+server/.env.example
+  s_25a935da17ab31::t_d39ddd1c92d147 11-20
+server/src/rag/enrichment/deduplication.ts
+  s_8fb35e9e4aca34::t_a665bc0e6ffeee 1,31-44,58-59,64,71
+server/src/rag/normalization/client.ts
+  s_25a935da17ab31::t_b2493b7aa47e93 6,20,27
+server/test/telemetry.test.mjs
+  s_25a935da17ab31::t_378687a2930f15 41,44-49,62,150-151,153,193-199
+  s_25a935da17ab31::t_141a173fb54069 201-203
+server/test/embedding.test.mjs
+  s_25a935da17ab31::t_5ab8d99028d644 106-111,140-142,167-173,223,249
+  s_25a935da17ab31::t_378687a2930f15 37-40,154
+  s_25a935da17ab31::t_6ec95b9e875029 230-235
+  s_25a935da17ab31::t_223d8a658888d5 1-36,41-105,112-139,143-153,155-166,174-222,224-229,236-248,250-251
+server/src/rag/normalization/types.ts
+  s_8fb35e9e4aca34::t_e2ae10bc83f762 27-30,53-58
+  s_8fb35e9e4aca34::t_f0d74f0c2c1d86 59
+server/src/rag/wiki/contributions.ts
+  s_8fb35e9e4aca34::t_67feeee36188f6 1-39
+server/src/rag/normalization/adapters/nextra-mdx/adapter.ts
+  s_8fb35e9e4aca34::t_e2ae10bc83f762 5,22-24
+server/src/rag/embedding/providers/google/normalize-error.ts
+  s_25a935da17ab31::t_e3d44f0b6e29f7 1-17,24-25
+  s_25a935da17ab31::t_378687a2930f15 18-23
+server/src/error-codes.ts
+  s_8fb35e9e4aca34::t_2007be8dad850e 71,94,130,134-135,141-148
+  s_25a935da17ab31::t_da6f07e76d078a 103-128
+  s_25a935da17ab31::t_0468b7cdaa35b6 129,131-133,136-140
+server/src/rag/wiki/types.ts
+  s_8fb35e9e4aca34::t_549bf72dceb573 67
+  s_25a935da17ab31::t_0468b7cdaa35b6 3,5-9,11,13,35,37,63-66,68-69,73-74,88,91-92,97-98,106
+  s_8fb35e9e4aca34::t_67feeee36188f6 1-2,4,10,12,14-34,36,38-62,70-72,75-87,89-90,93-96,99-105
+pnpm-lock.yaml
+  s_25a935da17ab31::t_3c593a1ac6063f 84-86,113,609-617,1213-1215,1328-1331,1366-1368,1384-1386,1488-1491,1526-1528,1865-1868,1890-1893,1903-1910,1940-1947,1968-1971,2058-2060,2076-2081,2395-2403,2454-2457,2600-2603,2609-2611,2843-2846,2863-2874,3384-3394,3940-3941,4098-4099,4125-4126,4143-4144,4223-4224,4247-4250,4719-4723,4745-4748,4754-4769,4790-4802,4817-4823,4893-4896,4909-4919,5498-5505,5514,5516,5540-5544,5711-5712,5745-5746,5955-5956,5971-5972
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f4068e6ee0768645e0c3ee5fc06fb26c6d9fe6c4",
+  "prompts": {},
+  "humans": {
+    "h_8d050896203f0f": {
+      "author": "qinghuan <1041220793@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_25a935da17ab31": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0e5c9-b006-7dc1-8622-b75f5bdaf3c0",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "qinghuan <1041220793@qq.com>"
+    },
+    "s_8fb35e9e4aca34": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0e6df-630f-7bf3-95b2-13195f90dc19",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "qinghuan <1041220793@qq.com>"
+    }
+  }
+}
