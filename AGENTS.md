@@ -10,14 +10,15 @@
 - `server/`：Hono、OpenTelemetry、统一 LLM Adapter、OpenAI 官方 SDK。
 - 保持工作区名称 `@knowledge/app` 与 `@knowledge/server`，不自行将 `server/` 改为 `api/`。
 - 已实现基础页面、健康检查、日志追踪、非流式文本生成适配器、可扩展的文档标准化接入层、按标题的 Section Split、Knowledge Enrichment 和 Chunk Build。
-- RAG 中 normalization 已实现 Nextra MDX 的 AST 标准化，sections 已实现 H1–H3 分节与来源版本，chunking 已实现独立 Chunk Build，enrichment 已实现通过 LLM 提取结构化知识，wiki 已实现显式身份映射的跨节语义聚合及增量更新，ingestion 已实现纯函数影响计算，embedding 已接入 SiliconFlow / Google 文本向量化 SDK；其余 RAG、完整文档入库及持久化目前仍是目录占位，Wiki 页面尚未接入后端节点。不要将占位页面或目录描述为已实现功能，也不要在无关任务中补写这些能力。
+- RAG 中 normalization 已实现 Nextra MDX 的 AST 标准化，sections 已实现 H1–H3 分节与来源版本，chunking 已实现独立 Chunk Build，enrichment 已实现通过 LLM 提取结构化知识，wiki 已实现显式身份映射的跨节语义聚合及增量更新，ingestion 已实现纯函数影响计算与完整知识库快照的双索引写入，embedding 已接入 SiliconFlow / Google 文本向量化 SDK，indexing 已实现 Chunk / Wiki 文本构造和双索引向量生成，vector-store 已实现 PostgreSQL / pgvector 持久化与精确余弦查询；retrieval / rerank / generation / query 已实现双路各 Top 30、合并去重、SiliconFlow 重排 Top 5 与 DeepSeek 引用式回答；完整文档入库及持久化仍待实现，Wiki 页面尚未接入后端节点。不要将占位页面或目录描述为已实现功能，也不要在无关任务中补写这些能力。
 
 计划链路：
 
 ```text
 MDX → Normalized Document → Section（事实来源）
-Section → Chunk（检索单元）→ Metadata Build → Embedding → Vector Record → Vector DB
-Section → Knowledge Enrichment → Concept / Entity → Wiki / KG
+Section → Chunk + 本节 Wiki 信息 → Chunk embeddingText → Embedding → Chunk 向量
+Section → Knowledge Enrichment → Wiki Node → Wiki embeddingText → Embedding → Wiki 向量
+双索引向量 → PostgreSQL / pgvector（事务写入）
 问题 → Chunk 检索 → Section → 语义节点 → Graph Expand → Rerank / Context → Generation
 ```
 
@@ -76,7 +77,7 @@ server/src/
 - `core` 只承载 HTTP/API 及直接支持它的业务层，不作为所有后端能力的容器。
 - 路由保持轻量，在 `core/router/index.ts` 注册；不要在路由里编写数据库查询、模型调用或完整业务流程。
 - API 服务协调 DAO、RAG 和 LLM；独立能力不反向依赖 HTTP 路由或中间件，DAO 不依赖服务层。
-- RAG 模块沿用 `normalization`、`sections`、`enrichment`、`wiki/nodes`、`chunking`、`embedding`、`vector-store`、`retrieval`、`rerank`、`generation`；`ingestion` 当前提供增量影响计算，完整入库编排和 `query` 问答编排仍待实现。
+- RAG 模块沿用 `normalization`、`sections`、`enrichment`、`wiki/nodes`、`chunking`、`embedding`、`indexing`、`vector-store`、`retrieval`、`rerank`、`generation`；`ingestion` 当前提供增量影响计算及 `indexAndStore` 完整快照写入，文档级增量编排仍待实现；`query.searchAndAnswer` 已实现双路检索、去重、重排与答案生成。
 - Embedding、Rerank 的 SDK 接入归各自能力模块，通用大模型 SDK 归 `llm`。不要重新引入通用 `core/manager` 层。
 - 不为简单操作增加 controller、DTO、mapper 等额外分层。
 - 服务端使用 ESM / NodeNext，TypeScript 相对导入写 `.js` 扩展名；不要套用前端的 `@/` 别名。
@@ -103,7 +104,7 @@ server/src/
 - `types.ts` 定义统一输入、输出与 `NormalizationAdapter`。输出标准 Markdown / GFM mdast、Markdown、纯文本、元数据、来源、originalContent、blockSources 与 warnings，不泄露具体格式的原始 AST。
 - 各格式解析与标准化规则放在 `normalization/adapters/<格式>/`，通过构造参数或 `register()` 注册；不把格式分支塞入客户端。
 - 当前 `nextra-mdx` 覆盖 nextra-docs 的 ZoomImage、Download、Callout、ExpandableTable 等；只读取静态 AST，禁止执行 MDX、import 或表达式。不能提取的内容要留 warning，不静默丢弃。
-- 内容加载由调用方负责，适配器不绑定用户目录或 HTTP。用户明确要求没有 CLI，按既定流程一步一步实现；当前已完成 Normalized Document、Section Split、Knowledge Enrichment、Chunk Build 及独立 Embedding SDK 接入，不提前实现 embeddingText 或 pgvector 写入。
+- 内容加载由调用方负责，适配器不绑定用户目录或 HTTP。用户明确要求没有 CLI，按既定流程一步一步实现；当前已完成 Normalized Document、Section Split、Knowledge Enrichment、Chunk Build、独立 Embedding SDK 接入及 `indexing` 双索引向量生成；不在 normalization 中构造 embeddingText 或执行 pgvector 写入。
 - 错误码继续统一在 `src/error-codes.ts`；追踪由客户端负责，日志不记录来源路径和文档正文。
 - 语义转换修改需覆盖代码、表格、链接、组件、动态表达式、错误与扩展契约，不能只检查是否成功解析。
 
@@ -142,9 +143,9 @@ server/src/
 - WikiBuildResult 使用 schemaVersion 2，保留节点、语义关系边、Section 关联、各节贡献和 pending 状态。标题父子关系只属于 Section。
 - 描述、事实和关系逐项保留 Section ID/revision、证据与生成来源。Markdown 确定性汇编并转义模型文本，不额外调用模型写文章、不向所有节点复制整节摘要。
 - 增量更新先撤销旧节贡献再加入新结果；共享节点保留其他节来源，无剩余贡献的节点和边删除。待提取节显式标记 pending，不能沿用旧知识。
-- `rag/ingestion` 的 `planSectionChanges` 比较相同范围的前后完整 Section 快照，输出内容重建、来源刷新与失效范围。完整入库编排尚未实现。
+- `rag/ingestion` 的 `planSectionChanges` 比较相同范围的前后完整 Section 快照，输出内容重建、来源刷新与失效范围。完整文档级入库编排尚未实现；`indexAndStore` 已支持完整知识库快照的向量生成和事务写入。
 - 直接替换旧契约，不保留兼容入口或旧 schema 转换。核心模块验证使用内存 stub 的单测，不启动服务连调。
-- 不提前实现 Wiki 页面/数据库接入、自动实体消歧、embeddingText、向量写入或完整入库编排。错误继续共用 AppError 与统一错误码。
+- Wiki 本身不构造 embeddingText，由独立 `indexing` 层负责；不提前实现 Wiki 页面/数据库接入、自动实体消歧、完整文档级入库编排；向量写入由独立 `vector-store` 承担。错误继续共用 AppError 与统一错误码。
 
 ## Embedding 约定
 
@@ -154,7 +155,24 @@ server/src/
 - 保留批量顺序、用量缺失、维度约束、取消和超时语义；拒绝缺失/重复索引与非法向量，不静默丢文本、截断或自动重试。
 - Google Embedding 2 每条文本包装为独立 Content，避免字符串列表被合并为单个向量。当前只接收准备好的文本，不拼接检索指令或 embeddingText。
 - 错误继续共用 AppError 与 EMBEDDING_ERROR_CODES；追踪由客户端负责，日志不记录文本或向量。
-- 常规验证用真实 SDK 对本地模拟服务；不在导入模块或启动 HTTP 时调用模型。Metadata Build、Vector Record、向量写入和入库编排仍未实现。
+- 常规验证用真实 SDK 对本地模拟服务；不在导入模块或启动 HTTP 时调用模型。`indexing` 已组合来源元数据、embeddingText 和内存向量产物；`vector-store` 已保存双索引向量、文本与来源元数据；原始文档持久化和完整文档级入库编排仍待实现。
+
+## 双索引约定
+
+- `rag/indexing/index.ts` 导出 `buildIndexDocuments` 纯函数和 `embedDualIndex` 异步组合函数；Chunk、Wiki、Embedding SDK 不反向依赖此层。
+- Chunk embeddingText 保留完整 Markdown，加标题路径与本节关联节点的名称、别名、描述；Wiki embeddingText 由节点描述、事实和关系构造，不复制完整 Section 摘要，不注入来源路径、内部 ID 或版本哈希。
+- 关联必须匹配 Section revision；pending 节只保留原文，旧贡献不能混入。来源元数据与文本指纹分离，向量版本绑定模型与维度。
+- 完整文本按可配置 Token 计数器检查预算，默认 cl100k_base 只是基线，不冒充供应商真实分词；超限失败，不截断。双索引共用向量空间，分批维度或模型漂移时失败，不返回部分结果。
+- indexing 本身仅生成内存产物，由 `ingestion.indexAndStore` 接入向量库；不新增文档 CLI 或 HTTP 接口。真实示例数据位于 `server/test/reports/dual-index/`，常规测试仍只用本地 stub。
+
+## 向量库约定
+
+- 本地数据库使用根目录 `compose.yaml` 的 PostgreSQL / pgvector，只监听回环地址，数据保存在命名卷；凭据放 `server/.env` 的 `VECTOR_DB_PASSWORD` / `VECTOR_DATABASE_URL`，不要打印或提交。
+- `rag/vector-store` 导出 `PgVectorStore`，显式 `initialize()` 建扩展与表；模块导入、构造与 HTTP 启动不自动连接或迁移。
+- `replaceSnapshot` 接受完整知识库双索引快照与 `expectedRevision`，同一事务完成 upsert、旧记录删除和版本更新；空快照清空当前知识库向量，不影响其他知识库。不把单份文档增量误作完整知识库快照。
+- SQL 参数化，事务复用同一个连接；取消或 SQL 失败回滚，错误不透出连接串、SQL 参数或正文。向量写入前校验模型、维度、非零有限 float32 数值和文本指纹。
+- 当前精确余弦查询按知识库和 chunk/wiki 类型隔离，并检查实际模型与维度；`searchDual` 在同一只读事务快照中执行两路查询，并校验生成问题向量前的版本；尚无 HNSW。源文档与完整 Section / Wiki 的应用持久化另行实现。
+- 常规测试不依赖本机数据库；显式设置 `VECTOR_STORE_TEST_DATABASE_URL` 才运行真实数据库测试，它创建并删除独立临时数据库，不能清理用户库。
 
 ## 日志与配置
 
@@ -180,3 +198,11 @@ server/src/
 ## 开发
 
 - 代码需要用中文补充一下关键逻辑注释
+
+## 双路问答约定
+
+- `rag/query.searchAndAnswer` 编排问题 Embedding → Chunk / Wiki 各 Top 30 → 合并去重 → SiliconFlow Rerank Top 5 → DeepSeek 回答；HTTP 入口为 `POST /api/search`，路由与配置编排归 `core/router` / `core/service`。
+- 问题向量沿用库内 Embedding 模型与维度；双路搜索绑定同一快照，版本或空间变化明确失败。按记录 ID 和完全相同的文本去重，保留全部来源，不按标题或 Section 粗暴合并。
+- Rerank SDK 归 `rag/rerank/providers/siliconflow`，默认使用 `BAAI/bge-reranker-v2-m3`。模型由调用方传入；凭据和地址可复用 `EMBEDDING_*`，不将余弦排序冒充重排模型。
+- LLM 上下文仅包含重排后的最多 5 条完整证据；来源使用 `[S1]` 等标签。保留入选记录、来源、向量分数、重排分数与阶段数量。空库跳过模型调用，拒答、截断、非法引用及上下文超限明确失败。来源编号合法不等于事实核验。
+- 常规测试使用本地 SDK 模拟服务与内存 stub；真实数据库集成测试使用独立临时库。前端问答页面、Graph Expand 与原文回查尚未实现。

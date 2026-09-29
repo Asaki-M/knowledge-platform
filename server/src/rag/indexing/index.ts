@@ -1,0 +1,5 @@
+export { INDEXING_ERROR_CODES } from '../../error-codes.js'
+export type { IndexingErrorCode } from '../../error-codes.js'
+export { buildIndexDocuments } from './build.js'
+export { embedDualIndex } from './embed.js'
+export type { DualIndexEmbeddingOptions, DualIndexEmbeddingResult, EmbeddedIndexDocument, IndexBuildInput, IndexBuildOptions, IndexBuildResult, IndexDocument, IndexSource } from './types.js'

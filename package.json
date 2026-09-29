@@ -16,7 +16,10 @@
     "lint:fix": "eslint . --fix",
     "test": "pnpm --filter @knowledge/server test",
     "format": "pnpm lint:fix && prettier --write \"**/*.{css,html,md}\"",
-    "format:check": "pnpm lint && prettier --check \"**/*.{css,html,md}\""
+    "format:check": "pnpm lint && prettier --check \"**/*.{css,html,md}\"",
+    "db:up": "docker compose --env-file server/.env up -d vector-db",
+    "db:stop": "docker compose --env-file server/.env stop vector-db",
+    "db:status": "docker compose --env-file server/.env ps"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^9.5.1",

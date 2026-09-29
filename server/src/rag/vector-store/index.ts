@@ -1,0 +1,5 @@
+export { VECTOR_STORE_ERROR_CODES } from '../../error-codes.js'
+export type { VectorStoreErrorCode } from '../../error-codes.js'
+export { PgVectorStore } from './pgvector.js'
+export type { PgVectorStoreOptions } from './pgvector.js'
+export type { DualVectorSearchRequest, DualVectorSearchResult, SnapshotWriteOptions, VectorQueryStore, VectorSearchHit, VectorSearchRequest, VectorSnapshotInfo, VectorSnapshotStore } from './types.js'

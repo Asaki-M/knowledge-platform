@@ -1,0 +1,318 @@
+[
+  {
+    "id": "section-6631df5313aef3d7ada1db1cebe52093116660de95b18fa832e7a92ffffb1163",
+    "documentId": "dual-index-demo",
+    "sourcePath": "dual-index-article.mdx",
+    "revision": "40e27f5cdbf15e86614c27d37be29d39490224c3588fe44cc51d3a1c6c39c3e5",
+    "sourceFragments": [
+      {
+        "text": "## 内容处理",
+        "position": {
+          "start": {
+            "line": 5,
+            "column": 1,
+            "offset": 25
+          },
+          "end": {
+            "line": 5,
+            "column": 8,
+            "offset": 32
+          }
+        },
+        "exact": true
+      },
+      {
+        "text": "星河笔记将文档按标题切分为章节。章节原文用于生成 Chunk，语义知识用于构建 Wiki 节点。",
+        "position": {
+          "start": {
+            "line": 7,
+            "column": 1,
+            "offset": 34
+          },
+          "end": {
+            "line": 7,
+            "column": 49,
+            "offset": 82
+          }
+        },
+        "exact": true
+      }
+    ],
+    "referenceSources": [],
+    "documentTitle": "星河笔记检索说明",
+    "metadata": {
+      "title": "星河笔记检索说明"
+    },
+    "index": 0,
+    "title": "内容处理",
+    "depth": 2,
+    "parentId": null,
+    "headingPath": [
+      {
+        "sectionId": "section-6631df5313aef3d7ada1db1cebe52093116660de95b18fa832e7a92ffffb1163",
+        "title": "内容处理",
+        "depth": 2
+      }
+    ],
+    "blockRange": {
+      "start": 0,
+      "end": 2
+    },
+    "position": {
+      "start": {
+        "line": 5,
+        "column": 1,
+        "offset": 25
+      },
+      "end": {
+        "line": 7,
+        "column": 49,
+        "offset": 82
+      }
+    },
+    "ast": {
+      "type": "root",
+      "children": [
+        {
+          "type": "heading",
+          "depth": 2,
+          "children": [
+            {
+              "type": "text",
+              "value": "内容处理",
+              "position": {
+                "start": {
+                  "line": 5,
+                  "column": 4,
+                  "offset": 28
+                },
+                "end": {
+                  "line": 5,
+                  "column": 8,
+                  "offset": 32
+                }
+              }
+            }
+          ],
+          "position": {
+            "start": {
+              "line": 5,
+              "column": 1,
+              "offset": 25
+            },
+            "end": {
+              "line": 5,
+              "column": 8,
+              "offset": 32
+            }
+          }
+        },
+        {
+          "type": "paragraph",
+          "children": [
+            {
+              "type": "text",
+              "value": "星河笔记将文档按标题切分为章节。章节原文用于生成 Chunk，语义知识用于构建 Wiki 节点。",
+              "position": {
+                "start": {
+                  "line": 7,
+                  "column": 1,
+                  "offset": 34
+                },
+                "end": {
+                  "line": 7,
+                  "column": 49,
+                  "offset": 82
+                }
+              }
+            }
+          ],
+          "position": {
+            "start": {
+              "line": 7,
+              "column": 1,
+              "offset": 34
+            },
+            "end": {
+              "line": 7,
+              "column": 49,
+              "offset": 82
+            }
+          }
+        }
+      ],
+      "position": {
+        "start": {
+          "line": 5,
+          "column": 1,
+          "offset": 25
+        },
+        "end": {
+          "line": 7,
+          "column": 49,
+          "offset": 82
+        }
+      }
+    },
+    "markdown": "## 内容处理\n\n星河笔记将文档按标题切分为章节。章节原文用于生成 Chunk，语义知识用于构建 Wiki 节点。\n",
+    "text": "内容处理\n\n星河笔记将文档按标题切分为章节。章节原文用于生成 Chunk，语义知识用于构建 Wiki 节点。"
+  },
+  {
+    "id": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79",
+    "documentId": "dual-index-demo",
+    "sourcePath": "dual-index-article.mdx",
+    "revision": "1169eed9554be46db21de204ecd6ed041bf024258ff1cfc082a504de15ea3dfe",
+    "sourceFragments": [
+      {
+        "text": "## 双索引",
+        "position": {
+          "start": {
+            "line": 9,
+            "column": 1,
+            "offset": 84
+          },
+          "end": {
+            "line": 9,
+            "column": 7,
+            "offset": 90
+          }
+        },
+        "exact": true
+      },
+      {
+        "text": "Chunk 索引用于定位原文，Wiki 索引用于定位概念和实体。两类索引使用同一个向量模型，检索结果通过章节关联回查原文。",
+        "position": {
+          "start": {
+            "line": 11,
+            "column": 1,
+            "offset": 92
+          },
+          "end": {
+            "line": 11,
+            "column": 62,
+            "offset": 153
+          }
+        },
+        "exact": true
+      }
+    ],
+    "referenceSources": [],
+    "documentTitle": "星河笔记检索说明",
+    "metadata": {
+      "title": "星河笔记检索说明"
+    },
+    "index": 1,
+    "title": "双索引",
+    "depth": 2,
+    "parentId": null,
+    "headingPath": [
+      {
+        "sectionId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79",
+        "title": "双索引",
+        "depth": 2
+      }
+    ],
+    "blockRange": {
+      "start": 2,
+      "end": 4
+    },
+    "position": {
+      "start": {
+        "line": 9,
+        "column": 1,
+        "offset": 84
+      },
+      "end": {
+        "line": 11,
+        "column": 62,
+        "offset": 153
+      }
+    },
+    "ast": {
+      "type": "root",
+      "children": [
+        {
+          "type": "heading",
+          "depth": 2,
+          "children": [
+            {
+              "type": "text",
+              "value": "双索引",
+              "position": {
+                "start": {
+                  "line": 9,
+                  "column": 4,
+                  "offset": 87
+                },
+                "end": {
+                  "line": 9,
+                  "column": 7,
+                  "offset": 90
+                }
+              }
+            }
+          ],
+          "position": {
+            "start": {
+              "line": 9,
+              "column": 1,
+              "offset": 84
+            },
+            "end": {
+              "line": 9,
+              "column": 7,
+              "offset": 90
+            }
+          }
+        },
+        {
+          "type": "paragraph",
+          "children": [
+            {
+              "type": "text",
+              "value": "Chunk 索引用于定位原文，Wiki 索引用于定位概念和实体。两类索引使用同一个向量模型，检索结果通过章节关联回查原文。",
+              "position": {
+                "start": {
+                  "line": 11,
+                  "column": 1,
+                  "offset": 92
+                },
+                "end": {
+                  "line": 11,
+                  "column": 62,
+                  "offset": 153
+                }
+              }
+            }
+          ],
+          "position": {
+            "start": {
+              "line": 11,
+              "column": 1,
+              "offset": 92
+            },
+            "end": {
+              "line": 11,
+              "column": 62,
+              "offset": 153
+            }
+          }
+        }
+      ],
+      "position": {
+        "start": {
+          "line": 9,
+          "column": 1,
+          "offset": 84
+        },
+        "end": {
+          "line": 11,
+          "column": 62,
+          "offset": 153
+        }
+      }
+    },
+    "markdown": "## 双索引\n\nChunk 索引用于定位原文，Wiki 索引用于定位概念和实体。两类索引使用同一个向量模型，检索结果通过章节关联回查原文。\n",
+    "text": "双索引\n\nChunk 索引用于定位原文，Wiki 索引用于定位概念和实体。两类索引使用同一个向量模型，检索结果通过章节关联回查原文。"
+  }
+]

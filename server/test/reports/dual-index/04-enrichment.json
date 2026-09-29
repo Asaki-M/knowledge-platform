@@ -1,0 +1,329 @@
+[
+  {
+    "schemaVersion": 3,
+    "sectionId": "section-6631df5313aef3d7ada1db1cebe52093116660de95b18fa832e7a92ffffb1163",
+    "documentId": "dual-index-demo",
+    "sectionRevision": "40e27f5cdbf15e86614c27d37be29d39490224c3588fe44cc51d3a1c6c39c3e5",
+    "extracted": {
+      "title": "内容处理",
+      "headingPath": [
+        {
+          "sectionId": "section-6631df5313aef3d7ada1db1cebe52093116660de95b18fa832e7a92ffffb1163",
+          "title": "内容处理",
+          "depth": 2
+        }
+      ],
+      "metadata": {
+        "title": "星河笔记检索说明"
+      },
+      "codeBlocks": [],
+      "links": []
+    },
+    "enrichment": {
+      "summary": "本节说明星河笔记的内容处理方式：文档按标题切分为章节，章节原文用于生成 Chunk，语义知识用于构建 Wiki 节点。",
+      "keywords": [
+        "内容处理",
+        "章节切分",
+        "Chunk",
+        "Wiki 节点",
+        "语义知识",
+        "星河笔记"
+      ],
+      "aliases": [],
+      "questions": [
+        "星河笔记如何将文档切分为章节？",
+        "Chunk 由什么内容生成？",
+        "Wiki 节点如何构建？"
+      ],
+      "concepts": [
+        {
+          "id": "c1",
+          "name": "章节切分",
+          "aliases": [],
+          "description": "将文档按标题切分为章节的处理方式。",
+          "evidence": [
+            "星河笔记将文档按标题切分为章节。"
+          ]
+        },
+        {
+          "id": "c2",
+          "name": "语义知识",
+          "aliases": [],
+          "description": "用于构建 Wiki 节点的知识。",
+          "evidence": [
+            "章节原文用于生成 Chunk，语义知识用于构建 Wiki 节点。"
+          ]
+        }
+      ],
+      "entities": [
+        {
+          "id": "e1",
+          "name": "星河笔记",
+          "type": "产品",
+          "aliases": [],
+          "description": "负责内容处理的系统，将文档按标题切分为章节。",
+          "evidence": [
+            "星河笔记将文档按标题切分为章节。"
+          ]
+        },
+        {
+          "id": "e2",
+          "name": "Chunk",
+          "type": "处理产物",
+          "aliases": [],
+          "description": "由章节原文生成的单元。",
+          "evidence": [
+            "章节原文用于生成 Chunk，语义知识用于构建 Wiki 节点。"
+          ]
+        },
+        {
+          "id": "e3",
+          "name": "Wiki 节点",
+          "type": "知识节点",
+          "aliases": [],
+          "description": "由语义知识构建的节点。",
+          "evidence": [
+            "章节原文用于生成 Chunk，语义知识用于构建 Wiki 节点。"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "sourceId": "e1",
+          "targetId": "c1",
+          "type": "采用",
+          "description": "星河笔记采用按标题切分章节的方式。",
+          "evidence": [
+            "星河笔记将文档按标题切分为章节。"
+          ]
+        },
+        {
+          "sourceId": "c1",
+          "targetId": "e2",
+          "type": "生成",
+          "description": "章节原文用于生成 Chunk。",
+          "evidence": [
+            "章节原文用于生成 Chunk，语义知识用于构建 Wiki 节点。"
+          ]
+        },
+        {
+          "sourceId": "c2",
+          "targetId": "e3",
+          "type": "构建",
+          "description": "语义知识用于构建 Wiki 节点。",
+          "evidence": [
+            "章节原文用于生成 Chunk，语义知识用于构建 Wiki 节点。"
+          ]
+        }
+      ],
+      "facts": [
+        {
+          "statement": "星河笔记将文档按标题切分为章节。",
+          "nodeIds": [
+            "e1",
+            "c1"
+          ],
+          "evidence": [
+            "星河笔记将文档按标题切分为章节。"
+          ]
+        },
+        {
+          "statement": "章节原文用于生成 Chunk。",
+          "nodeIds": [
+            "c1",
+            "e2"
+          ],
+          "evidence": [
+            "章节原文用于生成 Chunk，语义知识用于构建 Wiki 节点。"
+          ]
+        },
+        {
+          "statement": "语义知识用于构建 Wiki 节点。",
+          "nodeIds": [
+            "c2",
+            "e3"
+          ],
+          "evidence": [
+            "章节原文用于生成 Chunk，语义知识用于构建 Wiki 节点。"
+          ]
+        }
+      ],
+      "knowledgeType": "architecture"
+    },
+    "generation": {
+      "provider": "deepseek",
+      "model": "deepseek-flash",
+      "responseId": "c2371bcd-1f7f-456e-bf1e-7676e384fe10",
+      "usage": {
+        "inputTokens": 986,
+        "outputTokens": 1593,
+        "totalTokens": 2579
+      }
+    }
+  },
+  {
+    "schemaVersion": 3,
+    "sectionId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79",
+    "documentId": "dual-index-demo",
+    "sectionRevision": "1169eed9554be46db21de204ecd6ed041bf024258ff1cfc082a504de15ea3dfe",
+    "extracted": {
+      "title": "双索引",
+      "headingPath": [
+        {
+          "sectionId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79",
+          "title": "双索引",
+          "depth": 2
+        }
+      ],
+      "metadata": {
+        "title": "星河笔记检索说明"
+      },
+      "codeBlocks": [],
+      "links": []
+    },
+    "enrichment": {
+      "summary": "本节说明双索引由 Chunk 索引与 Wiki 索引组成：Chunk 索引用于定位原文，Wiki 索引用于定位概念和实体；两类索引使用同一个向量模型，检索结果通过章节关联回查原文。",
+      "keywords": [
+        "双索引",
+        "Chunk 索引",
+        "Wiki 索引",
+        "向量模型",
+        "检索结果",
+        "章节关联",
+        "回查原文"
+      ],
+      "aliases": [],
+      "questions": [
+        "什么是双索引？",
+        "Chunk 索引用于什么？",
+        "Wiki 索引用于什么？",
+        "两类索引是否使用同一个向量模型？",
+        "检索结果如何回查原文？"
+      ],
+      "concepts": [
+        {
+          "id": "c1",
+          "name": "双索引",
+          "aliases": [],
+          "description": "由 Chunk 索引和 Wiki 索引构成的索引机制，分别用于定位原文、定位概念和实体。",
+          "evidence": [
+            "## 双索引",
+            "Chunk 索引用于定位原文，Wiki 索引用于定位概念和实体。"
+          ]
+        },
+        {
+          "id": "c2",
+          "name": "章节关联回查原文",
+          "aliases": [],
+          "description": "检索结果通过章节关联回查原文的机制。",
+          "evidence": [
+            "检索结果通过章节关联回查原文。"
+          ]
+        },
+        {
+          "id": "c3",
+          "name": "向量模型",
+          "aliases": [],
+          "description": "两类索引共用的同一向量模型。",
+          "evidence": [
+            "两类索引使用同一个向量模型，检索结果通过章节关联回查原文。"
+          ]
+        }
+      ],
+      "entities": [
+        {
+          "id": "e1",
+          "name": "Chunk 索引",
+          "type": "索引",
+          "aliases": [],
+          "description": "用于定位原文的索引。",
+          "evidence": [
+            "Chunk 索引用于定位原文，Wiki 索引用于定位概念和实体。"
+          ]
+        },
+        {
+          "id": "e2",
+          "name": "Wiki 索引",
+          "type": "索引",
+          "aliases": [],
+          "description": "用于定位概念和实体的索引。",
+          "evidence": [
+            "Chunk 索引用于定位原文，Wiki 索引用于定位概念和实体。"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "sourceId": "e1",
+          "targetId": "e2",
+          "type": "并列索引",
+          "description": "Chunk 索引与 Wiki 索引是两类用途不同的索引，分别定位原文、定位概念和实体。",
+          "evidence": [
+            "Chunk 索引用于定位原文，Wiki 索引用于定位概念和实体。"
+          ]
+        },
+        {
+          "sourceId": "e1",
+          "targetId": "c3",
+          "type": "使用",
+          "description": "Chunk 索引使用该向量模型。",
+          "evidence": [
+            "两类索引使用同一个向量模型"
+          ]
+        },
+        {
+          "sourceId": "e2",
+          "targetId": "c3",
+          "type": "使用",
+          "description": "Wiki 索引使用该向量模型。",
+          "evidence": [
+            "两类索引使用同一个向量模型"
+          ]
+        }
+      ],
+      "facts": [
+        {
+          "statement": "Chunk 索引用于定位原文，Wiki 索引用于定位概念和实体。",
+          "nodeIds": [
+            "e1",
+            "e2"
+          ],
+          "evidence": [
+            "Chunk 索引用于定位原文，Wiki 索引用于定位概念和实体。"
+          ]
+        },
+        {
+          "statement": "两类索引使用同一个向量模型。",
+          "nodeIds": [
+            "e1",
+            "e2",
+            "c3"
+          ],
+          "evidence": [
+            "两类索引使用同一个向量模型"
+          ]
+        },
+        {
+          "statement": "检索结果通过章节关联回查原文。",
+          "nodeIds": [
+            "c2"
+          ],
+          "evidence": [
+            "检索结果通过章节关联回查原文。"
+          ]
+        }
+      ],
+      "knowledgeType": "concept"
+    },
+    "generation": {
+      "provider": "deepseek",
+      "model": "deepseek-flash",
+      "responseId": "a707bf63-0874-4ac0-9106-9482fcf97ee8",
+      "usage": {
+        "inputTokens": 994,
+        "outputTokens": 3143,
+        "totalTokens": 4137
+      }
+    }
+  }
+]

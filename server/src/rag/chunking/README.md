@@ -29,7 +29,7 @@ const result = buildChunks(section, {
 
 ID 使用 `${section.id}#chunk-${index}`，重新切分后调用方应按 Section 替换原 Chunk 集合，不能只新增而遗留旧片段。版本通过 `sectionRevision` 区分，前后引用不跨 Section。
 
-检索的后续设计为：命中 Chunk → 当前 Section → 多个语义节点 → 图扩展。当前不构建 embeddingText、向量记录、向量库或检索服务。
+检索的后续设计为：命中 Chunk → 当前 Section → 多个语义节点 → 图扩展。Chunk Build 本身不构建 embeddingText；[indexing](../indexing/README.md) 负责将 Chunk 与当前 Wiki 关联后生成两类向量输入和内存向量结果。向量库写入和精确余弦查询由 `vector-store` 提供，生产检索服务仍待实现。
 
 ## 验证
 

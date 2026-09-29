@@ -68,7 +68,7 @@ export const SECTION_SPLIT_ERROR_CODES = {
 export type SectionSplitErrorCode = typeof SECTION_SPLIT_ERROR_CODES[keyof typeof SECTION_SPLIT_ERROR_CODES]
 
 /** 所有业务异常共用的错误码类型，具体字符串与中文含义仍在上面的分组中维护。 */
-export type AppErrorCode = HttpErrorCode | LlmErrorCode | NormalizationErrorCode | SectionSplitErrorCode | EnrichmentErrorCode | ChunkBuildErrorCode | EmbeddingErrorCode | WikiErrorCode | IngestionErrorCode
+export type AppErrorCode = HttpErrorCode | LlmErrorCode | NormalizationErrorCode | SectionSplitErrorCode | EnrichmentErrorCode | ChunkBuildErrorCode | EmbeddingErrorCode | WikiErrorCode | IngestionErrorCode | IndexingErrorCode | VectorStoreErrorCode | RerankErrorCode | QueryErrorCode
 
 /** 知识补充阶段的错误；上游网络、鉴权和取消错误继续沿用 LLM 错误码。 */
 export const ENRICHMENT_ERROR_CODES = {
@@ -146,3 +146,80 @@ export const INGESTION_ERROR_CODES = {
 } as const
 
 export type IngestionErrorCode = typeof INGESTION_ERROR_CODES[keyof typeof INGESTION_ERROR_CODES]
+
+/** 双索引文本构造与向量组合的错误分类，SDK 错误沿用 Embedding 错误码。 */
+export const INDEXING_ERROR_CODES = {
+  /** Token 预算、计数器或批量生成选项无效。 */
+  INVALID_OPTIONS: 'INDEXING_INVALID_OPTIONS',
+  /** 输入快照、身份、来源关联或文本版本不一致。 */
+  INVALID_INPUT: 'INDEXING_INVALID_INPUT',
+  /** Chunk 与 Wiki 引用的 Section 版本不同。 */
+  STALE_SOURCE: 'INDEXING_STALE_SOURCE',
+  /** 完整向量化文本超限，需要调用方调整切分或预算。 */
+  INPUT_TOO_LARGE: 'INDEXING_INPUT_TOO_LARGE',
+  /** Token 计数器异常或返回无效值。 */
+  TOKEN_COUNT_FAILED: 'INDEXING_TOKEN_COUNT_FAILED',
+  /** 不同批次返回的实际模型或维度不一致，无法组成同一向量空间。 */
+  INCONSISTENT_SPACE: 'INDEXING_INCONSISTENT_SPACE',
+} as const
+
+export type IndexingErrorCode = typeof INDEXING_ERROR_CODES[keyof typeof INDEXING_ERROR_CODES]
+
+export const VECTOR_STORE_ERROR_CODES = {
+  /** 数据库连接或超时配置无效。 */
+  CONFIGURATION_ERROR: 'VECTOR_STORE_CONFIGURATION_ERROR',
+  /** 向量、来源、文本版本或写入范围不合法。 */
+  INVALID_INPUT: 'VECTOR_STORE_INVALID_INPUT',
+  /** 数据库不可用或事务失败，不透出连接串和 SQL 参数。 */
+  DATABASE_ERROR: 'VECTOR_STORE_DATABASE_ERROR',
+  /** 读取后快照已被其他任务修改，拒绝覆盖新数据。 */
+  CONFLICT: 'VECTOR_STORE_CONFLICT',
+  /** 查询与库内模型或维度不同。 */
+  INCONSISTENT_SPACE: 'VECTOR_STORE_INCONSISTENT_SPACE',
+  /** 提交前收到取消信号，事务回滚。 */
+  ABORTED: 'VECTOR_STORE_ABORTED',
+} as const
+
+export type VectorStoreErrorCode = typeof VECTOR_STORE_ERROR_CODES[keyof typeof VECTOR_STORE_ERROR_CODES]
+
+/** 重排 SDK 的统一错误，不暴露上游正文。 */
+export const RERANK_ERROR_CODES = {
+  /** 模型服务配置缺失或无效。 */
+  CONFIGURATION_ERROR: 'RERANK_CONFIGURATION_ERROR',
+  /** 查询、候选文本或返回数量无效。 */
+  INVALID_REQUEST: 'RERANK_INVALID_REQUEST',
+  /** 返回索引重复、缺失、越界或分数无效。 */
+  INVALID_RESPONSE: 'RERANK_INVALID_RESPONSE',
+  /** 鉴权失败。 */
+  AUTHENTICATION_ERROR: 'RERANK_AUTHENTICATION_ERROR',
+  /** 请求频率或配额受限。 */
+  RATE_LIMITED: 'RERANK_RATE_LIMITED',
+  /** 调用超时。 */
+  TIMEOUT: 'RERANK_TIMEOUT',
+  /** 调用方取消。 */
+  ABORTED: 'RERANK_ABORTED',
+  /** 网络连接失败。 */
+  CONNECTION_ERROR: 'RERANK_CONNECTION_ERROR',
+  /** 未分类的上游错误。 */
+  PROVIDER_ERROR: 'RERANK_PROVIDER_ERROR',
+} as const
+export type RerankErrorCode = typeof RERANK_ERROR_CODES[keyof typeof RERANK_ERROR_CODES]
+
+/** 双路问答编排与答案生成的错误。 */
+export const QUERY_ERROR_CODES = {
+  /** 问题、知识库或模型配置无效。 */
+  INVALID_INPUT: 'QUERY_INVALID_INPUT',
+  /** 召回结果身份冲突、缺少文本或不属于当前知识库。 */
+  INVALID_RESULTS: 'QUERY_INVALID_RESULTS',
+  /** 问题与 Top 5 完整上下文超过字符预算，不静默截断。 */
+  CONTEXT_TOO_LARGE: 'QUERY_CONTEXT_TOO_LARGE',
+  /** 生成拒答，不能视作正常回答。 */
+  REFUSED: 'QUERY_REFUSED',
+  /** 答案被截断或过滤。 */
+  INCOMPLETE_RESPONSE: 'QUERY_INCOMPLETE_RESPONSE',
+  /** 答案为空或引用了不存在的来源编号。 */
+  INVALID_ANSWER: 'QUERY_INVALID_ANSWER',
+  /** 调用方取消本次问答。 */
+  ABORTED: 'QUERY_ABORTED',
+} as const
+export type QueryErrorCode = typeof QUERY_ERROR_CODES[keyof typeof QUERY_ERROR_CODES]

@@ -1,0 +1,439 @@
+{
+  "schemaVersion": 1,
+  "templateVersion": 1,
+  "knowledgeBaseId": "dual-index-demo",
+  "tokenizer": "cl100k_base",
+  "maxTokens": 8000,
+  "chunks": [
+    {
+      "kind": "chunk",
+      "sourceId": "section-6631df5313aef3d7ada1db1cebe52093116660de95b18fa832e7a92ffffb1163#chunk-0",
+      "sourceRevision": "40e27f5cdbf15e86614c27d37be29d39490224c3588fe44cc51d3a1c6c39c3e5",
+      "title": "星河笔记检索说明",
+      "embeddingText": "文档：星河笔记检索说明\n\n章节：内容处理\n\n原文：\n## 内容处理\n\n星河笔记将文档按标题切分为章节。章节原文用于生成 Chunk，语义知识用于构建 Wiki 节点。\n\n\n本节知识信息：\n实体：Chunk\n处理产物：由章节原文生成的单元。\n\n实体：Wiki 节点\n知识节点：由语义知识构建的节点。\n\n实体：星河笔记\n产品：负责内容处理的系统，将文档按标题切分为章节。\n\n概念：章节切分\n将文档按标题切分为章节的处理方式。\n\n概念：语义知识\n用于构建 Wiki 节点的知识。",
+      "sources": [
+        {
+          "documentId": "dual-index-demo",
+          "sectionId": "section-6631df5313aef3d7ada1db1cebe52093116660de95b18fa832e7a92ffffb1163",
+          "sectionRevision": "40e27f5cdbf15e86614c27d37be29d39490224c3588fe44cc51d3a1c6c39c3e5",
+          "sourcePath": "dual-index-article.mdx",
+          "headingPath": [
+            {
+              "sectionId": "section-6631df5313aef3d7ada1db1cebe52093116660de95b18fa832e7a92ffffb1163",
+              "title": "内容处理",
+              "depth": 2
+            }
+          ]
+        }
+      ],
+      "wikiNodes": [
+        {
+          "id": "wiki-node-02a0e8a5715354080ced782d6d38e4be70c85f1e2be347a5bce084174ec282fd",
+          "revision": "afb52d2bc22548fe030cf884950a15a98f9e41c85fe2f621c5f212831309843d"
+        },
+        {
+          "id": "wiki-node-28d28da2e1ca46567574220f97e56c6f2638361f3bfb9eedd9dc6600e988af38",
+          "revision": "391b1cf89c7a0aa5cb3b656a295fca5aa0f7a7dfcdbd3b32d533f8cb5c0da7b4"
+        },
+        {
+          "id": "wiki-node-3870e7efd51e621e5b9d9e9ec6de1e8b023f351d49f43e2f1b01993c0af9d69d",
+          "revision": "64590ae8816a322ab8a18de6504c3cb5cc0ac601fe99303cc51766eeead06ff7"
+        },
+        {
+          "id": "wiki-node-542787b04a1fcf437fca972c598b96f0aa36fbb386f425297b7a2a0143404003",
+          "revision": "86122b39143d226b990ef12fcce29b5f3a35b439ba60cb87fcde20213efa904e"
+        },
+        {
+          "id": "wiki-node-e7afd48032e2c9930fa87785eccba61742c4dc6cbca2f86b841bed434ea86c1a",
+          "revision": "a449e780744a2b65846325c638f39bf60c11ddb180b0cef87563a09e98da6d04"
+        }
+      ],
+      "knowledgeStatus": "ready",
+      "id": "index-d2c80166b8b6d879a76852d26373b75084029e05b1c5947852f6186a256ddfd4",
+      "knowledgeBaseId": "dual-index-demo",
+      "textRevision": "706528223d62b6ea0642f718bc44154a098178e40ad172f5751dc9012d7b7ba4",
+      "tokenCount": 209
+    },
+    {
+      "kind": "chunk",
+      "sourceId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79#chunk-0",
+      "sourceRevision": "1169eed9554be46db21de204ecd6ed041bf024258ff1cfc082a504de15ea3dfe",
+      "title": "星河笔记检索说明",
+      "embeddingText": "文档：星河笔记检索说明\n\n章节：双索引\n\n原文：\n## 双索引\n\nChunk 索引用于定位原文，Wiki 索引用于定位概念和实体。两类索引使用同一个向量模型，检索结果通过章节关联回查原文。\n\n\n本节知识信息：\n实体：Chunk 索引\n索引：用于定位原文的索引。\n\n实体：Wiki 索引\n索引：用于定位概念和实体的索引。\n\n概念：双索引\n由 Chunk 索引和 Wiki 索引构成的索引机制，分别用于定位原文、定位概念和实体。\n\n概念：向量模型\n两类索引共用的同一向量模型。\n\n概念：章节关联回查原文\n检索结果通过章节关联回查原文的机制。",
+      "sources": [
+        {
+          "documentId": "dual-index-demo",
+          "sectionId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79",
+          "sectionRevision": "1169eed9554be46db21de204ecd6ed041bf024258ff1cfc082a504de15ea3dfe",
+          "sourcePath": "dual-index-article.mdx",
+          "headingPath": [
+            {
+              "sectionId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79",
+              "title": "双索引",
+              "depth": 2
+            }
+          ]
+        }
+      ],
+      "wikiNodes": [
+        {
+          "id": "wiki-node-450c58d36ef7406ca95f10dac0c49b74f8b6fc882992c11a59db0f7bce6e493d",
+          "revision": "c2599bbb25431c80e71708b67e7049af427f0244d11b5a956cdeddee3af2d099"
+        },
+        {
+          "id": "wiki-node-921fe270f1012685184588ec06d7dc8a2de8335df91fb67e52eeef4c3ce148c1",
+          "revision": "4f5ec339bfbaca464ae0be219e63aeb48c2b8a38a5d72deb8589235d77855ef1"
+        },
+        {
+          "id": "wiki-node-9279cf858a03a93f5fe102ccf14546c79b85f7c462ef6e6fc680c972f7ffa5dc",
+          "revision": "48c5f71c55ee18939e04149dd618832821b415829e0993d15d0c375f46df7184"
+        },
+        {
+          "id": "wiki-node-c200aa422ff4480ca3085bbbee5930d0918aace2cce140fade9202827941bdfa",
+          "revision": "c60849a0bdb691170b4d47b774123218cc77d4a1033fdab3d938e6c68a782cfd"
+        },
+        {
+          "id": "wiki-node-f2ccbfd8dcdaa370bbf3127814655b54fc19bd033d84a32ca0bb65649e573578",
+          "revision": "8adb19b98da8de9b5333e300bb2137023aee410b867ed3d680673dfb9815cb4c"
+        }
+      ],
+      "knowledgeStatus": "ready",
+      "id": "index-4b94ed400dca5e454fdbda296d78cdbf35edb0f6380fb0026786f2975cee053f",
+      "knowledgeBaseId": "dual-index-demo",
+      "textRevision": "a38d32addb15c051e245060737ce622ad8de00985aadcf9dda00056ae739be7c",
+      "tokenCount": 245
+    }
+  ],
+  "wikiNodes": [
+    {
+      "kind": "wiki",
+      "sourceId": "wiki-node-02a0e8a5715354080ced782d6d38e4be70c85f1e2be347a5bce084174ec282fd",
+      "sourceRevision": "afb52d2bc22548fe030cf884950a15a98f9e41c85fe2f621c5f212831309843d",
+      "title": "Wiki 节点",
+      "embeddingText": "实体：Wiki 节点\n知识节点：由语义知识构建的节点。\n\n事实：\n语义知识用于构建 Wiki 节点。\n\n关系：\n语义知识 → Wiki 节点（构建）：语义知识用于构建 Wiki 节点。",
+      "sources": [
+        {
+          "documentId": "dual-index-demo",
+          "sectionId": "section-6631df5313aef3d7ada1db1cebe52093116660de95b18fa832e7a92ffffb1163",
+          "sectionRevision": "40e27f5cdbf15e86614c27d37be29d39490224c3588fe44cc51d3a1c6c39c3e5",
+          "sourcePath": "dual-index-article.mdx",
+          "headingPath": [
+            {
+              "sectionId": "section-6631df5313aef3d7ada1db1cebe52093116660de95b18fa832e7a92ffffb1163",
+              "title": "内容处理",
+              "depth": 2
+            }
+          ]
+        }
+      ],
+      "wikiNodes": [
+        {
+          "id": "wiki-node-02a0e8a5715354080ced782d6d38e4be70c85f1e2be347a5bce084174ec282fd",
+          "revision": "afb52d2bc22548fe030cf884950a15a98f9e41c85fe2f621c5f212831309843d"
+        }
+      ],
+      "knowledgeStatus": "ready",
+      "id": "index-738e0c19df8ecd0e617f41651d71bd1d8f7ddb8c4773be4d1f72c362e6b1348a",
+      "knowledgeBaseId": "dual-index-demo",
+      "textRevision": "499cc140118942922df6d981e0f5be7b536687edc735ce96563e50de5bc1b33c",
+      "tokenCount": 77
+    },
+    {
+      "kind": "wiki",
+      "sourceId": "wiki-node-28d28da2e1ca46567574220f97e56c6f2638361f3bfb9eedd9dc6600e988af38",
+      "sourceRevision": "391b1cf89c7a0aa5cb3b656a295fca5aa0f7a7dfcdbd3b32d533f8cb5c0da7b4",
+      "title": "Chunk",
+      "embeddingText": "实体：Chunk\n处理产物：由章节原文生成的单元。\n\n事实：\n章节原文用于生成 Chunk。\n\n关系：\n章节切分 → Chunk（生成）：章节原文用于生成 Chunk。",
+      "sources": [
+        {
+          "documentId": "dual-index-demo",
+          "sectionId": "section-6631df5313aef3d7ada1db1cebe52093116660de95b18fa832e7a92ffffb1163",
+          "sectionRevision": "40e27f5cdbf15e86614c27d37be29d39490224c3588fe44cc51d3a1c6c39c3e5",
+          "sourcePath": "dual-index-article.mdx",
+          "headingPath": [
+            {
+              "sectionId": "section-6631df5313aef3d7ada1db1cebe52093116660de95b18fa832e7a92ffffb1163",
+              "title": "内容处理",
+              "depth": 2
+            }
+          ]
+        }
+      ],
+      "wikiNodes": [
+        {
+          "id": "wiki-node-28d28da2e1ca46567574220f97e56c6f2638361f3bfb9eedd9dc6600e988af38",
+          "revision": "391b1cf89c7a0aa5cb3b656a295fca5aa0f7a7dfcdbd3b32d533f8cb5c0da7b4"
+        }
+      ],
+      "knowledgeStatus": "ready",
+      "id": "index-0ea4a2d5081fd684d14fb33592fed0026f4ac246e266fa6ce75549467e515464",
+      "knowledgeBaseId": "dual-index-demo",
+      "textRevision": "32d8da5f8b4cec74f73b1d858601cc851f23650b790076134d20e4b030e89216",
+      "tokenCount": 54
+    },
+    {
+      "kind": "wiki",
+      "sourceId": "wiki-node-3870e7efd51e621e5b9d9e9ec6de1e8b023f351d49f43e2f1b01993c0af9d69d",
+      "sourceRevision": "64590ae8816a322ab8a18de6504c3cb5cc0ac601fe99303cc51766eeead06ff7",
+      "title": "章节切分",
+      "embeddingText": "概念：章节切分\n将文档按标题切分为章节的处理方式。\n\n事实：\n星河笔记将文档按标题切分为章节。\n章节原文用于生成 Chunk。\n\n关系：\n星河笔记 → 章节切分（采用）：星河笔记采用按标题切分章节的方式。\n章节切分 → Chunk（生成）：章节原文用于生成 Chunk。",
+      "sources": [
+        {
+          "documentId": "dual-index-demo",
+          "sectionId": "section-6631df5313aef3d7ada1db1cebe52093116660de95b18fa832e7a92ffffb1163",
+          "sectionRevision": "40e27f5cdbf15e86614c27d37be29d39490224c3588fe44cc51d3a1c6c39c3e5",
+          "sourcePath": "dual-index-article.mdx",
+          "headingPath": [
+            {
+              "sectionId": "section-6631df5313aef3d7ada1db1cebe52093116660de95b18fa832e7a92ffffb1163",
+              "title": "内容处理",
+              "depth": 2
+            }
+          ]
+        }
+      ],
+      "wikiNodes": [
+        {
+          "id": "wiki-node-3870e7efd51e621e5b9d9e9ec6de1e8b023f351d49f43e2f1b01993c0af9d69d",
+          "revision": "64590ae8816a322ab8a18de6504c3cb5cc0ac601fe99303cc51766eeead06ff7"
+        }
+      ],
+      "knowledgeStatus": "ready",
+      "id": "index-1c2d6bceef6d31e12343c781c2ed345b60659e8a8aad5a6a27b52e26c4c5ee3a",
+      "knowledgeBaseId": "dual-index-demo",
+      "textRevision": "1e35ffd86219012685291266fe9163035209e322b97ab5821f982c738a4585bd",
+      "tokenCount": 120
+    },
+    {
+      "kind": "wiki",
+      "sourceId": "wiki-node-450c58d36ef7406ca95f10dac0c49b74f8b6fc882992c11a59db0f7bce6e493d",
+      "sourceRevision": "c2599bbb25431c80e71708b67e7049af427f0244d11b5a956cdeddee3af2d099",
+      "title": "向量模型",
+      "embeddingText": "概念：向量模型\n两类索引共用的同一向量模型。\n\n事实：\n两类索引使用同一个向量模型。\n\n关系：\nChunk 索引 → 向量模型（使用）：Chunk 索引使用该向量模型。\nWiki 索引 → 向量模型（使用）：Wiki 索引使用该向量模型。",
+      "sources": [
+        {
+          "documentId": "dual-index-demo",
+          "sectionId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79",
+          "sectionRevision": "1169eed9554be46db21de204ecd6ed041bf024258ff1cfc082a504de15ea3dfe",
+          "sourcePath": "dual-index-article.mdx",
+          "headingPath": [
+            {
+              "sectionId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79",
+              "title": "双索引",
+              "depth": 2
+            }
+          ]
+        }
+      ],
+      "wikiNodes": [
+        {
+          "id": "wiki-node-450c58d36ef7406ca95f10dac0c49b74f8b6fc882992c11a59db0f7bce6e493d",
+          "revision": "c2599bbb25431c80e71708b67e7049af427f0244d11b5a956cdeddee3af2d099"
+        }
+      ],
+      "knowledgeStatus": "ready",
+      "id": "index-50bd6b31d9040d126b7cdd469be4c67d826906d684c5707cc43a580e10b08c39",
+      "knowledgeBaseId": "dual-index-demo",
+      "textRevision": "b5eedb9e218ea3909db83ce840d84396406d1df12dfc399a204004d99feb9730",
+      "tokenCount": 96
+    },
+    {
+      "kind": "wiki",
+      "sourceId": "wiki-node-542787b04a1fcf437fca972c598b96f0aa36fbb386f425297b7a2a0143404003",
+      "sourceRevision": "86122b39143d226b990ef12fcce29b5f3a35b439ba60cb87fcde20213efa904e",
+      "title": "语义知识",
+      "embeddingText": "概念：语义知识\n用于构建 Wiki 节点的知识。\n\n事实：\n语义知识用于构建 Wiki 节点。\n\n关系：\n语义知识 → Wiki 节点（构建）：语义知识用于构建 Wiki 节点。",
+      "sources": [
+        {
+          "documentId": "dual-index-demo",
+          "sectionId": "section-6631df5313aef3d7ada1db1cebe52093116660de95b18fa832e7a92ffffb1163",
+          "sectionRevision": "40e27f5cdbf15e86614c27d37be29d39490224c3588fe44cc51d3a1c6c39c3e5",
+          "sourcePath": "dual-index-article.mdx",
+          "headingPath": [
+            {
+              "sectionId": "section-6631df5313aef3d7ada1db1cebe52093116660de95b18fa832e7a92ffffb1163",
+              "title": "内容处理",
+              "depth": 2
+            }
+          ]
+        }
+      ],
+      "wikiNodes": [
+        {
+          "id": "wiki-node-542787b04a1fcf437fca972c598b96f0aa36fbb386f425297b7a2a0143404003",
+          "revision": "86122b39143d226b990ef12fcce29b5f3a35b439ba60cb87fcde20213efa904e"
+        }
+      ],
+      "knowledgeStatus": "ready",
+      "id": "index-55ae3762c5bd09791594deb8e2537f5b65b09084aa8f61c03c7e7a7fba88192f",
+      "knowledgeBaseId": "dual-index-demo",
+      "textRevision": "a5b1ea5a237d72409d58ddf2428bf4ccb5d7ea23ed5a9b97ce112eb47342ec3e",
+      "tokenCount": 77
+    },
+    {
+      "kind": "wiki",
+      "sourceId": "wiki-node-921fe270f1012685184588ec06d7dc8a2de8335df91fb67e52eeef4c3ce148c1",
+      "sourceRevision": "4f5ec339bfbaca464ae0be219e63aeb48c2b8a38a5d72deb8589235d77855ef1",
+      "title": "Wiki 索引",
+      "embeddingText": "实体：Wiki 索引\n索引：用于定位概念和实体的索引。\n\n事实：\nChunk 索引用于定位原文，Wiki 索引用于定位概念和实体。\n两类索引使用同一个向量模型。\n\n关系：\nChunk 索引 → Wiki 索引（并列索引）：Chunk 索引与 Wiki 索引是两类用途不同的索引，分别定位原文、定位概念和实体。\nWiki 索引 → 向量模型（使用）：Wiki 索引使用该向量模型。",
+      "sources": [
+        {
+          "documentId": "dual-index-demo",
+          "sectionId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79",
+          "sectionRevision": "1169eed9554be46db21de204ecd6ed041bf024258ff1cfc082a504de15ea3dfe",
+          "sourcePath": "dual-index-article.mdx",
+          "headingPath": [
+            {
+              "sectionId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79",
+              "title": "双索引",
+              "depth": 2
+            }
+          ]
+        }
+      ],
+      "wikiNodes": [
+        {
+          "id": "wiki-node-921fe270f1012685184588ec06d7dc8a2de8335df91fb67e52eeef4c3ce148c1",
+          "revision": "4f5ec339bfbaca464ae0be219e63aeb48c2b8a38a5d72deb8589235d77855ef1"
+        }
+      ],
+      "knowledgeStatus": "ready",
+      "id": "index-b0217b29d794d4bd5430b69ac298f9785e8b2565c22a0f72b3c8261fa7796abe",
+      "knowledgeBaseId": "dual-index-demo",
+      "textRevision": "ac45329e923ec72f80c3583af5ce77efb29e190324cfd22d77bb8c951a36f3b6",
+      "tokenCount": 159
+    },
+    {
+      "kind": "wiki",
+      "sourceId": "wiki-node-9279cf858a03a93f5fe102ccf14546c79b85f7c462ef6e6fc680c972f7ffa5dc",
+      "sourceRevision": "48c5f71c55ee18939e04149dd618832821b415829e0993d15d0c375f46df7184",
+      "title": "Chunk 索引",
+      "embeddingText": "实体：Chunk 索引\n索引：用于定位原文的索引。\n\n事实：\nChunk 索引用于定位原文，Wiki 索引用于定位概念和实体。\n两类索引使用同一个向量模型。\n\n关系：\nChunk 索引 → Wiki 索引（并列索引）：Chunk 索引与 Wiki 索引是两类用途不同的索引，分别定位原文、定位概念和实体。\nChunk 索引 → 向量模型（使用）：Chunk 索引使用该向量模型。",
+      "sources": [
+        {
+          "documentId": "dual-index-demo",
+          "sectionId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79",
+          "sectionRevision": "1169eed9554be46db21de204ecd6ed041bf024258ff1cfc082a504de15ea3dfe",
+          "sourcePath": "dual-index-article.mdx",
+          "headingPath": [
+            {
+              "sectionId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79",
+              "title": "双索引",
+              "depth": 2
+            }
+          ]
+        }
+      ],
+      "wikiNodes": [
+        {
+          "id": "wiki-node-9279cf858a03a93f5fe102ccf14546c79b85f7c462ef6e6fc680c972f7ffa5dc",
+          "revision": "48c5f71c55ee18939e04149dd618832821b415829e0993d15d0c375f46df7184"
+        }
+      ],
+      "knowledgeStatus": "ready",
+      "id": "index-1b382ee8f4fa20e4acede0d931327b848555ac5ce71768ce954d67f213f593c3",
+      "knowledgeBaseId": "dual-index-demo",
+      "textRevision": "4f139212263907fcd6af46a40eb13c983bcb5301306addbbea1f57df25a042cb",
+      "tokenCount": 154
+    },
+    {
+      "kind": "wiki",
+      "sourceId": "wiki-node-c200aa422ff4480ca3085bbbee5930d0918aace2cce140fade9202827941bdfa",
+      "sourceRevision": "c60849a0bdb691170b4d47b774123218cc77d4a1033fdab3d938e6c68a782cfd",
+      "title": "双索引",
+      "embeddingText": "概念：双索引\n由 Chunk 索引和 Wiki 索引构成的索引机制，分别用于定位原文、定位概念和实体。",
+      "sources": [
+        {
+          "documentId": "dual-index-demo",
+          "sectionId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79",
+          "sectionRevision": "1169eed9554be46db21de204ecd6ed041bf024258ff1cfc082a504de15ea3dfe",
+          "sourcePath": "dual-index-article.mdx",
+          "headingPath": [
+            {
+              "sectionId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79",
+              "title": "双索引",
+              "depth": 2
+            }
+          ]
+        }
+      ],
+      "wikiNodes": [
+        {
+          "id": "wiki-node-c200aa422ff4480ca3085bbbee5930d0918aace2cce140fade9202827941bdfa",
+          "revision": "c60849a0bdb691170b4d47b774123218cc77d4a1033fdab3d938e6c68a782cfd"
+        }
+      ],
+      "knowledgeStatus": "ready",
+      "id": "index-0e7003849690835a7618abd543cb8670ddd326777b6799daf90d3bd98ad20c99",
+      "knowledgeBaseId": "dual-index-demo",
+      "textRevision": "62d115a9d9145c3e0978a6f3524ca9a78b4652ccffb1047db33a0ce86375830e",
+      "tokenCount": 49
+    },
+    {
+      "kind": "wiki",
+      "sourceId": "wiki-node-e7afd48032e2c9930fa87785eccba61742c4dc6cbca2f86b841bed434ea86c1a",
+      "sourceRevision": "a449e780744a2b65846325c638f39bf60c11ddb180b0cef87563a09e98da6d04",
+      "title": "星河笔记",
+      "embeddingText": "实体：星河笔记\n产品：负责内容处理的系统，将文档按标题切分为章节。\n\n事实：\n星河笔记将文档按标题切分为章节。\n\n关系：\n星河笔记 → 章节切分（采用）：星河笔记采用按标题切分章节的方式。",
+      "sources": [
+        {
+          "documentId": "dual-index-demo",
+          "sectionId": "section-6631df5313aef3d7ada1db1cebe52093116660de95b18fa832e7a92ffffb1163",
+          "sectionRevision": "40e27f5cdbf15e86614c27d37be29d39490224c3588fe44cc51d3a1c6c39c3e5",
+          "sourcePath": "dual-index-article.mdx",
+          "headingPath": [
+            {
+              "sectionId": "section-6631df5313aef3d7ada1db1cebe52093116660de95b18fa832e7a92ffffb1163",
+              "title": "内容处理",
+              "depth": 2
+            }
+          ]
+        }
+      ],
+      "wikiNodes": [
+        {
+          "id": "wiki-node-e7afd48032e2c9930fa87785eccba61742c4dc6cbca2f86b841bed434ea86c1a",
+          "revision": "a449e780744a2b65846325c638f39bf60c11ddb180b0cef87563a09e98da6d04"
+        }
+      ],
+      "knowledgeStatus": "ready",
+      "id": "index-e00779d1eed3bce70ad5d520a37e2c58eba08608039f6aa9d85468a01c70d8e3",
+      "knowledgeBaseId": "dual-index-demo",
+      "textRevision": "a7d47185ee54a23930d4206c85a26da919cde5b6543d7e542090c78f6a626bb5",
+      "tokenCount": 97
+    },
+    {
+      "kind": "wiki",
+      "sourceId": "wiki-node-f2ccbfd8dcdaa370bbf3127814655b54fc19bd033d84a32ca0bb65649e573578",
+      "sourceRevision": "8adb19b98da8de9b5333e300bb2137023aee410b867ed3d680673dfb9815cb4c",
+      "title": "章节关联回查原文",
+      "embeddingText": "概念：章节关联回查原文\n检索结果通过章节关联回查原文的机制。\n\n事实：\n检索结果通过章节关联回查原文。",
+      "sources": [
+        {
+          "documentId": "dual-index-demo",
+          "sectionId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79",
+          "sectionRevision": "1169eed9554be46db21de204ecd6ed041bf024258ff1cfc082a504de15ea3dfe",
+          "sourcePath": "dual-index-article.mdx",
+          "headingPath": [
+            {
+              "sectionId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79",
+              "title": "双索引",
+              "depth": 2
+            }
+          ]
+        }
+      ],
+      "wikiNodes": [
+        {
+          "id": "wiki-node-f2ccbfd8dcdaa370bbf3127814655b54fc19bd033d84a32ca0bb65649e573578",
+          "revision": "8adb19b98da8de9b5333e300bb2137023aee410b867ed3d680673dfb9815cb4c"
+        }
+      ],
+      "knowledgeStatus": "ready",
+      "id": "index-24744afd87070aeebaa7ee43ed3f3981e4e91c253b5bee194e0e99737c5252eb",
+      "knowledgeBaseId": "dual-index-demo",
+      "textRevision": "ee34df160c71cebc9ecd33be3c79b9e00b37a4c7dd43e31b517a0e685a8f73c6",
+      "tokenCount": 46
+    }
+  ]
+}

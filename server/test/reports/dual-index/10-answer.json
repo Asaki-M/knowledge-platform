@@ -1,0 +1,218 @@
+{
+  "question": "哪种索引用于定位概念和实体？两种索引各有什么作用？",
+  "durationMs": 2804,
+  "status": "answered",
+  "answer": "用于定位概念和实体的是 **Wiki 索引** [S1][S3]。\n\n两种索引的作用：\n- **Chunk 索引**：用于定位原文 [S1][S3][S4]。\n- **Wiki 索引**：用于定位概念和实体 [S1][S2][S3]。\n\n二者构成“双索引”，用途不同，分别定位原文、概念和实体 [S2][S4]；两类索引使用同一个向量模型，检索结果可通过章节关联回查原文 [S1][S5]。",
+  "sources": [
+    {
+      "id": "index-4b94ed400dca5e454fdbda296d78cdbf35edb0f6380fb0026786f2975cee053f",
+      "title": "星河笔记检索说明",
+      "text": "文档：星河笔记检索说明\n\n章节：双索引\n\n原文：\n## 双索引\n\nChunk 索引用于定位原文，Wiki 索引用于定位概念和实体。两类索引使用同一个向量模型，检索结果通过章节关联回查原文。\n\n\n本节知识信息：\n实体：Chunk 索引\n索引：用于定位原文的索引。\n\n实体：Wiki 索引\n索引：用于定位概念和实体的索引。\n\n概念：双索引\n由 Chunk 索引和 Wiki 索引构成的索引机制，分别用于定位原文、定位概念和实体。\n\n概念：向量模型\n两类索引共用的同一向量模型。\n\n概念：章节关联回查原文\n检索结果通过章节关联回查原文的机制。",
+      "matches": [
+        {
+          "indexId": "index-4b94ed400dca5e454fdbda296d78cdbf35edb0f6380fb0026786f2975cee053f",
+          "kind": "chunk",
+          "sourceId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79#chunk-0",
+          "vectorScore": 0.7274265722886781,
+          "sources": [
+            {
+              "sectionId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79",
+              "documentId": "dual-index-demo",
+              "sourcePath": "dual-index-article.mdx",
+              "headingPath": [
+                {
+                  "depth": 2,
+                  "title": "双索引",
+                  "sectionId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79"
+                }
+              ],
+              "sectionRevision": "1169eed9554be46db21de204ecd6ed041bf024258ff1cfc082a504de15ea3dfe"
+            }
+          ]
+        }
+      ],
+      "label": "S1",
+      "rerankScore": 0.9983435869216919
+    },
+    {
+      "id": "index-0e7003849690835a7618abd543cb8670ddd326777b6799daf90d3bd98ad20c99",
+      "title": "双索引",
+      "text": "概念：双索引\n由 Chunk 索引和 Wiki 索引构成的索引机制，分别用于定位原文、定位概念和实体。",
+      "matches": [
+        {
+          "indexId": "index-0e7003849690835a7618abd543cb8670ddd326777b6799daf90d3bd98ad20c99",
+          "kind": "wiki",
+          "sourceId": "wiki-node-c200aa422ff4480ca3085bbbee5930d0918aace2cce140fade9202827941bdfa",
+          "vectorScore": 0.7060316871461322,
+          "sources": [
+            {
+              "sectionId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79",
+              "documentId": "dual-index-demo",
+              "sourcePath": "dual-index-article.mdx",
+              "headingPath": [
+                {
+                  "depth": 2,
+                  "title": "双索引",
+                  "sectionId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79"
+                }
+              ],
+              "sectionRevision": "1169eed9554be46db21de204ecd6ed041bf024258ff1cfc082a504de15ea3dfe"
+            }
+          ]
+        }
+      ],
+      "label": "S2",
+      "rerankScore": 0.9968254566192627
+    },
+    {
+      "id": "index-b0217b29d794d4bd5430b69ac298f9785e8b2565c22a0f72b3c8261fa7796abe",
+      "title": "Wiki 索引",
+      "text": "实体：Wiki 索引\n索引：用于定位概念和实体的索引。\n\n事实：\nChunk 索引用于定位原文，Wiki 索引用于定位概念和实体。\n两类索引使用同一个向量模型。\n\n关系：\nChunk 索引 → Wiki 索引（并列索引）：Chunk 索引与 Wiki 索引是两类用途不同的索引，分别定位原文、定位概念和实体。\nWiki 索引 → 向量模型（使用）：Wiki 索引使用该向量模型。",
+      "matches": [
+        {
+          "indexId": "index-b0217b29d794d4bd5430b69ac298f9785e8b2565c22a0f72b3c8261fa7796abe",
+          "kind": "wiki",
+          "sourceId": "wiki-node-921fe270f1012685184588ec06d7dc8a2de8335df91fb67e52eeef4c3ce148c1",
+          "vectorScore": 0.7279547886821618,
+          "sources": [
+            {
+              "sectionId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79",
+              "documentId": "dual-index-demo",
+              "sourcePath": "dual-index-article.mdx",
+              "headingPath": [
+                {
+                  "depth": 2,
+                  "title": "双索引",
+                  "sectionId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79"
+                }
+              ],
+              "sectionRevision": "1169eed9554be46db21de204ecd6ed041bf024258ff1cfc082a504de15ea3dfe"
+            }
+          ]
+        }
+      ],
+      "label": "S3",
+      "rerankScore": 0.9968083500862122
+    },
+    {
+      "id": "index-1b382ee8f4fa20e4acede0d931327b848555ac5ce71768ce954d67f213f593c3",
+      "title": "Chunk 索引",
+      "text": "实体：Chunk 索引\n索引：用于定位原文的索引。\n\n事实：\nChunk 索引用于定位原文，Wiki 索引用于定位概念和实体。\n两类索引使用同一个向量模型。\n\n关系：\nChunk 索引 → Wiki 索引（并列索引）：Chunk 索引与 Wiki 索引是两类用途不同的索引，分别定位原文、定位概念和实体。\nChunk 索引 → 向量模型（使用）：Chunk 索引使用该向量模型。",
+      "matches": [
+        {
+          "indexId": "index-1b382ee8f4fa20e4acede0d931327b848555ac5ce71768ce954d67f213f593c3",
+          "kind": "wiki",
+          "sourceId": "wiki-node-9279cf858a03a93f5fe102ccf14546c79b85f7c462ef6e6fc680c972f7ffa5dc",
+          "vectorScore": 0.7101178419730525,
+          "sources": [
+            {
+              "sectionId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79",
+              "documentId": "dual-index-demo",
+              "sourcePath": "dual-index-article.mdx",
+              "headingPath": [
+                {
+                  "depth": 2,
+                  "title": "双索引",
+                  "sectionId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79"
+                }
+              ],
+              "sectionRevision": "1169eed9554be46db21de204ecd6ed041bf024258ff1cfc082a504de15ea3dfe"
+            }
+          ]
+        }
+      ],
+      "label": "S4",
+      "rerankScore": 0.9950161576271057
+    },
+    {
+      "id": "index-50bd6b31d9040d126b7cdd469be4c67d826906d684c5707cc43a580e10b08c39",
+      "title": "向量模型",
+      "text": "概念：向量模型\n两类索引共用的同一向量模型。\n\n事实：\n两类索引使用同一个向量模型。\n\n关系：\nChunk 索引 → 向量模型（使用）：Chunk 索引使用该向量模型。\nWiki 索引 → 向量模型（使用）：Wiki 索引使用该向量模型。",
+      "matches": [
+        {
+          "indexId": "index-50bd6b31d9040d126b7cdd469be4c67d826906d684c5707cc43a580e10b08c39",
+          "kind": "wiki",
+          "sourceId": "wiki-node-450c58d36ef7406ca95f10dac0c49b74f8b6fc882992c11a59db0f7bce6e493d",
+          "vectorScore": 0.5797382860985848,
+          "sources": [
+            {
+              "sectionId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79",
+              "documentId": "dual-index-demo",
+              "sourcePath": "dual-index-article.mdx",
+              "headingPath": [
+                {
+                  "depth": 2,
+                  "title": "双索引",
+                  "sectionId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79"
+                }
+              ],
+              "sectionRevision": "1169eed9554be46db21de204ecd6ed041bf024258ff1cfc082a504de15ea3dfe"
+            }
+          ]
+        }
+      ],
+      "label": "S5",
+      "rerankScore": 0.14863750338554382
+    }
+  ],
+  "snapshotRevision": "695d55d108515f733d373259b8e98368de50ef5f797535c6da85f71f3f770ab5",
+  "counts": {
+    "chunks": 2,
+    "wikiNodes": 10,
+    "merged": 12,
+    "duplicates": 0,
+    "selected": 5
+  },
+  "embedding": {
+    "provider": "siliconflow",
+    "model": "BAAI/bge-m3",
+    "dimensions": 1024,
+    "usage": {
+      "inputTokens": 20,
+      "totalTokens": 20
+    },
+    "requestId": "ti_hr2mbp1df59h6juq0n"
+  },
+  "rerank": {
+    "provider": "siliconflow",
+    "model": "BAAI/bge-reranker-v2-m3",
+    "results": [
+      {
+        "index": 0,
+        "score": 0.9983435869216919
+      },
+      {
+        "index": 4,
+        "score": 0.9968254566192627
+      },
+      {
+        "index": 2,
+        "score": 0.9968083500862122
+      },
+      {
+        "index": 3,
+        "score": 0.9950161576271057
+      },
+      {
+        "index": 5,
+        "score": 0.14863750338554382
+      }
+    ],
+    "usage": {
+      "inputTokens": 1362,
+      "outputTokens": 0
+    },
+    "requestId": "ti_jryes3fupit7xv19uw"
+  },
+  "generation": {
+    "id": "f1f4af8b-c653-4d8b-ac9f-53975fcff36c",
+    "provider": "deepseek",
+    "model": "deepseek-flash",
+    "finishReason": "stop",
+    "usage": {
+      "inputTokens": 762,
+      "outputTokens": 317,
+      "totalTokens": 1079
+    }
+  }
+}

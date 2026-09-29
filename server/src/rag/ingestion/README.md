@@ -13,6 +13,14 @@
 
 纯路径或行号移动不会安排模型调用和 Chunk 重建；改名或换父级表现为删除加新增。文档标题、元数据和跨节引用定义变化可能影响多个 Section。身份归并映射改变单独调用 `updateWiki`，不影响 Chunk。
 
-本模块不执行任务、不持久化、不调用模型，不构建 embeddingText 或向量记录。函数只计算原文变化；切分配置、提示词或模型升级需要调用方显式安排受影响范围的重建。
+`planSectionChanges` 不执行任务、不持久化、不调用模型，不构建 embeddingText 或向量记录。它只计算原文变化；切分配置、提示词或模型升级需要调用方显式安排受影响范围的重建。
 
 错误使用统一 `AppError` 与 `INGESTION_ERROR_CODES`。单测位于 `server/test/ingestion.test.mjs`。
+
+## 双索引写入
+
+`indexAndStore(input, embeddingClient, store, options)` 接收完整知识库范围的 `{ chunks, wiki }`，构造 embeddingText，读取当前数据库版本，生成全部向量，最后调用 `store.replaceSnapshot` 在一个事务中更新 Chunk / Wiki 向量。返回 `{ documents, vectors, stored }`，便于调用方报告各阶段数据。
+
+`input` 是整个知识库的当前快照，不是单份文档增量。已有其他文档时必须一并提供它们当前的 Chunk 和 Wiki 数据；缺失的旧记录会被删除。多个任务基于同一数据库版本工作时，只允许一个提交，其他任务明确失败，不自动重试模型或覆盖新版本。模型调用失败不会写数据库。
+
+向量存储使用 [PgVectorStore](../vector-store/README.md)，复用已有 `buildIndexDocuments` / `embedDualIndex`。LLM 知识提取仍由调用方通过 DeepSeek 的 `KnowledgeEnricher` 先完成；本入口不重复提取或自动加载用户目录。原始文档、Section / Wiki 完整对象的持久化、文档级增量入库调度及 HTTP 接口仍待实现。

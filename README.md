@@ -1,6 +1,6 @@
 # 知序 · Knowledge Platform
 
-pnpm monorepo 的 Wiki RAG 知识库起步项目。当前包含前端工作台、HTTP 服务、OpenTelemetry、统一 LLM 适配接口、OpenAI / DeepSeek 接入，可扩展的文档标准化接入层、按标题的 Section Split 、结构化 Knowledge Enrichment、跨节 Wiki 聚合、独立 Chunk Build、增量影响计算及 SiliconFlow / Google Embedding 接入；其余 RAG 业务能力仍为目录占位。
+pnpm monorepo 的 Wiki RAG 知识库起步项目。当前包含前端工作台、HTTP 服务、OpenTelemetry、统一 LLM 适配接口、OpenAI / DeepSeek 接入，可扩展的文档标准化接入层、按标题的 Section Split 、结构化 Knowledge Enrichment、跨节 Wiki 聚合、独立 Chunk Build、增量影响计算、SiliconFlow / Google Embedding 接入及 Chunk / Wiki 双索引向量生成及 pgvector 事务写入、双路检索、Rerank 与引用式问答；前端问答页面尚未接入。
 
 ## 启动
 
@@ -50,7 +50,7 @@ pnpm dev
 │   │   │       ├── wiki-nodes/     # Wiki 节点持久化
 │   │   │       └── models/         # 数据库记录模型
 │   │   ├── rag/                    # Wiki RAG 独立能力，Normalize / Split / Enrichment / Wiki / Chunk Build 已实现
-│   │   │   ├── ingestion/          # 增量影响计算，完整入库编排待实现
+│   │   │   ├── ingestion/          # 增量影响计算及完整快照的双索引生成/写入
 │   │   │   ├── normalization/      # 统一文档接入层与 Nextra MDX → AST 标准化
 │   │   │   ├── enrichment/         # LLM 结构化知识补充及校验
 │   │   │   ├── wiki/               # 跨节 Entity/Concept 聚合与增量更新
@@ -58,9 +58,10 @@ pnpm dev
 │   │   │   ├── sections/           # H1–H3 分节、来源与内容版本
 │   │   │   ├── chunking/           # 独立的 Token 预算 Chunk Build
 │   │   │   ├── embedding/          # SiliconFlow / Google 文本向量化接口
-│   │   │   ├── vector-store/       # RAG 向量存储与访问
+│   │   │   ├── indexing/           # Chunk / Wiki 文本构造、来源版本与双索引向量生成
+│   │   │   ├── vector-store/       # PostgreSQL / pgvector 事务写入、版本检查与精确检索
 │   │   │   ├── query/              # 问答链路编排
-│   │   │   ├── retrieval/          # Chunk 检索与 Section/语义节点回查（待实现）
+│   │   │   ├── retrieval/          # 双路结果合并去重与来源保留
 │   │   │   ├── rerank/             # Top 3 重排及对应模型接入
 │   │   │   └── generation/         # 基于上下文生成答案
 │   │   ├── llm/                    # 独立于具体 SDK 的文本生成能力
@@ -80,6 +81,8 @@ pnpm dev
 │       ├── chunk-build.test.mjs    # Token 预算、结构切分、重叠及来源
 │       ├── wiki.test.mjs           # 语义聚合、来源、身份映射与增量更新
 │       ├── embedding.test.mjs      # 两家 Embedding SDK 的本地 API 集成测试
+│       ├── indexing.test.mjs       # 双索引文本、来源版本、分批及失败边界
+│       ├── reports/dual-index/     # 简短文章真实调用的分步数据与报告
 │       ├── enrichment.test.mjs     # 知识提取、分类扩展和输出校验
 │       ├── section-split.test.mjs   # 层级切分、完整性、引用与不变性测试
 │       ├── normalization.test.mjs   # MDX 转换与扩展契约测试
@@ -115,14 +118,15 @@ HTTP → core/router → core/service → core/dao
 - `GET /api/health` 返回 `status`、`service`、`timestamp`；未知路由返回 JSON 404；错误响应带请求 ID。
 - 文档与统计当前为空状态，占位数值为 0；导入与发送按钮禁用，不执行上传或模型调用。
 
-已提供通用文本生成接口和 OpenAI SDK 适配器。已实现可扩展的 Normalization 接口和 Nextra MDX 适配器。已实现 H1–H3 分节、来源版本、结构化知识提取、跨节语义聚合、独立 Chunk Build 和增量影响计算。已接入 SiliconFlow 与 Google 的文本 Embedding，推荐模型见下文。尚未实现 Wiki 页面与持久化、Metadata Build、embeddingText、向量数据库、检索、Rerank、RAG 答案编排或持久化。
+已提供通用文本生成接口和 OpenAI / DeepSeek 适配器。已实现可扩展的 Normalization 接口和 Nextra MDX 适配器。已实现 H1–H3 分节、来源版本、结构化知识提取、跨节语义聚合、独立 Chunk Build 和增量影响计算。已接入 SiliconFlow 与 Google 的文本 Embedding，推荐模型见下文。已实现 Chunk 原文加本节 Wiki 信息的 embeddingText、Wiki 节点 embeddingText 和双索引向量生成。已接入本地 PostgreSQL / pgvector，原子写入双索引向量、文本与来源元数据。已提供 `POST /api/search`：Chunk / Wiki 双路各取 Top 30，合并去重后使用 SiliconFlow Rerank 取 Top 5，交给 DeepSeek 生成带引用的答案。Wiki 页面接入、原始文档持久化、Graph Expand 与自动文档级增量入库仍待实现。
 
 计划中的链路：
 
 ```text
 MDX → Normalized Document → Section（事实来源）
-Section → Chunk（检索单元）→ Metadata Build → Embedding → Vector Record → Vector DB
-Section → Knowledge Enrichment → Concept / Entity → Wiki / KG
+Section → Chunk + 本节 Wiki 信息 → Chunk embeddingText → Embedding → Chunk 向量
+Section → Knowledge Enrichment → Wiki Node → Wiki embeddingText → Embedding → Wiki 向量
+双索引向量 → PostgreSQL / pgvector（事务写入）
 问题 → Chunk 检索 → Section → 语义节点 → Graph Expand → Rerank / Context → Answer
 ```
 
@@ -296,7 +300,7 @@ pnpm dlx shadcn@latest add dialog
 
 `server/src/rag/normalization` 沿用 LLM 的 Adapter 注册模式，当前接入 `nextra-docs` 的 MDX：先解析 AST，再输出标准 Markdown / GFM AST、Markdown、纯文本、元数据和处理提示。支持图片、下载链接、Callout、嵌套字段表格等组件；不执行文档代码。
 
-使用示例、扩展约定和阅读顺序见 [Normalization 文档](server/src/rag/normalization/README.md)。本阶段只提供可调用的文档标准化接入层，没有 CLI 或目录导入。`Section Split`、`Knowledge Enrichment` 和 `Chunk Build` 已实现，独立 Embedding SDK 接入已实现；后续补齐 Metadata Build、embeddingText 拼装、Vector Record、pgvector 写入及链路编排。
+使用示例、扩展约定和阅读顺序见 [Normalization 文档](server/src/rag/normalization/README.md)。本阶段只提供可调用的文档标准化接入层，没有 CLI 或目录导入。`Section Split`、`Knowledge Enrichment` 和 `Chunk Build` 已实现，独立 Embedding SDK 和 `indexing` 双索引组合层已实现；pgvector 向量写入已实现，后续补齐原始文档持久化与完整文档级入库编排。
 
 ## 按标题切分
 
@@ -331,7 +335,7 @@ throw new AppError(
 
 ## Chunk Build
 
-`buildChunks(section, options?)` 独立按完整 Markdown 的 Token 预算构建检索 Chunk。结果仅关联 documentId、sectionId、sectionRevision 及同节前后片段，不携带 Wiki 或 enrichment。默认 800 Token、无 overlap；详见 [Chunk Build](server/src/rag/chunking/README.md)。当前不生成 embeddingText 或数据库记录。
+`buildChunks(section, options?)` 独立按完整 Markdown 的 Token 预算构建检索 Chunk。结果仅关联 documentId、sectionId、sectionRevision 及同节前后片段，不携带 Wiki 或 enrichment。默认 800 Token、无 overlap；详见 [Chunk Build](server/src/rag/chunking/README.md)。Chunk Build 本身不生成 embeddingText 或数据库记录；文本和来源元数据由独立 `indexing` 层组合。
 
 ## 增量影响计算
 
@@ -339,4 +343,44 @@ throw new AppError(
 
 ## Embedding
 
-`rag/embedding` 提供 `EmbeddingClient`、`SiliconFlowEmbeddingAdapter` 和 `GoogleEmbeddingAdapter`，统一将文本数组转换为有序向量，支持输出维度校验、取消、超时、错误转换和追踪。SiliconFlow 沿用 `EMBEDDING_*` 配置，推荐免费模型 `BAAI/bge-m3`；Google 使用 `GOOGLE_API_KEY` / `GOOGLE_EMBEDDING_MODEL`，推荐 `gemini-embedding-2`，标准接口在 Free Tier 下免费。模型每次显式传入，付费项目按平台计费层级处理。完整配置、官方价格来源与调用示例见 [Embedding 文档](server/src/rag/embedding/README.md)。当前仅完成独立 SDK 能力，未接入 embeddingText 构建、向量数据库或入库流程。
+`rag/embedding` 提供 `EmbeddingClient`、`SiliconFlowEmbeddingAdapter` 和 `GoogleEmbeddingAdapter`，统一将文本数组转换为有序向量，支持输出维度校验、取消、超时、错误转换和追踪。SiliconFlow 沿用 `EMBEDDING_*` 配置，推荐免费模型 `BAAI/bge-m3`；Google 使用 `GOOGLE_API_KEY` / `GOOGLE_EMBEDDING_MODEL`，推荐 `gemini-embedding-2`，标准接口在 Free Tier 下免费。模型每次显式传入，付费项目按平台计费层级处理。完整配置、官方价格来源与调用示例见 [Embedding 文档](server/src/rag/embedding/README.md)。文本构造与双索引向量组合已由独立 `rag/indexing` 实现，向量数据库写入已由 `rag/vector-store` 接入，完整文档级入库流程仍待实现。
+
+## Chunk / Wiki 双索引
+
+`rag/indexing` 的 `buildIndexDocuments({ chunks, wiki }, options?)` 构造两类输入：Chunk 保留完整 Markdown 原文，附加文档标题、章节路径和本节 Wiki 节点的名称、别名、描述；Wiki 节点使用自身描述、事实与有方向的关系名称。路径、内部 ID、版本、生成请求 ID 只保留为来源元数据，不加入向量文本。
+
+`embedDualIndex(documents, embeddingClient, { provider, model, ... })` 在同一模型空间顺序分批，返回独立的 `chunks` / `wikiNodes` 向量数组及批次用量。默认每批 32 条，任何批次失败都不会返回半套索引。两类结果保留 Section ID/revision，可在后续检索时回查原文。
+
+构造结果使用稳定 ID、来源版本、文本指纹；向量版本再绑定供应商、请求/实际模型与维度。pending 节保留原文索引，不复用旧 Wiki 知识。文本默认按 cl100k_base 基线检查完整 8000 Token 预算，可传目标模型的 `countTokens`；这不是 BGE 或 Google 的精确分词上限，真正模型限制仍由供应商校验。超限明确失败，不自动截断。
+
+使用 DeepSeek 做知识提取的组合示例见 [Indexing 文档](server/src/rag/indexing/README.md)。短文真实测试的各阶段数据、实际 embeddingText、向量和内存相似度检查见 [双索引报告](server/test/reports/dual-index/report.md)。`rag/ingestion.indexAndStore` 已连接 pgvector 事务写入；自动文档级增量入库和 HTTP 索引接口仍待实现；问答接口见 [双路检索与回答](server/src/rag/query/README.md)。
+
+## 本地向量数据库
+
+本地使用 PostgreSQL 17 + pgvector 0.8.6，配置在根目录 `compose.yaml`，仅监听 `127.0.0.1:5432`，持久化到 Docker 卷 `knowledge-platform_vector-data`。在 `server/.env` 中设置 `VECTOR_DB_PASSWORD` 和对应的 `VECTOR_DATABASE_URL`（见 `.env.example`）；当前开发机已完成配置。
+
+```sh
+pnpm db:up
+pnpm db:status
+pnpm db:stop
+```
+
+`db:stop` 只停止服务，保留数据；需要 Docker Desktop 运行。应用启动不会自动初始化数据库或调用模型，使用 `PgVectorStore.initialize()` 显式创建扩展与表。`VECTOR_DATABASE_URL` 仅供服务端使用，不应暴露给前端。
+
+`indexAndStore({ chunks, wiki }, embeddingClient, store, options)` 构造文本、生成向量并写入完整知识库快照；两类向量的新增、更新和旧记录删除在同一事务内完成，使用预期版本避免并发覆盖。**输入必须包含该知识库全部当前 Chunk 和 Wiki 节点，不能直接把单文档增量当成完整快照传入。** 原文、Section 和 Wiki 完整对象的独立持久化仍待实现；当前保存的是向量、embeddingText、来源引用和版本。
+
+接口、查询示例和数据库测试见 [Vector Store 文档](server/src/rag/vector-store/README.md)。实测数据已写入 `knowledge` 数据库，知识库 ID 为 `dual-index-demo`，共 2 条 Chunk、10 条 Wiki 向量；详见 [数据库验证数据](server/test/reports/dual-index/09-database.json)。
+
+## 双路检索与回答
+
+`POST /api/search` 接收知识库 ID 和问题，两路分别检索 Chunk embeddingText 与 Wiki 节点向量，各取最多 30 条，按 ID / 完全相同的文本去重，使用 `BAAI/bge-reranker-v2-m3` 重排取前 5 条，再交给 DeepSeek 汇总回答。返回答案、引用来源、各阶段数量、向量分数、重排分数及模型用量。
+
+启动数据库和服务后，可直接查询已有示例知识库：
+
+```bash
+curl http://127.0.0.1:3000/api/search \
+  -H 'Content-Type: application/json' \
+  -d '{"knowledgeBaseId":"dual-index-demo","question":"哪种索引用于定位概念和实体？"}'
+```
+
+Rerank 读取 `RERANK_MODEL`，凭据和地址默认复用 `EMBEDDING_API_KEY` / `EMBEDDING_BASE_URL`，也可单独设置 `RERANK_API_KEY` / `RERANK_BASE_URL`。答案模型读取 `DEEPSEEK_MODEL`。向量查询沿用知识库写入时记录的 Embedding 模型，避免配置改动造成空间不一致。具体契约与限制见 [Query 文档](server/src/rag/query/README.md)。

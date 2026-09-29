@@ -1,0 +1,22 @@
+name: knowledge-platform
+
+services:
+  vector-db:
+    image: pgvector/pgvector:0.8.6-pg17
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:5432:5432'
+    environment:
+      POSTGRES_DB: knowledge
+      POSTGRES_USER: knowledge
+      POSTGRES_PASSWORD: ${VECTOR_DB_PASSWORD:?Set VECTOR_DB_PASSWORD in server/.env}
+    volumes:
+      - vector-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U knowledge -d knowledge]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  vector-data:

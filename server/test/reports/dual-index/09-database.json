@@ -1,0 +1,240 @@
+{
+  "backend": "PostgreSQL 17 + pgvector 0.8.6",
+  "address": "127.0.0.1:5432",
+  "database": "knowledge",
+  "source": "07-vectors.json",
+  "reusedExistingVectors": true,
+  "written": {
+    "knowledgeBaseId": "dual-index-demo",
+    "revision": "695d55d108515f733d373259b8e98368de50ef5f797535c6da85f71f3f770ab5",
+    "provider": "siliconflow",
+    "requestedModel": "BAAI/bge-m3",
+    "model": "BAAI/bge-m3",
+    "dimensions": 1024,
+    "chunks": 2,
+    "wikiNodes": 10
+  },
+  "repeatedWriteSameRevision": true,
+  "question": "哪种索引用于定位概念和实体？",
+  "chunkHits": [
+    {
+      "document": {
+        "id": "index-4b94ed400dca5e454fdbda296d78cdbf35edb0f6380fb0026786f2975cee053f",
+        "kind": "chunk",
+        "title": "星河笔记检索说明",
+        "sources": [
+          {
+            "sectionId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79",
+            "documentId": "dual-index-demo",
+            "sourcePath": "dual-index-article.mdx",
+            "headingPath": [
+              {
+                "depth": 2,
+                "title": "双索引",
+                "sectionId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79"
+              }
+            ],
+            "sectionRevision": "1169eed9554be46db21de204ecd6ed041bf024258ff1cfc082a504de15ea3dfe"
+          }
+        ],
+        "sourceId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79#chunk-0",
+        "wikiNodes": [
+          {
+            "id": "wiki-node-450c58d36ef7406ca95f10dac0c49b74f8b6fc882992c11a59db0f7bce6e493d",
+            "revision": "c2599bbb25431c80e71708b67e7049af427f0244d11b5a956cdeddee3af2d099"
+          },
+          {
+            "id": "wiki-node-921fe270f1012685184588ec06d7dc8a2de8335df91fb67e52eeef4c3ce148c1",
+            "revision": "4f5ec339bfbaca464ae0be219e63aeb48c2b8a38a5d72deb8589235d77855ef1"
+          },
+          {
+            "id": "wiki-node-9279cf858a03a93f5fe102ccf14546c79b85f7c462ef6e6fc680c972f7ffa5dc",
+            "revision": "48c5f71c55ee18939e04149dd618832821b415829e0993d15d0c375f46df7184"
+          },
+          {
+            "id": "wiki-node-c200aa422ff4480ca3085bbbee5930d0918aace2cce140fade9202827941bdfa",
+            "revision": "c60849a0bdb691170b4d47b774123218cc77d4a1033fdab3d938e6c68a782cfd"
+          },
+          {
+            "id": "wiki-node-f2ccbfd8dcdaa370bbf3127814655b54fc19bd033d84a32ca0bb65649e573578",
+            "revision": "8adb19b98da8de9b5333e300bb2137023aee410b867ed3d680673dfb9815cb4c"
+          }
+        ],
+        "tokenCount": 245,
+        "textRevision": "a38d32addb15c051e245060737ce622ad8de00985aadcf9dda00056ae739be7c",
+        "embeddingText": "文档：星河笔记检索说明\n\n章节：双索引\n\n原文：\n## 双索引\n\nChunk 索引用于定位原文，Wiki 索引用于定位概念和实体。两类索引使用同一个向量模型，检索结果通过章节关联回查原文。\n\n\n本节知识信息：\n实体：Chunk 索引\n索引：用于定位原文的索引。\n\n实体：Wiki 索引\n索引：用于定位概念和实体的索引。\n\n概念：双索引\n由 Chunk 索引和 Wiki 索引构成的索引机制，分别用于定位原文、定位概念和实体。\n\n概念：向量模型\n两类索引共用的同一向量模型。\n\n概念：章节关联回查原文\n检索结果通过章节关联回查原文的机制。",
+        "sourceRevision": "1169eed9554be46db21de204ecd6ed041bf024258ff1cfc082a504de15ea3dfe",
+        "knowledgeBaseId": "dual-index-demo",
+        "knowledgeStatus": "ready",
+        "embeddingRevision": "0f5b3c4f821a018615e90b0b88ab3d71bdd34ed6afb6888c372b908ee73f53eb"
+      },
+      "score": 0.6574674044530142
+    },
+    {
+      "document": {
+        "id": "index-d2c80166b8b6d879a76852d26373b75084029e05b1c5947852f6186a256ddfd4",
+        "kind": "chunk",
+        "title": "星河笔记检索说明",
+        "sources": [
+          {
+            "sectionId": "section-6631df5313aef3d7ada1db1cebe52093116660de95b18fa832e7a92ffffb1163",
+            "documentId": "dual-index-demo",
+            "sourcePath": "dual-index-article.mdx",
+            "headingPath": [
+              {
+                "depth": 2,
+                "title": "内容处理",
+                "sectionId": "section-6631df5313aef3d7ada1db1cebe52093116660de95b18fa832e7a92ffffb1163"
+              }
+            ],
+            "sectionRevision": "40e27f5cdbf15e86614c27d37be29d39490224c3588fe44cc51d3a1c6c39c3e5"
+          }
+        ],
+        "sourceId": "section-6631df5313aef3d7ada1db1cebe52093116660de95b18fa832e7a92ffffb1163#chunk-0",
+        "wikiNodes": [
+          {
+            "id": "wiki-node-02a0e8a5715354080ced782d6d38e4be70c85f1e2be347a5bce084174ec282fd",
+            "revision": "afb52d2bc22548fe030cf884950a15a98f9e41c85fe2f621c5f212831309843d"
+          },
+          {
+            "id": "wiki-node-28d28da2e1ca46567574220f97e56c6f2638361f3bfb9eedd9dc6600e988af38",
+            "revision": "391b1cf89c7a0aa5cb3b656a295fca5aa0f7a7dfcdbd3b32d533f8cb5c0da7b4"
+          },
+          {
+            "id": "wiki-node-3870e7efd51e621e5b9d9e9ec6de1e8b023f351d49f43e2f1b01993c0af9d69d",
+            "revision": "64590ae8816a322ab8a18de6504c3cb5cc0ac601fe99303cc51766eeead06ff7"
+          },
+          {
+            "id": "wiki-node-542787b04a1fcf437fca972c598b96f0aa36fbb386f425297b7a2a0143404003",
+            "revision": "86122b39143d226b990ef12fcce29b5f3a35b439ba60cb87fcde20213efa904e"
+          },
+          {
+            "id": "wiki-node-e7afd48032e2c9930fa87785eccba61742c4dc6cbca2f86b841bed434ea86c1a",
+            "revision": "a449e780744a2b65846325c638f39bf60c11ddb180b0cef87563a09e98da6d04"
+          }
+        ],
+        "tokenCount": 209,
+        "textRevision": "706528223d62b6ea0642f718bc44154a098178e40ad172f5751dc9012d7b7ba4",
+        "embeddingText": "文档：星河笔记检索说明\n\n章节：内容处理\n\n原文：\n## 内容处理\n\n星河笔记将文档按标题切分为章节。章节原文用于生成 Chunk，语义知识用于构建 Wiki 节点。\n\n\n本节知识信息：\n实体：Chunk\n处理产物：由章节原文生成的单元。\n\n实体：Wiki 节点\n知识节点：由语义知识构建的节点。\n\n实体：星河笔记\n产品：负责内容处理的系统，将文档按标题切分为章节。\n\n概念：章节切分\n将文档按标题切分为章节的处理方式。\n\n概念：语义知识\n用于构建 Wiki 节点的知识。",
+        "sourceRevision": "40e27f5cdbf15e86614c27d37be29d39490224c3588fe44cc51d3a1c6c39c3e5",
+        "knowledgeBaseId": "dual-index-demo",
+        "knowledgeStatus": "ready",
+        "embeddingRevision": "b20640b19df35528c5865e509697b1880dd639cdf9124f0abff7d3b0ad55027f"
+      },
+      "score": 0.3987661837796146
+    }
+  ],
+  "wikiHits": [
+    {
+      "document": {
+        "id": "index-b0217b29d794d4bd5430b69ac298f9785e8b2565c22a0f72b3c8261fa7796abe",
+        "kind": "wiki",
+        "title": "Wiki 索引",
+        "sources": [
+          {
+            "sectionId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79",
+            "documentId": "dual-index-demo",
+            "sourcePath": "dual-index-article.mdx",
+            "headingPath": [
+              {
+                "depth": 2,
+                "title": "双索引",
+                "sectionId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79"
+              }
+            ],
+            "sectionRevision": "1169eed9554be46db21de204ecd6ed041bf024258ff1cfc082a504de15ea3dfe"
+          }
+        ],
+        "sourceId": "wiki-node-921fe270f1012685184588ec06d7dc8a2de8335df91fb67e52eeef4c3ce148c1",
+        "wikiNodes": [
+          {
+            "id": "wiki-node-921fe270f1012685184588ec06d7dc8a2de8335df91fb67e52eeef4c3ce148c1",
+            "revision": "4f5ec339bfbaca464ae0be219e63aeb48c2b8a38a5d72deb8589235d77855ef1"
+          }
+        ],
+        "tokenCount": 159,
+        "textRevision": "ac45329e923ec72f80c3583af5ce77efb29e190324cfd22d77bb8c951a36f3b6",
+        "embeddingText": "实体：Wiki 索引\n索引：用于定位概念和实体的索引。\n\n事实：\nChunk 索引用于定位原文，Wiki 索引用于定位概念和实体。\n两类索引使用同一个向量模型。\n\n关系：\nChunk 索引 → Wiki 索引（并列索引）：Chunk 索引与 Wiki 索引是两类用途不同的索引，分别定位原文、定位概念和实体。\nWiki 索引 → 向量模型（使用）：Wiki 索引使用该向量模型。",
+        "sourceRevision": "4f5ec339bfbaca464ae0be219e63aeb48c2b8a38a5d72deb8589235d77855ef1",
+        "knowledgeBaseId": "dual-index-demo",
+        "knowledgeStatus": "ready",
+        "embeddingRevision": "de3e63be65749b080cb950c46211c9abeae6810962ccdcf92dd689b9bae472e8"
+      },
+      "score": 0.6356531164439492
+    },
+    {
+      "document": {
+        "id": "index-1b382ee8f4fa20e4acede0d931327b848555ac5ce71768ce954d67f213f593c3",
+        "kind": "wiki",
+        "title": "Chunk 索引",
+        "sources": [
+          {
+            "sectionId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79",
+            "documentId": "dual-index-demo",
+            "sourcePath": "dual-index-article.mdx",
+            "headingPath": [
+              {
+                "depth": 2,
+                "title": "双索引",
+                "sectionId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79"
+              }
+            ],
+            "sectionRevision": "1169eed9554be46db21de204ecd6ed041bf024258ff1cfc082a504de15ea3dfe"
+          }
+        ],
+        "sourceId": "wiki-node-9279cf858a03a93f5fe102ccf14546c79b85f7c462ef6e6fc680c972f7ffa5dc",
+        "wikiNodes": [
+          {
+            "id": "wiki-node-9279cf858a03a93f5fe102ccf14546c79b85f7c462ef6e6fc680c972f7ffa5dc",
+            "revision": "48c5f71c55ee18939e04149dd618832821b415829e0993d15d0c375f46df7184"
+          }
+        ],
+        "tokenCount": 154,
+        "textRevision": "4f139212263907fcd6af46a40eb13c983bcb5301306addbbea1f57df25a042cb",
+        "embeddingText": "实体：Chunk 索引\n索引：用于定位原文的索引。\n\n事实：\nChunk 索引用于定位原文，Wiki 索引用于定位概念和实体。\n两类索引使用同一个向量模型。\n\n关系：\nChunk 索引 → Wiki 索引（并列索引）：Chunk 索引与 Wiki 索引是两类用途不同的索引，分别定位原文、定位概念和实体。\nChunk 索引 → 向量模型（使用）：Chunk 索引使用该向量模型。",
+        "sourceRevision": "48c5f71c55ee18939e04149dd618832821b415829e0993d15d0c375f46df7184",
+        "knowledgeBaseId": "dual-index-demo",
+        "knowledgeStatus": "ready",
+        "embeddingRevision": "f796e9a5fe49ebbf667a2e4c1df006bf4ffb2fd16ad6b9d297d69018d5a7358f"
+      },
+      "score": 0.6198899292814691
+    },
+    {
+      "document": {
+        "id": "index-0e7003849690835a7618abd543cb8670ddd326777b6799daf90d3bd98ad20c99",
+        "kind": "wiki",
+        "title": "双索引",
+        "sources": [
+          {
+            "sectionId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79",
+            "documentId": "dual-index-demo",
+            "sourcePath": "dual-index-article.mdx",
+            "headingPath": [
+              {
+                "depth": 2,
+                "title": "双索引",
+                "sectionId": "section-da928a5eadb533b538b308ba5125fd4830cb3a2e7edcbeb55ff063749dd93a79"
+              }
+            ],
+            "sectionRevision": "1169eed9554be46db21de204ecd6ed041bf024258ff1cfc082a504de15ea3dfe"
+          }
+        ],
+        "sourceId": "wiki-node-c200aa422ff4480ca3085bbbee5930d0918aace2cce140fade9202827941bdfa",
+        "wikiNodes": [
+          {
+            "id": "wiki-node-c200aa422ff4480ca3085bbbee5930d0918aace2cce140fade9202827941bdfa",
+            "revision": "c60849a0bdb691170b4d47b774123218cc77d4a1033fdab3d938e6c68a782cfd"
+          }
+        ],
+        "tokenCount": 49,
+        "textRevision": "62d115a9d9145c3e0978a6f3524ca9a78b4652ccffb1047db33a0ce86375830e",
+        "embeddingText": "概念：双索引\n由 Chunk 索引和 Wiki 索引构成的索引机制，分别用于定位原文、定位概念和实体。",
+        "sourceRevision": "c60849a0bdb691170b4d47b774123218cc77d4a1033fdab3d938e6c68a782cfd",
+        "knowledgeBaseId": "dual-index-demo",
+        "knowledgeStatus": "ready",
+        "embeddingRevision": "4d142b8405023059ed7e7393126b9c1ebd91637f25f74d5fb86ade9ca2e78ff5"
+      },
+      "score": 0.6053701529568718
+    }
+  ]
+}

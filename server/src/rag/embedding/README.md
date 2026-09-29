@@ -53,7 +53,7 @@ console.log(documentVectors.dimensions, googleVectors.dimensions)
 
 `input` 始终为非空字符串数组，返回 `embeddings[i]` 对应 `input[i]`。空白文本、无效维度会在调用前失败；内容不会被 trim、切分或截断。两家都支持 `signal` 取消，适配器的 `timeoutMs` 默认 60000；SDK 和客户端均不自动重试，不自动切换模型或供应商。错误中的 `retryable` 只提供给上层判断。
 
-当前适配器限制每次 SiliconFlow 最多 32 条、Google 最多 100 条；超过时明确失败，调用方负责分批。模型 Token 上限由上游校验，不使用 Chunk Build 的 cl100k_base 计数冒充目标模型的真实 Token 数。Token 计数与 embeddingText 组装仍由后续入库流程处理。
+当前适配器限制每次 SiliconFlow 最多 32 条、Google 最多 100 条；超过时明确失败，调用方负责分批。模型 Token 上限由上游校验，不使用 Chunk Build 的 cl100k_base 计数冒充目标模型的真实 Token 数。`indexing` 层已实现显式分批、完整 embeddingText 构造和可配置 Token 预算检查，默认 cl100k_base 仅作为基线。
 
 ## 响应与供应商差异
 
@@ -65,7 +65,7 @@ console.log(documentVectors.dimensions, googleVectors.dimensions)
 - Gemini Embedding 2 支持 128–3072 维，官方建议 768、1536 或 3072，并自动归一化缩短后的向量。适配器不再次归一化、截取或补零；若显式选择旧版 `gemini-embedding-001`，使用缩短维度时需由调用方按官方说明归一化。
 - 不同模型的向量空间不能混用，即使维度相同也不能放在同一检索索引中直接比较。更换模型、维度或文本处理方式时，后续入库流程需要重新生成对应向量。
 
-当前仅实现传入文本到向量的 SDK 接入，不自动加入 Google 检索任务前缀，也不传 `taskType`；未来构建检索输入时应按目标模型的官方规则同时处理文档与查询。Metadata Build、embeddingText、Vector Record、向量数据库写入、入库编排和 HTTP 接口尚未实现。
+当前仅实现传入文本到向量的 SDK 接入，不自动加入 Google 检索任务前缀，也不传 `taskType`；未来构建检索输入时应按目标模型的官方规则同时处理文档与查询。[indexing](../indexing/README.md) 已实现 Chunk / Wiki 的来源元数据、embeddingText 及内存双索引向量产物；[vector-store](../vector-store/README.md) 已提供 PostgreSQL / pgvector 写入和数据库级查询；原始文档持久化、完整文档级入库编排和 HTTP 接口尚未实现。
 
 ## 错误与验证
 
