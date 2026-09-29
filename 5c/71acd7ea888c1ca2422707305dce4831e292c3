@@ -1,0 +1,74 @@
+server/src/rag/ingestion/ingest-document.ts
+  s_c6fd3c1d7b431e::t_69451c96816c21 1-27,29,31-38,40,42-56,59-71
+  s_c6fd3c1d7b431e::t_dfd18da9784efd 28,30,39,41
+  s_c6fd3c1d7b431e::t_abf901c00f8863 57-58
+server/src/rag/vector-store/README.md
+  s_c6fd3c1d7b431e::t_1bb6465b1c0c05 98-101
+server/src/rag/query/index.ts
+  s_c6fd3c1d7b431e::t_abf901c00f8863 54-56
+  s_c6fd3c1d7b431e::t_180c151b342f95 36,50-53,57
+server/src/rag/vector-store/types.ts
+  s_c6fd3c1d7b431e::t_2e81bbdcc26c06 57-61
+server/src/core/router/documents.ts
+  s_c6fd3c1d7b431e::t_64bcf678685afc 1-13
+server/test/document-api.test.mjs
+  s_c6fd3c1d7b431e::t_928fe6c731a0da 66
+  s_c6fd3c1d7b431e::t_abf901c00f8863 148-149
+  s_c6fd3c1d7b431e::t_be97d651e0c762 1-65,67-147,150-154
+server/src/rag/vector-store/pgvector.ts
+  s_c6fd3c1d7b431e::t_2e81bbdcc26c06 90-101,129-140,156-168
+server/src/rag/ingestion/index.ts
+  s_c6fd3c1d7b431e::t_180c151b342f95 7-9
+server/src/rag/query/README.md
+  s_c6fd3c1d7b431e::t_1bb6465b1c0c05 8,17,35,37
+server/src/rag/vector-store/index.ts
+  s_c6fd3c1d7b431e::t_2e81bbdcc26c06 5
+server/src/rag/indexing/README.md
+  s_c6fd3c1d7b431e::t_1bb6465b1c0c05 101
+README.md
+  s_c6fd3c1d7b431e::t_1bb6465b1c0c05 346,356,376,387-400
+server/src/core/README.md
+  s_c6fd3c1d7b431e::t_1bb6465b1c0c05 1-74
+AGENTS.md
+  s_c6fd3c1d7b431e::t_1bb6465b1c0c05 13,80,209-216
+server/src/rag/ingestion/README.md
+  s_c6fd3c1d7b431e::t_1bb6465b1c0c05 26-34
+server/test/vector-store.test.mjs
+  s_c6fd3c1d7b431e::t_dd6a4a8490db81 157-197
+server/src/core/service/model-options.ts
+  s_c6fd3c1d7b431e::t_dfd18da9784efd 16,18
+  s_c6fd3c1d7b431e::t_69451c96816c21 1-15,17,19-68
+server/src/core/service/documents.ts
+  s_c6fd3c1d7b431e::t_64bcf678685afc 1-12,14,16-27
+  s_c6fd3c1d7b431e::t_dfd18da9784efd 13,15
+server/src/core/app.ts
+  s_c6fd3c1d7b431e::t_180c151b342f95 26,28
+  s_c6fd3c1d7b431e::t_abf901c00f8863 4,27,29-30
+server/src/error-codes.ts
+  s_c6fd3c1d7b431e::t_2e81bbdcc26c06 11-12,146-149
+server/src/core/service/search.ts
+  s_c6fd3c1d7b431e::t_180c151b342f95 8,15-16,22,24,27-28
+server/src/core/router/index.ts
+  s_c6fd3c1d7b431e::t_180c151b342f95 2,6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5c71acd7ea888c1ca2422707305dce4831e292c3",
+  "prompts": {},
+  "humans": {
+    "h_8d050896203f0f": {
+      "author": "qinghuan <1041220793@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_c6fd3c1d7b431e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0eaee-3740-7cf1-9250-1ecb79014ce4",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "qinghuan <1041220793@qq.com>"
+    }
+  }
+}
