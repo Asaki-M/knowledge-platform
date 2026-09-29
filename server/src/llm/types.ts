@@ -6,7 +6,7 @@ export interface LlmMessage {
 
 /** 与供应商无关的非流式生成输入，适配器不在请求之间维护会话状态。 */
 export interface LlmRequest {
-  /** 显式指定模型 ID；客户端不会自动读取 OPENAI_MODEL 作为默认值。 */
+  /** 显式指定模型 ID；客户端不会自动读取供应商的模型环境变量作为默认值。 */
   model: string
   messages: readonly LlmMessage[]
   /** 输出 Token 上限；具体计费及是否包含推理 Token 由目标模型决定。 */

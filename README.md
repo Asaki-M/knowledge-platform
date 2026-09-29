@@ -1,6 +1,6 @@
 # 知序 · Knowledge Platform
 
-pnpm monorepo 的 Wiki RAG 知识库起步项目。当前包含前端工作台、HTTP 服务、OpenTelemetry、统一 LLM 适配接口、OpenAI SDK 接入，可扩展的文档标准化接入层、按标题的 Section Split 、结构化 Knowledge Enrichment、跨节 Wiki 聚合、独立 Chunk Build、增量影响计算及 SiliconFlow / Google Embedding 接入；其余 RAG 业务能力仍为目录占位。
+pnpm monorepo 的 Wiki RAG 知识库起步项目。当前包含前端工作台、HTTP 服务、OpenTelemetry、统一 LLM 适配接口、OpenAI / DeepSeek 接入，可扩展的文档标准化接入层、按标题的 Section Split 、结构化 Knowledge Enrichment、跨节 Wiki 聚合、独立 Chunk Build、增量影响计算及 SiliconFlow / Google Embedding 接入；其余 RAG 业务能力仍为目录占位。
 
 ## 启动
 
@@ -198,8 +198,8 @@ HTTP 导出自动使用 `/v1/traces` 与 `/v1/logs`。SDK 同样支持 `http/pro
 模块职责和建议阅读顺序见 [LLM 阅读指南](server/src/llm/README.md)。
 
 ```text
-API Service / RAG → LlmClient → LlmAdapter → OpenAI SDK
-                                         → 其他模型 SDK（后续实现）
+API Service / RAG → LlmClient → OpenAIAdapter → OpenAI SDK Responses API
+                             → DeepSeekAdapter → OpenAI SDK Chat Completions API
 ```
 
 当前实现为非流式、无服务端会话状态的文本生成，支持 `system` / `user` / `assistant` 消息。每次调用传入所需的完整文本历史；不重放模型内部推理或工具调用记录。通用 LLM 的流式、多模态、工具调用和结构化输出尚未接入；Embedding 由独立的 `rag/embedding` 模块提供。
@@ -233,6 +233,30 @@ export async function generateAnswer(question: string) {
 ```
 
 适配器仅在实例化时读取 Key；公共模块导入和 HTTP 服务启动不会创建适配器或调用模型。`model` 始终显式传入，`OPENAI_MODEL` 只是上面示例的配置来源。
+
+DeepSeek 使用独立的 `DeepSeekAdapter`，读取 `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL`（默认 `https://api.deepseek.com`），通过已有 OpenAI SDK 调用 Chat Completions。显式构造参数优先于环境变量，不回退到 `OPENAI_*` 配置。
+
+当前选择 `DEEPSEEK_MODEL=deepseek-flash` 作为成本优先的起步模型；模型与价格以 [DeepSeek 官方文档](https://api-docs.deepseek.com/quick_start/pricing/) 为准。适配器不自动读取模型、不切换思考模式，沿用上游默认行为；公共响应只保留最终回答，不返回或重放 `reasoning_content`。输出预算是否包含推理 Token 由模型决定。
+
+```ts
+import process from 'node:process'
+import { DeepSeekAdapter, LlmClient } from './llm/index.js'
+
+export async function generateWithDeepSeek(question: string) {
+  const model = process.env.DEEPSEEK_MODEL
+  if (!model) {
+    throw new Error('DEEPSEEK_MODEL is required')
+  }
+  const llm = new LlmClient([new DeepSeekAdapter()])
+  return llm.generate({
+    provider: 'deepseek',
+    model,
+    messages: [{ role: 'user', content: question }],
+  })
+}
+```
+
+DeepSeek 同样支持 `timeoutMs` / `maxRetries`，默认每次尝试超时 60 秒、SDK 最多重试 2 次；缺少 Key 不影响公共模块导入和 HTTP 启动。
 
 统一输入包括 `model`、`messages`、可选 `maxOutputTokens`、`temperature` 和 `signal: AbortSignal`。不传采样参数时不向 SDK 添加默认值，具体模型是否支持这些参数由其 API 决定。
 

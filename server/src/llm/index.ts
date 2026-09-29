@@ -2,6 +2,8 @@
 export { LLM_ERROR_CODES } from '../error-codes.js'
 export type { LlmErrorCode } from '../error-codes.js'
 export { LlmClient } from './client.js'
+export type { DeepSeekAdapterOptions } from './providers/deepseek/index.js'
+export { DeepSeekAdapter } from './providers/deepseek/index.js'
 export type { OpenAIAdapterOptions } from './providers/openai/index.js'
 export { OpenAIAdapter } from './providers/openai/index.js'
 export type { LlmAdapter, LlmFinishReason, LlmGenerateRequest, LlmMessage, LlmRequest, LlmResponse, LlmUsage } from './types.js'

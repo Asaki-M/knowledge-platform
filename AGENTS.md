@@ -91,6 +91,7 @@ server/src/
 - 每个适配器负责输入映射、输出归一化和 `AppError` 转换；共享校验、供应商选择和追踪留在 `LlmClient`。
 - 保持模型 ID 显式传入。`OPENAI_MODEL` 是调用方可使用的配置来源，客户端不会自动读取它作为默认模型。
 - OpenAI 适配器当前使用 Responses API；配置中转地址时确认它支持该协议，不假设所有兼容站点都支持。
+- DeepSeek 适配器位于 `llm/providers/deepseek/`，复用 OpenAI SDK 的 Chat Completions API，读取 `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL`。`DEEPSEEK_MODEL` 由调用方读取并显式传入；不自动回退到 OpenAI 配置，不将推理内容混入最终回答。
 - 当前契约只支持非流式文本消息；扩展流式、工具调用或多模态时，明确调整公共契约与测试，不偷偷透传 SDK 专有参数。
 - 保留 `finishReason`、拒答和部分文本的语义；缺失用量使用 `null`，不要伪造为零。调用方应判断结束原因再使用结果。
 - 保留取消信号、超时及可重试错误语义；不要在 SDK 已有重试之外无意叠加重试。
