@@ -87,6 +87,18 @@ export class PgVectorStore implements VectorSnapshotStore {
   }
 
   async replaceSnapshot(input: DualIndexEmbeddingResult, options: SnapshotWriteOptions): Promise<VectorSnapshotInfo> {
+    return this.writeSnapshot(input, options)
+  }
+
+  /** 仅替换单篇文档的独立节点；跨文档共享节点必须走完整 Wiki 重建流程。 */
+  async replaceDocument(input: DualIndexEmbeddingResult, documentId: string, options: SnapshotWriteOptions): Promise<VectorSnapshotInfo> {
+    validateSnapshot(input, options)
+    if (!isNonEmptyString(documentId) || !input.chunks.length || [...input.chunks, ...input.wikiNodes].some(record => !record.sources.length || record.sources.some(source => source.documentId !== documentId)))
+      throw new AppError(CODES.INVALID_INPUT, 'Document indexes must contain chunks and belong to exactly one document')
+    return this.writeSnapshot(input, options, documentId)
+  }
+
+  private async writeSnapshot(input: DualIndexEmbeddingResult, options: SnapshotWriteOptions, documentId?: string): Promise<VectorSnapshotInfo> {
     validateSnapshot(input, options)
     const snapshot = structuredClone(input)
     const { expectedRevision, signal } = options
@@ -114,6 +126,18 @@ export class PgVectorStore implements VectorSnapshotStore {
       const current = (await client.query<VectorSnapshotInfo>(snapshotSql, [info.knowledgeBaseId])).rows[0]
       if ((current?.revision ?? null) !== expectedRevision)
         throw new AppError(CODES.CONFLICT, 'Vector snapshot changed after it was read')
+      if (documentId !== undefined) {
+        if (current && current.chunks + current.wikiNodes > 0 && (current.provider !== info.provider || current.requestedModel !== info.requestedModel || current.model !== info.model || current.dimensions !== info.dimensions))
+          throw new AppError(CODES.INCONSISTENT_SPACE, 'Document embedding must match the knowledge base vector space')
+        // 同时检查旧节点是否跨文档共享，以及新 ID 是否会覆盖别的文档。
+        const incompatible = await client.query(`SELECT 1 FROM rag_vectors
+          WHERE knowledge_base_id = $1
+            AND (metadata->'sources' @> $2::jsonb OR id = ANY($3::text[]))
+            AND EXISTS (SELECT 1 FROM jsonb_array_elements(metadata->'sources') source WHERE source->>'documentId' <> $4)
+          LIMIT 1`, [info.knowledgeBaseId, JSON.stringify([{ documentId }]), records.map(record => record.id), documentId])
+        if (incompatible.rowCount)
+          throw new AppError(CODES.CONFLICT, 'Document has shared nodes; rebuild the complete knowledge base snapshot')
+      }
       await client.query(`INSERT INTO rag_vector_snapshots
         (knowledge_base_id, revision, provider, requested_model, model, dimensions, chunk_count, wiki_count)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -129,7 +153,19 @@ export class PgVectorStore implements VectorSnapshotStore {
           ON CONFLICT (knowledge_base_id, id) DO UPDATE SET kind = EXCLUDED.kind, metadata = EXCLUDED.metadata, embedding = EXCLUDED.embedding`, [info.knowledgeBaseId, JSON.stringify(batch)])
       }
       // 删除仅限当前知识库；空快照明确表示清空它的向量，其他知识库不受影响。
-      await client.query('DELETE FROM rag_vectors WHERE knowledge_base_id = $1 AND NOT (id = ANY($2::text[]))', [info.knowledgeBaseId, records.map(record => record.id)])
+      if (documentId === undefined) {
+        await client.query('DELETE FROM rag_vectors WHERE knowledge_base_id = $1 AND NOT (id = ANY($2::text[]))', [info.knowledgeBaseId, records.map(record => record.id)])
+      }
+      else {
+        await client.query(`DELETE FROM rag_vectors WHERE knowledge_base_id = $1
+          AND metadata->'sources' @> $3::jsonb AND NOT (id = ANY($2::text[]))`, [info.knowledgeBaseId, records.map(record => record.id), JSON.stringify([{ documentId }])])
+        // 从数据库实际内容计算整个知识库版本与数量，保留其他文档并保证重复写入幂等。
+        const all = (await client.query<{ kind: string, metadata: unknown, vector: string }>('SELECT kind, metadata, embedding::text AS vector FROM rag_vectors WHERE knowledge_base_id = $1 ORDER BY id', [info.knowledgeBaseId])).rows
+        info.chunks = all.filter(record => record.kind === 'chunk').length
+        info.wikiNodes = all.filter(record => record.kind === 'wiki').length
+        info.revision = contentHash([info.provider, info.requestedModel, info.model, info.dimensions, all])
+        await client.query('UPDATE rag_vector_snapshots SET revision = $2, chunk_count = $3, wiki_count = $4 WHERE knowledge_base_id = $1', [info.knowledgeBaseId, info.revision, info.chunks, info.wikiNodes])
+      }
       checkCancelled()
       return info
     })

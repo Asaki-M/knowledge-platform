@@ -154,6 +154,47 @@ test('pgvector transactions persist, search, replace, roll back and reject concu
   const largeInfo = await store.replaceSnapshot(large, { expectedRevision: null })
   const top30 = await store.searchDual({ ...searchRequest, knowledgeBaseId: 'large-kb', expectedRevision: largeInfo.revision, limit: 30 })
   assert.deepEqual([top30.chunks.length, top30.wikiNodes.length], [30, 30])
+  // 单文档写入必须保留邻居文档，且重传、删除过期节点和失败回滚均可观察。
+  const documentVectors = (documentId) => {
+    const result = renamed(vectors, 'document-api')
+    for (const record of [...result.chunks, ...result.wikiNodes]) {
+      record.sourceId = `${documentId}-${record.sourceId}`
+      record.id = `index-${contentHash([result.knowledgeBaseId, record.kind, record.sourceId])}`
+      record.sources = record.sources.map(source => ({ ...source, documentId }))
+    }
+    return result
+  }
+  const docA = documentVectors('a')
+  const docB = documentVectors('b')
+  const infoA = await store.replaceDocument(docA, 'a', { expectedRevision: null })
+  const infoB = await store.replaceDocument(docB, 'b', { expectedRevision: infoA.revision })
+  assert.deepEqual([infoB.chunks, infoB.wikiNodes], [4, 20])
+  assert.equal((await store.replaceDocument(docB, 'b', { expectedRevision: infoB.revision })).revision, infoB.revision)
+  await assert.rejects(store.replaceDocument(docA, 'a', { expectedRevision: infoA.revision }), { code: 'VECTOR_STORE_CONFLICT' })
+  await assert.rejects(store.replaceDocument(docA, 'b', { expectedRevision: infoB.revision }), { code: 'VECTOR_STORE_INVALID_INPUT' })
+  const reducedA = { ...docA, chunks: docA.chunks.slice(0, 1), wikiNodes: [] }
+  const reducedInfo = await store.replaceDocument(reducedA, 'a', { expectedRevision: infoB.revision })
+  assert.deepEqual([reducedInfo.chunks, reducedInfo.wikiNodes], [3, 10])
+  const docRows = await control.query('SELECT id FROM rag_vectors WHERE knowledge_base_id = $1', ['document-api'])
+  assert.ok([...docB.chunks, ...docB.wikiNodes].every(record => docRows.rows.some(row => row.id === record.id)))
+  assert.ok(!docRows.rows.some(row => row.id === docA.chunks[1].id))
+  const wrongSpace = structuredClone(docA)
+  wrongSpace.requestedModel = 'different-model'
+  for (const record of [...wrongSpace.chunks, ...wrongSpace.wikiNodes])
+    record.embeddingRevision = contentHash([record.textRevision, wrongSpace.provider, wrongSpace.requestedModel, wrongSpace.model, wrongSpace.dimensions])
+  await assert.rejects(store.replaceDocument(wrongSpace, 'a', { expectedRevision: reducedInfo.revision }), { code: 'VECTOR_STORE_INCONSISTENT_SPACE' })
+  await control.query('ALTER TABLE rag_vectors ADD CONSTRAINT reject_doc_title CHECK (metadata->>\'title\' <> \'reject-document\')')
+  const rejected = structuredClone(docA)
+  rejected.chunks[0].title = 'reject-document'
+  await assert.rejects(store.replaceDocument(rejected, 'a', { expectedRevision: reducedInfo.revision }), { code: 'VECTOR_STORE_DATABASE_ERROR' })
+  assert.equal((await store.getSnapshot('document-api')).revision, reducedInfo.revision)
+  await control.query('ALTER TABLE rag_vectors DROP CONSTRAINT reject_doc_title')
+  const shared = structuredClone(docA)
+  shared.wikiNodes[0].sources.push({ ...shared.wikiNodes[0].sources[0], documentId: 'b' })
+  const sharedInfo = await store.replaceSnapshot(shared, { expectedRevision: reducedInfo.revision })
+  await assert.rejects(store.replaceDocument(docA, 'a', { expectedRevision: sharedInfo.revision }), { code: 'VECTOR_STORE_CONFLICT' })
+  assert.equal((await store.getSnapshot('document-api')).revision, sharedInfo.revision)
+
   const smaller = structuredClone(vectors)
   smaller.chunks.pop()
   const shrunk = await store.replaceSnapshot(smaller, { expectedRevision: first.revision })

@@ -33,7 +33,7 @@ export function validateQueryRequest(request: QueryRequest): void {
 }
 
 /** 双路各取 30，合并后由独立重排模型选 5 条，再交给 LLM；失败不降级成伪答案。 */
-export async function searchAndAnswer(request: QueryRequest, dependencies: { store: VectorQueryStore, embedding: EmbeddingClient, reranker: Reranker, llm: LlmClient }, options: { rerankModel: string, generation: AnswerGenerationOptions, embeddingDimensions?: number }): Promise<QueryResult> {
+export async function searchAndAnswer(request: QueryRequest, dependencies: { store: VectorQueryStore, embedding: EmbeddingClient, reranker: Reranker, llm: LlmClient }, options: { rerankModel: string, generation: AnswerGenerationOptions, embeddingDimensions?: number, embedding?: { provider: string, model?: string, dimensions?: number } }): Promise<QueryResult> {
   validateQueryRequest(request)
   const { knowledgeBaseId, question, signal } = request
   const { store, embedding, reranker, llm } = dependencies
@@ -47,7 +47,14 @@ export async function searchAndAnswer(request: QueryRequest, dependencies: { sto
   const result: QueryResult = { status: 'no_results', answer: '当前知识库没有可检索的资料。', sources: [], snapshotRevision: snapshot?.revision ?? null, counts: { chunks: 0, wikiNodes: 0, merged: 0, duplicates: 0, selected: 0 }, embedding: null, rerank: null, generation: null }
   if (!snapshot || snapshot.chunks + snapshot.wikiNodes === 0)
     return result
-  const encoded = await embedding.embed({ provider: snapshot.provider, model: snapshot.requestedModel, input: [question], ...(options.embeddingDimensions === undefined ? {} : { dimensions: options.embeddingDimensions }), signal })
+  const choice = options.embedding
+  if (choice && (choice.provider !== snapshot.provider || (choice.model !== undefined && choice.model !== snapshot.requestedModel) || (choice.dimensions !== undefined && choice.dimensions !== snapshot.dimensions)))
+    throw new AppError(VECTOR_STORE_ERROR_CODES.INCONSISTENT_SPACE, 'Embedding 选择必须与知识库入库时的供应商、模型和维度一致。')
+  // 支持自定义维度的供应商沿用库内维度，避免 Google 默认维度与已写入向量不同。
+  const dimensions = snapshot.provider === 'google' || snapshot.requestedModel.startsWith('Qwen/Qwen3-')
+    ? choice?.dimensions ?? options.embeddingDimensions ?? snapshot.dimensions ?? undefined
+    : undefined
+  const encoded = await embedding.embed({ provider: snapshot.provider, model: snapshot.requestedModel, input: [question], ...(dimensions === undefined ? {} : { dimensions }), signal })
   checkCancelled()
   if (encoded.model !== snapshot.model || encoded.dimensions !== snapshot.dimensions)
     throw new AppError(VECTOR_STORE_ERROR_CODES.INCONSISTENT_SPACE, 'Query embedding does not match the stored vector space')

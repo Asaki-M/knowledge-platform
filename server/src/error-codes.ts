@@ -8,6 +8,8 @@
 export const HTTP_ERROR_CODES = {
   /** 请求的 HTTP 路由不存在，对应当前应用的 404 响应。 */
   NOT_FOUND: 'NOT_FOUND',
+  /** 接口请求字段、供应商选择或文档内容无效。 */
+  INVALID_INPUT: 'HTTP_INVALID_INPUT',
   /** Hono HTTPException 表示的显式 HTTP 异常，实际状态码取自异常对象。 */
   HTTP_ERROR: 'HTTP_ERROR',
   /** 未被专门处理的服务端异常，对外返回通用 500 信息，不暴露内部细节。 */
@@ -141,6 +143,10 @@ export type WikiErrorCode = typeof WIKI_ERROR_CODES[keyof typeof WIKI_ERROR_CODE
 
 /** 入库前的纯函数影响计算，不执行数据库或模型操作。 */
 export const INGESTION_ERROR_CODES = {
+  /** 入库文档为空、过长或章节数量超限。 */
+  INVALID_DOCUMENT: 'INGESTION_INVALID_DOCUMENT',
+  /** 入库请求被取消。 */
+  ABORTED: 'INGESTION_ABORTED',
   /** Section 快照内容无效、版本不匹配或身份重复。 */
   INVALID_SNAPSHOT: 'INGESTION_INVALID_SNAPSHOT',
 } as const

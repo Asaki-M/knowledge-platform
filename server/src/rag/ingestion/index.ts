@@ -4,3 +4,6 @@ export { planSectionChanges } from './changes.js'
 export type { SectionChanges } from './changes.js'
 export { indexAndStore } from './index-and-store.js'
 export type { IndexAndStoreOptions } from './index-and-store.js'
+
+export { ingestDocument } from './ingest-document.js'
+export type { IngestDocumentRequest } from './ingest-document.js'

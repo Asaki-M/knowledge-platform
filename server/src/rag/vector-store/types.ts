@@ -54,3 +54,8 @@ export interface VectorQueryStore {
   getSnapshot: (knowledgeBaseId: string) => Promise<VectorSnapshotInfo | null>
   searchDual: (request: DualVectorSearchRequest) => Promise<DualVectorSearchResult>
 }
+
+export interface DocumentVectorStore {
+  getSnapshot: VectorSnapshotStore['getSnapshot']
+  replaceDocument: (input: DualIndexEmbeddingResult, documentId: string, options: SnapshotWriteOptions) => Promise<VectorSnapshotInfo>
+}

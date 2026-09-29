@@ -10,7 +10,7 @@
 - `server/`：Hono、OpenTelemetry、统一 LLM Adapter、OpenAI 官方 SDK。
 - 保持工作区名称 `@knowledge/app` 与 `@knowledge/server`，不自行将 `server/` 改为 `api/`。
 - 已实现基础页面、健康检查、日志追踪、非流式文本生成适配器、可扩展的文档标准化接入层、按标题的 Section Split、Knowledge Enrichment 和 Chunk Build。
-- RAG 中 normalization 已实现 Nextra MDX 的 AST 标准化，sections 已实现 H1–H3 分节与来源版本，chunking 已实现独立 Chunk Build，enrichment 已实现通过 LLM 提取结构化知识，wiki 已实现显式身份映射的跨节语义聚合及增量更新，ingestion 已实现纯函数影响计算与完整知识库快照的双索引写入，embedding 已接入 SiliconFlow / Google 文本向量化 SDK，indexing 已实现 Chunk / Wiki 文本构造和双索引向量生成，vector-store 已实现 PostgreSQL / pgvector 持久化与精确余弦查询；retrieval / rerank / generation / query 已实现双路各 Top 30、合并去重、SiliconFlow 重排 Top 5 与 DeepSeek 引用式回答；完整文档入库及持久化仍待实现，Wiki 页面尚未接入后端节点。不要将占位页面或目录描述为已实现功能，也不要在无关任务中补写这些能力。
+- RAG 中 normalization 已实现 Nextra MDX 的 AST 标准化，sections 已实现 H1–H3 分节与来源版本，chunking 已实现独立 Chunk Build，enrichment 已实现通过 LLM 提取结构化知识，wiki 已实现显式身份映射的跨节语义聚合及增量更新，ingestion 已实现纯函数影响计算与完整知识库快照的双索引写入，embedding 已接入 SiliconFlow / Google 文本向量化 SDK，indexing 已实现 Chunk / Wiki 文本构造和双索引向量生成，vector-store 已实现 PostgreSQL / pgvector 持久化与精确余弦查询；retrieval / rerank / generation / query 已实现双路各 Top 30、合并去重、SiliconFlow 重排 Top 5 与可选 DeepSeek / OpenAI 引用式回答；单文档标准化到双索引入库已接入 HTTP，原始文件及完整中间对象的持久化仍待实现，Wiki 页面尚未接入后端节点。不要将占位页面或目录描述为已实现功能，也不要在无关任务中补写这些能力。
 
 计划链路：
 
@@ -77,7 +77,7 @@ server/src/
 - `core` 只承载 HTTP/API 及直接支持它的业务层，不作为所有后端能力的容器。
 - 路由保持轻量，在 `core/router/index.ts` 注册；不要在路由里编写数据库查询、模型调用或完整业务流程。
 - API 服务协调 DAO、RAG 和 LLM；独立能力不反向依赖 HTTP 路由或中间件，DAO 不依赖服务层。
-- RAG 模块沿用 `normalization`、`sections`、`enrichment`、`wiki/nodes`、`chunking`、`embedding`、`indexing`、`vector-store`、`retrieval`、`rerank`、`generation`；`ingestion` 当前提供增量影响计算及 `indexAndStore` 完整快照写入，文档级增量编排仍待实现；`query.searchAndAnswer` 已实现双路检索、去重、重排与答案生成。
+- RAG 模块沿用 `normalization`、`sections`、`enrichment`、`wiki/nodes`、`chunking`、`embedding`、`indexing`、`vector-store`、`retrieval`、`rerank`、`generation`；`ingestion` 当前提供增量影响计算及 `indexAndStore` 完整快照写入，`ingestDocument` 已提供单文档完整重建与安全更新，按变更节缓存复用仍待实现；`query.searchAndAnswer` 已实现双路检索、去重、重排与答案生成。
 - Embedding、Rerank 的 SDK 接入归各自能力模块，通用大模型 SDK 归 `llm`。不要重新引入通用 `core/manager` 层。
 - 不为简单操作增加 controller、DTO、mapper 等额外分层。
 - 服务端使用 ESM / NodeNext，TypeScript 相对导入写 `.js` 扩展名；不要套用前端的 `@/` 别名。
@@ -206,3 +206,11 @@ server/src/
 - Rerank SDK 归 `rag/rerank/providers/siliconflow`，默认使用 `BAAI/bge-reranker-v2-m3`。模型由调用方传入；凭据和地址可复用 `EMBEDDING_*`，不将余弦排序冒充重排模型。
 - LLM 上下文仅包含重排后的最多 5 条完整证据；来源使用 `[S1]` 等标签。保留入选记录、来源、向量分数、重排分数与阶段数量。空库跳过模型调用，拒答、截断、非法引用及上下文超限明确失败。来源编号合法不等于事实核验。
 - 常规测试使用本地 SDK 模拟服务与内存 stub；真实数据库集成测试使用独立临时库。前端问答页面、Graph Expand 与原文回查尚未实现。
+
+## 入库与模型选择接口
+
+- `POST /api/documents/ingest` 输入 JSON 文档正文，执行 Normalize 到双索引入库；`POST /api/search` 提供问答。接口契约见 `server/src/core/README.md`。
+- 两接口共享 `core/service/model-options.ts`：LLM 支持 deepseek / ds、openai；Embedding 支持 gemini / google、siliconflow。模型 ID 可由请求显式指定或由调用层读取环境变量，凭据 / Base URL 仅使用服务端配置。
+- 入库按 knowledgeBaseId + documentId 新增或完整更新，只替换该文档旧索引，不清空其他文档；跨文档共享节点要求走完整 Wiki 重建。写入保留事务、版本比较和失败回滚，不自动重跑模型。
+- 问答 Embedding 默认沿用库内空间，显式选择不一致时返回 409；LLM 可以独立切换。Rerank 仍使用 SiliconFlow。
+- 上传格式目前为 JSON 中的 nextra-mdx / Markdown 文本；原始文件存档、完整中间对象持久化、按变更节缓存复用、multipart / PDF / Word 上传与前端接入未实现。

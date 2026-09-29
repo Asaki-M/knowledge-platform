@@ -343,7 +343,7 @@ throw new AppError(
 
 ## Embedding
 
-`rag/embedding` 提供 `EmbeddingClient`、`SiliconFlowEmbeddingAdapter` 和 `GoogleEmbeddingAdapter`，统一将文本数组转换为有序向量，支持输出维度校验、取消、超时、错误转换和追踪。SiliconFlow 沿用 `EMBEDDING_*` 配置，推荐免费模型 `BAAI/bge-m3`；Google 使用 `GOOGLE_API_KEY` / `GOOGLE_EMBEDDING_MODEL`，推荐 `gemini-embedding-2`，标准接口在 Free Tier 下免费。模型每次显式传入，付费项目按平台计费层级处理。完整配置、官方价格来源与调用示例见 [Embedding 文档](server/src/rag/embedding/README.md)。文本构造与双索引向量组合已由独立 `rag/indexing` 实现，向量数据库写入已由 `rag/vector-store` 接入，完整文档级入库流程仍待实现。
+`rag/embedding` 提供 `EmbeddingClient`、`SiliconFlowEmbeddingAdapter` 和 `GoogleEmbeddingAdapter`，统一将文本数组转换为有序向量，支持输出维度校验、取消、超时、错误转换和追踪。SiliconFlow 沿用 `EMBEDDING_*` 配置，推荐免费模型 `BAAI/bge-m3`；Google 使用 `GOOGLE_API_KEY` / `GOOGLE_EMBEDDING_MODEL`，推荐 `gemini-embedding-2`，标准接口在 Free Tier 下免费。模型每次显式传入，付费项目按平台计费层级处理。完整配置、官方价格来源与调用示例见 [Embedding 文档](server/src/rag/embedding/README.md)。文本构造与双索引向量组合已由独立 `rag/indexing` 实现，向量数据库写入已由 `rag/vector-store` 接入，已通过 `POST /api/documents/ingest` 接入单文档标准化到入库的完整流程。
 
 ## Chunk / Wiki 双索引
 
@@ -353,7 +353,7 @@ throw new AppError(
 
 构造结果使用稳定 ID、来源版本、文本指纹；向量版本再绑定供应商、请求/实际模型与维度。pending 节保留原文索引，不复用旧 Wiki 知识。文本默认按 cl100k_base 基线检查完整 8000 Token 预算，可传目标模型的 `countTokens`；这不是 BGE 或 Google 的精确分词上限，真正模型限制仍由供应商校验。超限明确失败，不自动截断。
 
-使用 DeepSeek 做知识提取的组合示例见 [Indexing 文档](server/src/rag/indexing/README.md)。短文真实测试的各阶段数据、实际 embeddingText、向量和内存相似度检查见 [双索引报告](server/test/reports/dual-index/report.md)。`rag/ingestion.indexAndStore` 已连接 pgvector 事务写入；自动文档级增量入库和 HTTP 索引接口仍待实现；问答接口见 [双路检索与回答](server/src/rag/query/README.md)。
+使用 DeepSeek 做知识提取的组合示例见 [Indexing 文档](server/src/rag/indexing/README.md)。短文真实测试的各阶段数据、实际 embeddingText、向量和内存相似度检查见 [双索引报告](server/test/reports/dual-index/report.md)。`rag/ingestion.indexAndStore` 已连接 pgvector 事务写入；已提供单文档新增 / 更新接口，按变更节复用模型结果仍待实现；问答接口见 [双路检索与回答](server/src/rag/query/README.md)。
 
 ## 本地向量数据库
 
@@ -373,7 +373,7 @@ pnpm db:stop
 
 ## 双路检索与回答
 
-`POST /api/search` 接收知识库 ID 和问题，两路分别检索 Chunk embeddingText 与 Wiki 节点向量，各取最多 30 条，按 ID / 完全相同的文本去重，使用 `BAAI/bge-reranker-v2-m3` 重排取前 5 条，再交给 DeepSeek 汇总回答。返回答案、引用来源、各阶段数量、向量分数、重排分数及模型用量。
+`POST /api/search` 接收知识库 ID 和问题，两路分别检索 Chunk embeddingText 与 Wiki 节点向量，各取最多 30 条，按 ID / 完全相同的文本去重，使用 `BAAI/bge-reranker-v2-m3` 重排取前 5 条，再交给所选 DeepSeek / OpenAI 汇总回答。返回答案、引用来源、各阶段数量、向量分数、重排分数及模型用量。
 
 启动数据库和服务后，可直接查询已有示例知识库：
 
@@ -384,3 +384,17 @@ curl http://127.0.0.1:3000/api/search \
 ```
 
 Rerank 读取 `RERANK_MODEL`，凭据和地址默认复用 `EMBEDDING_API_KEY` / `EMBEDDING_BASE_URL`，也可单独设置 `RERANK_API_KEY` / `RERANK_BASE_URL`。答案模型读取 `DEEPSEEK_MODEL`。向量查询沿用知识库写入时记录的 Embedding 模型，避免配置改动造成空间不一致。具体契约与限制见 [Query 文档](server/src/rag/query/README.md)。
+
+## 文档入库与模型选择
+
+两个接口均支持 `llm: { provider, model? }` 和 `embedding: { provider, model?, dimensions? }`。LLM 可选 `ds` / `deepseek` / `openai`，Embedding 可选 `gemini` / `google` / `siliconflow`；不传 model 时按供应商读取服务端配置。问答不传 embedding 时自动沿用知识库向量空间，显式传入不匹配的选择会返回 409。
+
+`POST /api/documents/ingest`：传入 `knowledgeBaseId` 和 `document: { id, content, sourcePath?, format? }`，执行 Normalize → Section → Chunk / Enrichment → Wiki → 双索引 Embedding → 入库。同库同文档 ID 重传表示更新，只替换该文档，保留其他文档。格式目前为 `nextra-mdx`，也可传普通 Markdown 内容。
+
+```bash
+curl http://127.0.0.1:3000/api/documents/ingest \
+  -H 'Content-Type: application/json' \
+  -d '{"knowledgeBaseId":"notes-demo","document":{"id":"atlas-intro","content":"# Atlas\n\n生产环境必须使用 HTTPS。"},"llm":{"provider":"ds"},"embedding":{"provider":"siliconflow"}}'
+```
+
+`POST /api/search` 保留原来的双路 Top 30 → 去重 → Rerank Top 5 → LLM 答案流程，可通过相同参数切换答案模型。完整参数、响应、Gemini / OpenAI 配置及错误语义见 [接口文档](server/src/core/README.md)。

@@ -95,3 +95,7 @@ EOF
 ## 双路检索
 
 `searchDual({ knowledgeBaseId, provider, model, vector, expectedRevision, limit: 30, signal })` 在同一 repeatable-read 只读事务内分别检索 Chunk 和 Wiki 节点，各返回最多 30 条。先验证快照版本与向量空间，再读取两路数据；版本变化返回 `VECTOR_STORE_CONFLICT`。完整问答流程见 [Query](../query/README.md)。
+
+## 按文档替换
+
+`replaceDocument(vectors, documentId, { expectedRevision, signal })` 使用与完整快照相同的事务锁、版本检查和批量写入，仅删除当前文档不再存在的旧记录，保留其他文档。返回整个知识库的版本与数量。禁止混用向量空间，也拒绝覆盖已有跨文档共享节点。新文档必须包含至少一个 Chunk，不能通过空输入删除文档。版本根据数据库实际内容计算，完全相同的记录重复写入保持同一版本。当前通过扫描本知识库记录重算版本，适用于本地起步规模。
