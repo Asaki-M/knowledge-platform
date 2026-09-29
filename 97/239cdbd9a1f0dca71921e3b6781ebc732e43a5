@@ -1,0 +1,49 @@
+server/src/llm/providers/deepseek/adapter.ts
+  s_c6fd3c1d7b431e::t_c2f9772b83704d 6
+  s_c6fd3c1d7b431e::t_71492a13ee213f 1-5,7-56
+server/test/deepseek.test.mjs
+  s_c6fd3c1d7b431e::t_02440b3955ba2e 1-9,11-199
+  s_c6fd3c1d7b431e::t_c2f9772b83704d 10
+AGENTS.md
+  s_c6fd3c1d7b431e::t_09cbbef4b5a9ca 94
+server/src/llm/providers/deepseek/index.ts
+  s_c6fd3c1d7b431e::t_71492a13ee213f 1-3
+server/src/llm/types.ts
+  s_c6fd3c1d7b431e::t_71492a13ee213f 9
+README.md
+  s_c6fd3c1d7b431e::t_09cbbef4b5a9ca 3,201-202,237-259
+  s_c6fd3c1d7b431e::t_b9c1b3707de7e2 260
+server/src/llm/README.md
+  s_c6fd3c1d7b431e::t_09cbbef4b5a9ca 13,22,52-58
+  s_c6fd3c1d7b431e::t_a89d91c1456bcf 59
+server/src/llm/index.ts
+  s_c6fd3c1d7b431e::t_71492a13ee213f 5-6
+server/src/llm/providers/deepseek/mapping.ts
+  s_c6fd3c1d7b431e::t_186f04c4a719ba 1-23,25,27-30,32,34-62
+  s_c6fd3c1d7b431e::t_c2f9772b83704d 24,26,31,33
+server/src/llm/providers/deepseek/normalize-error.ts
+  s_c6fd3c1d7b431e::t_71492a13ee213f 1-37
+server/.env.example
+  s_c6fd3c1d7b431e::t_09cbbef4b5a9ca 11-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "97239cdbd9a1f0dca71921e3b6781ebc732e43a5",
+  "prompts": {},
+  "humans": {
+    "h_8d050896203f0f": {
+      "author": "qinghuan <1041220793@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_c6fd3c1d7b431e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0eaee-3740-7cf1-9250-1ecb79014ce4",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "qinghuan <1041220793@qq.com>"
+    }
+  }
+}
