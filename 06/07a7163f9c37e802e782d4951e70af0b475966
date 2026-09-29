@@ -1,0 +1,180 @@
+server/src/rag/query/README.md
+  s_c6fd3c1d7b431e::t_85e67c998c5ec0 1-44
+server/src/rag/indexing/text.ts
+  s_c6fd3c1d7b431e::t_e328255b6c6b4b 1-22
+server/src/core/app.ts
+  s_c6fd3c1d7b431e::t_01a253e1844ee6 4,26-27
+  s_c6fd3c1d7b431e::t_3575c4f0bd8512 5,24-25,28-29
+server/src/rag/vector-store/validation.ts
+  s_c6fd3c1d7b431e::t_727f106324c9b0 15,17,26,28,37,39
+  s_c6fd3c1d7b431e::t_978ccadd93a5b6 1-14,16,18-25,27,29-36,38,40-45
+server/src/rag/chunking/README.md
+  s_c6fd3c1d7b431e::t_eb2aac846b8698 32
+server/test/reports/dual-index/06-index-documents.json
+  s_c6fd3c1d7b431e::t_63501c8be3e9f4 1-439
+server/src/rag/rerank/providers/siliconflow/index.ts
+  s_c6fd3c1d7b431e::t_5c85d7fb217941 1
+README.md
+  s_c6fd3c1d7b431e::t_e2323021d6eb8f 61,84-85,338,347-355
+  s_c6fd3c1d7b431e::t_85e67c998c5ec0 3,64,121,356,373-386
+  s_c6fd3c1d7b431e::t_d8200ba9f656d9 53,62,129,303,346,357-372
+  s_c6fd3c1d7b431e::t_04837cc3f56e37 127-128
+server/src/rag/rerank/validation.ts
+  s_c6fd3c1d7b431e::t_5c85d7fb217941 1-7,9,11
+  s_c6fd3c1d7b431e::t_f9f7b986b12308 8,10
+server/src/core/service/search.ts
+  s_c6fd3c1d7b431e::t_3575c4f0bd8512 1-37
+server/src/rag/embedding/README.md
+  s_c6fd3c1d7b431e::t_e2323021d6eb8f 56
+  s_c6fd3c1d7b431e::t_eb2aac846b8698 68
+server/test/reports/dual-index/01-normalized.json
+  s_c6fd3c1d7b431e::t_63501c8be3e9f4 1-233
+server/src/rag/indexing/README.md
+  s_c6fd3c1d7b431e::t_9476d0c25c65c9 1-6,9,11-32,37-41,46-50,59-64,69,83-86,88-100,102-103
+  s_c6fd3c1d7b431e::t_d8200ba9f656d9 87,101
+  s_c6fd3c1d7b431e::t_04837cc3f56e37 7-8,10,33-36,42-45,51-58,65-68,73-82
+  s_c6fd3c1d7b431e::t_56a9d6dbd8fc06 70-72
+server/src/rag/indexing/build.ts
+  s_c6fd3c1d7b431e::t_e328255b6c6b4b 1-64,71-79,84-89,92-95
+  s_c6fd3c1d7b431e::t_4e0e6472e4f978 65-70,80-83,90-91
+server/src/error-codes.ts
+  s_c6fd3c1d7b431e::t_51545d2fa8f83d 71,184-225
+  s_c6fd3c1d7b431e::t_5242904a51f945 149-166
+  s_c6fd3c1d7b431e::t_978ccadd93a5b6 167-183
+server/src/rag/rerank/providers/siliconflow/adapter.ts
+  s_c6fd3c1d7b431e::t_5c85d7fb217941 1-24,26,28-57
+  s_c6fd3c1d7b431e::t_f9f7b986b12308 25,27
+server/test/reports/dual-index/02-sections.json
+  s_c6fd3c1d7b431e::t_63501c8be3e9f4 1-318
+server/test/reports/dual-index/report.md
+  s_c6fd3c1d7b431e::t_d8200ba9f656d9 242-246,254-255
+  s_c6fd3c1d7b431e::t_8bb137a608beb0 247-253
+  s_c6fd3c1d7b431e::t_bdb46d7906cf44 27-30,38-41,47-50,78-93,95-100,108-121,204-217,227-233
+  s_c6fd3c1d7b431e::t_54d17b4bf5cb1a 256-289
+  s_c6fd3c1d7b431e::t_63501c8be3e9f4 1-26,31-37,42-46,51-77,101-107,122-203,218-226,234-237
+  s_c6fd3c1d7b431e::t_3e5356dd1c88d0 94,238-241
+server/test/reports/dual-index/04-enrichment.json
+  s_c6fd3c1d7b431e::t_63501c8be3e9f4 1-329
+compose.yaml
+  s_c6fd3c1d7b431e::t_db2828ad1d36fa 1-15,17-22
+  s_c6fd3c1d7b431e::t_727f106324c9b0 16
+AGENTS.md
+  s_c6fd3c1d7b431e::t_bdb46d7906cf44 107
+  s_c6fd3c1d7b431e::t_d8200ba9f656d9 21,146,148,158,166-173,175
+  s_c6fd3c1d7b431e::t_04837cc3f56e37 19-20
+  s_c6fd3c1d7b431e::t_85e67c998c5ec0 13,80,174,201-208
+  s_c6fd3c1d7b431e::t_e2323021d6eb8f 159-165
+server/src/rag/rerank/providers/siliconflow/mapping.ts
+  s_c6fd3c1d7b431e::t_f9f7b986b12308 19-20
+  s_c6fd3c1d7b431e::t_5c85d7fb217941 1-18,21-22
+server/test/reports/dual-index/05-wiki.json
+  s_c6fd3c1d7b431e::t_63501c8be3e9f4 1-1476
+server/test/reports/dual-index/dual-index-article.mdx
+  s_c6fd3c1d7b431e::t_63501c8be3e9f4 1-11
+server/.env.example
+  s_c6fd3c1d7b431e::t_11c0f7eba702f0 23-27
+  s_c6fd3c1d7b431e::t_d8200ba9f656d9 32-36
+server/test/query.test.mjs
+  s_c6fd3c1d7b431e::t_11c0f7eba702f0 19-37
+  s_c6fd3c1d7b431e::t_f9f7b986b12308 1-18,38-112
+server/test/reports/dual-index/08-query-check.json
+  s_c6fd3c1d7b431e::t_63501c8be3e9f4 1-1091
+server/src/rag/indexing/index.ts
+  s_c6fd3c1d7b431e::t_5242904a51f945 1-5
+server/src/rag/rerank/providers/siliconflow/normalize-error.ts
+  s_c6fd3c1d7b431e::t_5c85d7fb217941 1-21
+server/test/reports/dual-index/07-vectors.json
+  s_c6fd3c1d7b431e::t_63501c8be3e9f4 1-12791
+server/src/rag/indexing/embed.ts
+  s_c6fd3c1d7b431e::t_4e0e6472e4f978 3,13,15,22-31
+  s_c6fd3c1d7b431e::t_5242904a51f945 1-2,4-12,14,16-21,32-60
+server/src/rag/vector-store/README.md
+  s_c6fd3c1d7b431e::t_c84238487ccb80 1-20,22-24,29-43,46-93
+  s_c6fd3c1d7b431e::t_40e9065f42756e 21,44-45
+  s_c6fd3c1d7b431e::t_8bb137a608beb0 25-28
+  s_c6fd3c1d7b431e::t_54d17b4bf5cb1a 94-97
+server/src/rag/indexing/types.ts
+  s_c6fd3c1d7b431e::t_e328255b6c6b4b 1-85
+package.json
+  s_c6fd3c1d7b431e::t_d8200ba9f656d9 19-22
+server/test/indexing.test.mjs
+  s_c6fd3c1d7b431e::t_e2323021d6eb8f 153-155
+  s_c6fd3c1d7b431e::t_c27b123eb3aefe 1-21,28,34-152,156-234
+  s_c6fd3c1d7b431e::t_4e0e6472e4f978 22-27,29-33
+server/src/rag/rerank/index.ts
+  s_c6fd3c1d7b431e::t_5c85d7fb217941 1-3
+server/src/rag/ingestion/index-and-store.ts
+  s_c6fd3c1d7b431e::t_33d37ff0aa6849 1-20
+server/test/reports/dual-index/03-chunks.json
+  s_c6fd3c1d7b431e::t_63501c8be3e9f4 1-252
+server/test/vector-store.test.mjs
+  s_c6fd3c1d7b431e::t_483fea83147787 93-95
+  s_c6fd3c1d7b431e::t_727f106324c9b0 1-92,96-123,132-144,157-196
+  s_c6fd3c1d7b431e::t_11c0f7eba702f0 124-131,145-156
+server/src/rag/indexing/validation.ts
+  s_c6fd3c1d7b431e::t_4e0e6472e4f978 34,36,47,49,59,61,67,69,72,74,84,86,105,107,116,118
+  s_c6fd3c1d7b431e::t_5242904a51f945 1-33,35,37-46,48,50-58,60,62-66,68,70-71,73,75-83,85,87-104,106,108-115,117,119-125
+server/src/rag/query/index.ts
+  s_c6fd3c1d7b431e::t_3575c4f0bd8512 1-74
+server/src/rag/vector-store/schema.ts
+  s_c6fd3c1d7b431e::t_978ccadd93a5b6 1-27
+server/src/rag/vector-store/pgvector.ts
+  s_c6fd3c1d7b431e::t_60444edd27fbee 3,161-167,169,171-194
+  s_c6fd3c1d7b431e::t_33d37ff0aa6849 1-2,4-121,123-128,130-143,145,147-160,195-201
+  h_8d050896203f0f 168,170
+  s_c6fd3c1d7b431e::t_727f106324c9b0 122,129,144,146
+server/test/reports/dual-index/09-database.json
+  s_c6fd3c1d7b431e::t_de2815e13449f2 1-240
+server/src/core/router/index.ts
+  s_c6fd3c1d7b431e::t_3575c4f0bd8512 3,5
+server/src/core/router/search.ts
+  s_c6fd3c1d7b431e::t_f9f7b986b12308 3
+  s_c6fd3c1d7b431e::t_11c0f7eba702f0 9-11
+  s_c6fd3c1d7b431e::t_3575c4f0bd8512 1-2,4-8,12-13
+server/src/rag/ingestion/README.md
+  s_c6fd3c1d7b431e::t_d8200ba9f656d9 16,19-26
+server/src/rag/ingestion/index.ts
+  s_c6fd3c1d7b431e::t_33d37ff0aa6849 5-6
+server/src/rag/retrieval/index.ts
+  s_c6fd3c1d7b431e::t_5c85d7fb217941 1-35
+server/src/rag/generation/index.ts
+  s_c6fd3c1d7b431e::t_3575c4f0bd8512 1-44
+server/src/rag/rerank/types.ts
+  s_c6fd3c1d7b431e::t_5c85d7fb217941 1-19
+server/src/rag/vector-store/types.ts
+  s_c6fd3c1d7b431e::t_978ccadd93a5b6 1-39
+  s_c6fd3c1d7b431e::t_60444edd27fbee 40-56
+server/src/rag/vector-store/index.ts
+  s_c6fd3c1d7b431e::t_978ccadd93a5b6 1-4
+  s_c6fd3c1d7b431e::t_60444edd27fbee 5
+server/test/rerank.test.mjs
+  s_c6fd3c1d7b431e::t_11c0f7eba702f0 23-26
+  s_c6fd3c1d7b431e::t_f9f7b986b12308 1-22,27-68
+pnpm-lock.yaml
+  s_c6fd3c1d7b431e::t_b168dc560098db 114-116,148-150,1211-1213,2498-2531,2560-2575,2711-2714,2942-2945,3999-4004,5646-5680,5714-5723,5896-5897,6095-6096
+server/package.json
+  s_c6fd3c1d7b431e::t_43b29120b65d3c 24,37
+server/test/reports/dual-index/10-answer.json
+  s_c6fd3c1d7b431e::t_02e54eac9f160c 1-218
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0607a7163f9c37e802e782d4951e70af0b475966",
+  "prompts": {},
+  "humans": {
+    "h_8d050896203f0f": {
+      "author": "qinghuan <1041220793@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_c6fd3c1d7b431e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0eaee-3740-7cf1-9250-1ecb79014ce4",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "qinghuan <1041220793@qq.com>"
+    }
+  }
+}
