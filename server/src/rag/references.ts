@@ -1,24 +1,21 @@
 import type { Definition, FootnoteDefinition, Root, RootContent } from 'mdast'
+import { visitMarkdown } from './markdown.js'
 
 type ReferenceDefinition = Definition | FootnoteDefinition
 
-// Markdown 标识符大小写不敏感，多个空白与单个空格等价。
-function key(type: ReferenceDefinition['type'], identifier: string): string {
-  return `${type}:${identifier.replace(/\s+/g, ' ').trim().toUpperCase()}`
+/** Markdown 引用标识符忽略大小写，多个空白与单个空格等价。 */
+export function referenceIdentifier(identifier: string): string {
+  return identifier.replace(/\s+/g, ' ').trim().toUpperCase()
 }
 
-function visit(node: Root | RootContent, callback: (node: Root | RootContent) => void) {
-  callback(node)
-  if ('children' in node) {
-    for (const child of node.children)
-      visit(child, callback)
-  }
+function key(type: ReferenceDefinition['type'], identifier: string): string {
+  return `${type}:${referenceIdentifier(identifier)}`
 }
 
 /** 文档只索引一次，保持 Markdown 首个同名定义生效的语义。 */
 export function indexDefinitions(ast: Root): Map<string, ReferenceDefinition> {
   const definitions = new Map<string, ReferenceDefinition>()
-  visit(ast, (node) => {
+  visitMarkdown(ast, (node) => {
     if (node.type === 'definition' || node.type === 'footnoteDefinition') {
       const id = key(node.type, node.identifier)
       if (!definitions.has(id))
@@ -33,7 +30,7 @@ export function withReferences(children: RootContent[], definitions: Map<string,
   const result = [...children]
   const available = new Map<string, ReferenceDefinition>()
   const ast: Root = { type: 'root', children }
-  visit(ast, (node) => {
+  visitMarkdown(ast, (node) => {
     if (node.type === 'definition' || node.type === 'footnoteDefinition') {
       const id = key(node.type, node.identifier)
       if (!available.has(id))
@@ -61,8 +58,8 @@ export function withReferences(children: RootContent[], definitions: Map<string,
         result.push(definition)
       available.set(id, definition)
     }
-    visit(definition, collect)
+    visitMarkdown(definition, collect)
   }
-  visit(ast, collect)
+  visitMarkdown(ast, collect)
   return result
 }

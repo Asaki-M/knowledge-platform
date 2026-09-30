@@ -44,10 +44,9 @@ pnpm dev
 │   │   │   ├── middleware/
 │   │   │   │   └── tracing.ts      # 请求 span、请求日志、trace 响应头
 │   │   │   ├── service/            # API 操作编排（预留）
-│   │   │   └── dao/                # 应用数据访问（预留）
-│   │   │       ├── documents/      # 文档持久化
-│   │   │       ├── wiki-nodes/     # Wiki 节点持久化
-│   │   │       └── models/         # 数据库记录模型
+│   │   │   └── dao/                # 应用数据访问
+│   │   │       ├── operation-logs.ts    # 操作日志持久化与查询
+│   │   │       └── workspace-options.ts # 工作台目录与日志筛选范围读取
 │   │   ├── rag/                    # Wiki RAG 独立能力，Normalize / Split / Enrichment / Wiki / Chunk Build 已实现
 │   │   │   ├── ingestion/          # 增量影响计算及完整快照的双索引生成/写入
 │   │   │   ├── normalization/      # 统一文档接入层与 Nextra MDX → AST 标准化
@@ -95,7 +94,7 @@ pnpm dev
 
 - `core/router` 负责 HTTP 路径与请求转发，在 `router/index.ts` 注册。
 - `core/service` 负责 API 输入处理、业务校验、调用能力模块和组织响应。
-- `core/dao` 负责文档、Wiki 节点等应用数据持久化。
+- `core/dao` 当前负责操作日志持久化及工作台选项读取；文档与完整 Wiki 节点持久化尚未实现，按需新增模块，不预建空目录。
 - `rag` 负责入库和问答能力；Embedding、Rerank 接入各自归所属模块，向量存储也归 RAG 所有。
 - `llm` 负责通用大模型调用，可被 Wiki 化、答案生成等能力复用。
 - `telemetry` 负责 SDK 与通用日志，HTTP 追踪放在 `core/middleware/tracing.ts`。

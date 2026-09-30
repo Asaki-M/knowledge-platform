@@ -1,11 +1,12 @@
-import type { Definition, Root, RootContent } from 'mdast'
+import type { Definition } from 'mdast'
 import type { MetadataValue } from '../normalization/types.js'
 import type { DocumentSection } from '../sections/types.js'
 import type { ExtractedSectionData } from './types.js'
 import { ENRICHMENT_ERROR_CODES as CODES } from '../../error-codes.js'
 import { AppError } from '../../errors.js'
 import { isRecord } from '../../utils/type-guards.js'
-import { plainText } from '../markdown.js'
+import { plainText, visitMarkdown } from '../markdown.js'
+import { referenceIdentifier } from '../references.js'
 
 function invalid(): never {
   throw new AppError(CODES.INVALID_INPUT, 'Section requires valid AST, headings and JSON metadata')
@@ -27,18 +28,6 @@ function validateMetadata(value: unknown, ancestors = new Set<object>()): value 
   return valid
 }
 
-function visit(node: Root | RootContent, callback: (node: Root | RootContent) => void) {
-  if (!node || typeof node.type !== 'string')
-    invalid()
-  callback(node)
-  if ('children' in node) {
-    if (!Array.isArray(node.children))
-      invalid()
-    node.children.forEach(child => visit(child, callback))
-  }
-}
-
-const referenceKey = (identifier: string) => identifier.replace(/\s+/g, ' ').trim().toUpperCase()
 const nullableText = (value: unknown) => value === undefined || value === null || typeof value === 'string'
 
 /** 单节规则提取：只读标准 AST 与 Split 携带的 frontmatter，无模型、网络或代码执行。 */
@@ -59,11 +48,11 @@ export function extractSectionData(section: DocumentSection): ExtractedSectionDa
     }
     // 引用定义可能由 Split 从别节补入；Markdown 同名定义采用首次出现的值。
     const definitions = new Map<string, Definition>()
-    visit(section.ast, (node) => {
-      if (node.type === 'definition' && !definitions.has(referenceKey(node.identifier)))
-        definitions.set(referenceKey(node.identifier), node)
+    visitMarkdown(section.ast, (node) => {
+      if (node.type === 'definition' && !definitions.has(referenceIdentifier(node.identifier)))
+        definitions.set(referenceIdentifier(node.identifier), node)
     })
-    visit(section.ast, (node) => {
+    visitMarkdown(section.ast, (node) => {
       if (node.type === 'code') {
         if (typeof node.value !== 'string' || !nullableText(node.lang) || !nullableText(node.meta))
           invalid()
@@ -71,7 +60,7 @@ export function extractSectionData(section: DocumentSection): ExtractedSectionDa
       }
       if (node.type === 'link' || node.type === 'image' || node.type === 'linkReference' || node.type === 'imageReference') {
         const target = node.type === 'linkReference' || node.type === 'imageReference'
-          ? definitions.get(referenceKey(node.identifier))
+          ? definitions.get(referenceIdentifier(node.identifier))
           : node
         if (!target || typeof target.url !== 'string' || !nullableText(target.title))
           invalid()

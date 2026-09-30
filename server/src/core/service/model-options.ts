@@ -5,6 +5,28 @@ import { DeepSeekAdapter, LlmClient, OpenAIAdapter } from '../../llm/index.js'
 import { EmbeddingClient, GoogleEmbeddingAdapter, SiliconFlowEmbeddingAdapter } from '../../rag/embedding/index.js'
 import { isNonEmptyString, isRecord } from '../../utils/type-guards.js'
 
+/** 每次调用读取当前配置，工作台选项与请求默认值使用同一来源；不向选项暴露凭据。 */
+function modelConfiguration() {
+  return {
+    llm: {
+      deepseek: { model: process.env.DEEPSEEK_MODEL ?? 'deepseek-flash', available: !!process.env.DEEPSEEK_API_KEY?.trim() },
+      openai: { model: process.env.OPENAI_MODEL, available: !!process.env.OPENAI_API_KEY?.trim() },
+    },
+    embedding: {
+      siliconflow: { model: process.env.EMBEDDING_MODEL, available: !!process.env.EMBEDDING_API_KEY?.trim() },
+      google: { model: process.env.GOOGLE_EMBEDDING_MODEL, available: !!process.env.GOOGLE_API_KEY?.trim() },
+    },
+  }
+}
+
+/** 配置目录只列可选项；显式指定模型的调用不要求它预先出现在目录中。 */
+export function configuredModels() {
+  const configuration = modelConfiguration()
+  const choices = (entries: Record<string, { model: string | undefined, available: boolean }>) => Object.entries(entries)
+    .flatMap(([provider, value]) => value.available && isNonEmptyString(value.model) ? [{ provider, model: value.model.trim() }] : [])
+  return { llm: choices(configuration.llm), embedding: choices(configuration.embedding) }
+}
+
 export interface EmbeddingSelection {
   provider: 'google' | 'siliconflow'
   model?: string
@@ -22,12 +44,12 @@ function selection(value: unknown): Record<string, unknown> {
 export function llmOptions(value: unknown) {
   const input = value === undefined ? { provider: 'deepseek' } : selection(value)
   const provider = input.provider === 'ds' ? 'deepseek' : input.provider
-  if (!['deepseek', 'openai'].includes(String(provider)) || input.dimensions !== undefined)
+  if ((provider !== 'deepseek' && provider !== 'openai') || input.dimensions !== undefined)
     throw new AppError(HTTP_ERROR_CODES.INVALID_INPUT, 'llm.provider 支持 deepseek（或 ds）和 openai。')
-  const model = input.model ?? (provider === 'deepseek' ? process.env.DEEPSEEK_MODEL ?? 'deepseek-flash' : process.env.OPENAI_MODEL)
+  const model = input.model ?? modelConfiguration().llm[provider].model
   if (!isNonEmptyString(model))
     throw new AppError(LLM_ERROR_CODES.CONFIGURATION_ERROR, '请提供 LLM model 或配置对应模型环境变量。')
-  return { provider: provider as 'deepseek' | 'openai', model: model.trim() }
+  return { provider, model: model.trim() }
 }
 
 /** 提取预算由 API 调用层决定；DeepSeek 的生成预算还需容纳推理 Token。 */
@@ -54,7 +76,7 @@ export function embeddingSelection(value: unknown): EmbeddingSelection | undefin
 
 export function ingestionEmbeddingOptions(value: unknown) {
   const input = embeddingSelection(value) ?? { provider: 'siliconflow' as const }
-  const model = input.model ?? (input.provider === 'google' ? process.env.GOOGLE_EMBEDDING_MODEL : process.env.EMBEDDING_MODEL)
+  const model = input.model ?? modelConfiguration().embedding[input.provider].model
   if (!isNonEmptyString(model))
     throw new AppError(EMBEDDING_ERROR_CODES.CONFIGURATION_ERROR, '请提供 Embedding model 或配置对应模型环境变量。')
   if (input.dimensions !== undefined && input.provider === 'siliconflow' && !model.startsWith('Qwen/Qwen3-'))

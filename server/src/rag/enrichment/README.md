@@ -124,3 +124,5 @@ interface KnowledgeEnrichment {
 6. `deduplication.ts`：重复项合并与实体 ID 重映射。
 
 测试仅使用内存模型 stub，不启动模拟 API、不调用真实 SDK 或外部模型。
+
+规则提取、Section 引用补齐与 Chunk 位置清理共用 `rag/markdown.ts` 的标准 AST 遍历；引用大小写和空白归一化统一由 `rag/references.ts` 维护。各阶段仍负责自己的输入校验及错误码转换，不把富化规则放进通用遍历。

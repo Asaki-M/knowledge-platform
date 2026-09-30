@@ -5,7 +5,7 @@ import { Pool } from 'pg'
 // eslint-disable-next-line antfu/no-import-dist -- 验证真实 HTTP 入口，数据库边界使用本地 stub。
 import { app } from '../dist/core/app.js'
 // eslint-disable-next-line antfu/no-import-dist -- 验证配置白名单。
-import { configuredModels } from '../dist/core/service/workspace-options.js'
+import { configuredModels, ingestionEmbeddingOptions, llmOptions } from '../dist/core/service/model-options.js'
 
 function env(t, values) {
   const previous = { ...process.env }
@@ -29,6 +29,25 @@ test('model options expose only configured provider/model pairs, never credentia
   env(t, { DEEPSEEK_API_KEY: 'private-key', DEEPSEEK_MODEL: undefined, OPENAI_API_KEY: '', OPENAI_MODEL: 'unavailable', EMBEDDING_API_KEY: 'private-key', EMBEDDING_MODEL: 'BAAI/bge-m3', GOOGLE_API_KEY: 'private-key', GOOGLE_EMBEDDING_MODEL: ' ', DEEPSEEK_BASE_URL: 'https://private.example' })
   assert.deepEqual(configuredModels(), { llm: [{ provider: 'deepseek', model: 'deepseek-flash' }], embedding: [{ provider: 'siliconflow', model: 'BAAI/bge-m3' }] })
   assert.ok(!JSON.stringify(configuredModels()).includes('private'))
+})
+
+test('workspace choices and request defaults stay aligned without caching environment or restricting explicit models', (t) => {
+  env(t, { DEEPSEEK_API_KEY: 'test-key', DEEPSEEK_MODEL: ' deepseek-default ', OPENAI_API_KEY: 'test-key', OPENAI_MODEL: ' openai-default ', EMBEDDING_API_KEY: 'test-key', EMBEDDING_MODEL: ' vector-default ', GOOGLE_API_KEY: 'test-key', GOOGLE_EMBEDDING_MODEL: ' google-default ' })
+  for (const choice of configuredModels().llm)
+    assert.deepEqual(llmOptions({ provider: choice.provider }), choice)
+  for (const choice of configuredModels().embedding)
+    assert.deepEqual(ingestionEmbeddingOptions({ provider: choice.provider }), choice)
+  assert.equal(llmOptions({ provider: 'ds' }).model, 'deepseek-default')
+  assert.equal(ingestionEmbeddingOptions({ provider: 'gemini' }).model, 'google-default')
+  process.env.DEEPSEEK_MODEL = 'updated-default'
+  assert.equal(configuredModels().llm[0].model, llmOptions().model)
+  delete process.env.DEEPSEEK_MODEL
+  assert.equal(configuredModels().llm[0].model, 'deepseek-flash')
+  process.env.DEEPSEEK_MODEL = ''
+  assert.ok(!configuredModels().llm.some(item => item.provider === 'deepseek'))
+  assert.throws(() => llmOptions(), { code: 'CONFIGURATION_ERROR' })
+  assert.equal(llmOptions({ provider: 'deepseek', model: ' explicit-model ' }).model, 'explicit-model')
+  assert.equal(ingestionEmbeddingOptions({ provider: 'google', model: 'explicit-vector' }).model, 'explicit-vector')
 })
 
 test('workspace catalog distinguishes fresh database, stored knowledge bases and failed reads', async (t) => {

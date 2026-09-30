@@ -47,6 +47,8 @@ llm/
   → LlmClient：记录元数据、结束 span，返回结果或抛出错误
 ```
 
+`providers/openai-sdk.ts` 统一 OpenAI / DeepSeek 共用的 SDK 连接选项校验、实例创建与异常分类；各厂商仍读取自己的环境变量、实现协议映射，并由 `normalize-error.ts` 绑定厂商身份。该文件不经公共入口导出，公共 LLM 契约不包含 SDK 类型。
+
 `client.ts` 不根据厂商写分支，也不负责具体 SDK 字段；`mapping.ts` 只做转换和响应语义校验，不调用网络、不写日志。
 
 ## DeepSeek

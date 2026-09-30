@@ -311,3 +311,19 @@ test('concept deduplication remaps both relationship endpoints and fact node ref
     await assert.rejects(create(async () => response(malformed)).enrich(section), { code: 'ENRICHMENT_INVALID_OUTPUT' })
   }
 })
+
+test('shared Markdown traversal preserves nested reference extraction and rejects malformed child nodes', async () => {
+  const document = await new NextraMdxAdapter().normalize({
+    source: { id: 'shared-reference' },
+    content: '# 来源\n\n[Guide   API]: https://example.com/first\n\n[guide api]: https://example.com/second\n\n# 使用\n\n> - [文档][GUIDE api]\n> - ![示意][guide   api]',
+  })
+  const input = splitSections(document).at(-1)
+  assert.deepEqual(extractSectionData(input).links, [
+    { kind: 'link', text: '文档', url: 'https://example.com/first', title: null },
+    { kind: 'image', text: '示意', url: 'https://example.com/first', title: null },
+  ])
+  for (const children of [null, {}, [null], [{ value: 'missing type' }], [{ type: 'paragraph', children: null }]]) {
+    const malformed = { ...section, ast: { type: 'root', children } }
+    assert.throws(() => extractSectionData(malformed), { code: 'ENRICHMENT_INVALID_INPUT' })
+  }
+})

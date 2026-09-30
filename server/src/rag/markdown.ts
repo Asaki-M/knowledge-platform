@@ -23,3 +23,16 @@ export function plainText(node: Root | RootContent): string {
   }
   return ''
 }
+
+/** 标准 mdast 的前序遍历；结构错误由调用能力转换为自己的 AppError。 */
+export function visitMarkdown(node: Root | RootContent, callback: (node: Root | RootContent) => void): void {
+  if (!node || typeof node.type !== 'string')
+    throw new TypeError('Invalid Markdown node')
+  callback(node)
+  if ('children' in node) {
+    if (!Array.isArray(node.children))
+      throw new TypeError('Invalid Markdown children')
+    for (const child of node.children)
+      visitMarkdown(child, callback)
+  }
+}

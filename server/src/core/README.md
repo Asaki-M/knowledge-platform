@@ -142,7 +142,7 @@ curl 'http://127.0.0.1:3000/api/logs/123'
 - `knowledgeBases`：`{ id, embedding: { provider, model, dimensions }, documents: [{ id, label }] }[]`。从现有向量快照与来源引用读取；`model` 是原入库请求的模型 ID，文档标签优先使用来源文件名/路径。列表用于选择更新目标，不提供原文回查。
 - `logScopes`：历史操作记录中的 `{ knowledgeBaseId, documentId }[]`，包含失败操作的范围，避免把未成功入库的文档误当成可更新文档。
 
-API 只读现有表，不初始化数据库、不读取正文或向量。首次没有表返回空目录，数据库配置或读取失败分别返回 `WORKSPACE_CONFIGURATION_ERROR` / `WORKSPACE_DATABASE_ERROR`，不冒充空库。目录查询归 `core/dao/workspace-options.ts`，配置白名单归 `core/service/workspace-options.ts`。
+API 只读现有表，不初始化数据库、不读取正文或向量。首次没有表返回空目录，数据库配置或读取失败分别返回 `WORKSPACE_CONFIGURATION_ERROR` / `WORKSPACE_DATABASE_ERROR`，不冒充空库。目录查询归 `core/dao/workspace-options.ts`，配置白名单和实际请求的默认模型统一归 `core/service/model-options.ts`，`core/service/workspace-options.ts` 只组合目录与模型选项。
 
 前端通过 Popover 填写知识库名称（1–64 字符、去首尾空格、拒绝同名），名称沿用为知识库字符串标识；新文档生成 UUID，首次入库成功才持久化；同名文件默认新增，更新需从已有文档列表显式选择。已有知识库锁定原 Embedding 模型，维度由入库编排沿用；新库使用模型默认维度。失败保留正文与文档标识，成功后清空编辑器并重新读取目录。日志使用快捷时间范围，在详情中可一键按 requestId 筛选。
 

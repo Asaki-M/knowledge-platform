@@ -1,22 +1,13 @@
+import type OpenAI from 'openai'
 import type { LlmAdapter, LlmRequest, LlmResponse } from '../../types.js'
+import type { OpenAISdkOptions } from '../openai-sdk.js'
 import process from 'node:process'
-import OpenAI from 'openai'
-import { LLM_ERROR_CODES } from '../../../error-codes.js'
-import { AppError } from '../../../errors.js'
+import { createOpenAISdk } from '../openai-sdk.js'
 import { toLlmResponse, toOpenAIRequest } from './mapping.js'
 import { normalizeError } from './normalize-error.js'
 
-/** OpenAI SDK 的连接配置；不混入通用生成输入，避免业务参数绑定具体供应商。 */
-export interface OpenAIAdapterOptions {
-  /** 显式值优先，未传时读取 OPENAI_API_KEY。 */
-  apiKey?: string
-  /** 显式值优先，其次读取 OPENAI_BASE_URL；自定义地址需支持 Responses API。 */
-  baseURL?: string
-  /** SDK 单次请求尝试的超时毫秒数，默认 60000；重试会增加总等待时间。 */
-  timeoutMs?: number
-  /** SDK 内置最大重试次数，默认 2，设为 0 可关闭自动重试。 */
-  maxRetries?: number
-}
+/** 显式连接参数优先，未传时使用 OPENAI_API_KEY / OPENAI_BASE_URL。 */
+export type OpenAIAdapterOptions = OpenAISdkOptions
 
 /** 使用官方 SDK 的 Responses API 实现统一文本生成，不依赖 HTTP 路由或 RAG。 */
 export class OpenAIAdapter implements LlmAdapter {
@@ -25,18 +16,11 @@ export class OpenAIAdapter implements LlmAdapter {
 
   /** 构造时读取并校验配置；仅创建 SDK 客户端，不发起模型请求。 */
   constructor(options: OpenAIAdapterOptions = {}) {
-    const apiKey = options.apiKey ?? process.env.OPENAI_API_KEY
-    if (!apiKey?.trim())
-      throw new AppError(LLM_ERROR_CODES.CONFIGURATION_ERROR, 'OPENAI_API_KEY is required', { provider: this.provider })
-    if (options.timeoutMs !== undefined && (!Number.isFinite(options.timeoutMs) || options.timeoutMs <= 0))
-      throw new AppError(LLM_ERROR_CODES.CONFIGURATION_ERROR, 'timeoutMs must be positive', { provider: this.provider })
-    if (options.maxRetries !== undefined && (!Number.isInteger(options.maxRetries) || options.maxRetries < 0))
-      throw new AppError(LLM_ERROR_CODES.CONFIGURATION_ERROR, 'maxRetries must be a non-negative integer', { provider: this.provider })
-    this.client = new OpenAI({
-      apiKey,
-      baseURL: options.baseURL ?? process.env.OPENAI_BASE_URL,
-      timeout: options.timeoutMs ?? 60000,
-      maxRetries: options.maxRetries ?? 2,
+    this.client = createOpenAISdk(options, {
+      provider: this.provider,
+      apiKey: process.env.OPENAI_API_KEY,
+      baseURL: process.env.OPENAI_BASE_URL,
+      apiKeyName: 'OPENAI_API_KEY',
     })
   }
 

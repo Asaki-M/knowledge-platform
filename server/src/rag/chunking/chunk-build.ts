@@ -4,7 +4,7 @@ import type { ChunkBuildOptions, ChunkBuildResult, ChunkPart, DocumentChunk } fr
 import { CHUNK_BUILD_ERROR_CODES as CODES } from '../../error-codes.js'
 import { AppError } from '../../errors.js'
 import { isRecord } from '../../utils/type-guards.js'
-import { plainText, renderMarkdown } from '../markdown.js'
+import { plainText, renderMarkdown, visitMarkdown } from '../markdown.js'
 import { indexDefinitions, withReferences } from '../references.js'
 import { assertSection } from '../sections/index.js'
 import { fragmentBlock } from './fragments.js'
@@ -13,13 +13,6 @@ import { countChunkTokens } from './tokens.js'
 interface Fragment {
   node: RootContent
   part: ChunkPart
-}
-
-/** 细分后的节点不再沿用整块行列；原文粗粒度位置保存在 parts 中。 */
-function removePositions(node: Root | RootContent) {
-  delete node.position
-  if ('children' in node)
-    node.children.forEach(removePositions)
 }
 
 /** 只做确定性的内容构建；不调用模型，不拼 embeddingText，不提前生成数据库记录。 */
@@ -106,8 +99,12 @@ export function buildChunks(section: DocumentSection, options: ChunkBuildOptions
         const pieces = fragmentBlock(node, part => fits([part]))
         for (const [partIndex, piece] of pieces.entries()) {
           const content = structuredClone(piece.node)
-          if (piece.range)
-            removePositions(content)
+          if (piece.range) {
+            // 细分片段不再沿用原块行列；原始位置仍保存在 parts 中。
+            visitMarkdown(content, (node) => {
+              delete node.position
+            })
+          }
           const fragment: Fragment = {
             node: content,
             part: { blockIndex, partIndex, partCount: pieces.length, overlap: false, range: piece.range, position: node.position },
