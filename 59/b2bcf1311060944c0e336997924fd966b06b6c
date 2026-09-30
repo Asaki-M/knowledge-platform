@@ -1,0 +1,59 @@
+server/src/llm/providers/deepseek/normalize-error.ts
+  s_a7ff7d93efa787::t_c120bdbb4a72e3 1,3-5
+server/src/core/service/workspace-options.ts
+  s_a7ff7d93efa787::t_c120bdbb4a72e3 2
+server/src/rag/chunking/chunk-build.ts
+  s_a7ff7d93efa787::t_c120bdbb4a72e3 7,102-106
+  s_a7ff7d93efa787::t_162cc594a0b82a 107
+server/src/core/service/model-options.ts
+  s_a7ff7d93efa787::t_c120bdbb4a72e3 8-29,47,49,52,79
+server/src/llm/providers/openai/adapter.ts
+  s_a7ff7d93efa787::t_c120bdbb4a72e3 1,3,5,9-10,19-23
+server/test/workspace-options.test.mjs
+  s_a7ff7d93efa787::t_c120bdbb4a72e3 8
+  s_a7ff7d93efa787::t_3a6f7e44689563 34-52
+server/src/llm/providers/deepseek/adapter.ts
+  s_a7ff7d93efa787::t_c120bdbb4a72e3 1,3,5,9-10,19-23
+server/src/llm/providers/openai/normalize-error.ts
+  s_a7ff7d93efa787::t_c120bdbb4a72e3 1,3-5
+server/src/llm/providers/openai-sdk.ts
+  s_a7ff7d93efa787::t_c120bdbb4a72e3 1-58
+README.md
+  s_a7ff7d93efa787::t_74656956ce737e 47-49,97
+server/src/rag/enrichment/extraction.ts
+  s_a7ff7d93efa787::t_c120bdbb4a72e3 1,8-9,51-53,55,63
+server/src/rag/markdown.ts
+  s_a7ff7d93efa787::t_c120bdbb4a72e3 26-34,37-38
+  s_a7ff7d93efa787::t_c02a7eb6c9c9c1 35-36
+server/src/rag/references.ts
+  s_a7ff7d93efa787::t_c120bdbb4a72e3 2,6-8,11-12,18,33,61,63
+server/src/core/README.md
+  s_a7ff7d93efa787::t_8a09e6ef7dfc5c 145
+server/src/llm/README.md
+  s_a7ff7d93efa787::t_d4279db0af6ae3 50-51
+server/src/rag/enrichment/README.md
+  s_a7ff7d93efa787::t_8728e906baa156 127-128
+server/test/enrichment.test.mjs
+  s_a7ff7d93efa787::t_d1f14ec509f3b0 314-329
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "59b2bcf1311060944c0e336997924fd966b06b6c",
+  "prompts": {},
+  "humans": {
+    "h_8d050896203f0f": {
+      "author": "qinghuan <1041220793@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_a7ff7d93efa787": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f01a-bd10-7ac1-872b-34a03d20095d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "qinghuan <1041220793@qq.com>"
+    }
+  }
+}
