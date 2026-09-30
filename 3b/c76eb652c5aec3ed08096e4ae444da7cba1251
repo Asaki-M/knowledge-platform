@@ -1,0 +1,201 @@
+app/src/features/workspace/operation-feedback.tsx
+  s_a7ff7d93efa787::t_cffe80692a7ab0 4,11-12
+  s_a7ff7d93efa787::t_e0f177b4e6493e 7-10,13,15-27
+  s_a7ff7d93efa787::t_f7796952537a76 1-2
+app/src/features/pipeline/types.ts
+  s_a7ff7d93efa787::t_3fbf3724347e06 1-4,6-9
+  s_a7ff7d93efa787::t_dce62ac2b204fc 5
+app/src/features/workspace/knowledge-base-field.tsx
+  s_a7ff7d93efa787::t_576d270eee51b3 27-33,50-51,54-69
+  s_a7ff7d93efa787::t_9aa727c05b2a9e 1,9,25
+  s_a7ff7d93efa787::t_69d0337ef81d0b 6,8,16-20,23-24,81
+  s_a7ff7d93efa787::t_5099aec737c025 2,5,10-14,21-22,26,35-49,52-53,70-80
+AGENTS.md
+  s_a7ff7d93efa787::t_5099aec737c025 235
+  s_a7ff7d93efa787::t_cffe80692a7ab0 209,217-232
+  s_a7ff7d93efa787::t_ae2907c2d7ddc9 233-234,236
+  s_a7ff7d93efa787::t_033cba3cc30114 96
+server/test/enrichment.test.mjs
+  s_a7ff7d93efa787::t_5333bf5a687776 116,121
+server/test/document-api.test.mjs
+  s_c6fd3c1d7b431e::t_7f4a41ef86442e 9-10,13,62-66,166-169,179-182
+  s_a7ff7d93efa787::t_033cba3cc30114 12,39-60,103-106,121
+  s_c6fd3c1d7b431e::t_4d1b06fe23b4c1 67-69
+  s_a7ff7d93efa787::t_978117cef929f5 72,97-100,207-214
+  s_a7ff7d93efa787::t_5333bf5a687776 74,110,185-206
+app/src/utils/api.ts
+  s_a7ff7d93efa787::t_333d6b930d1069 7-10,14,21-28
+  s_a7ff7d93efa787::t_f7796952537a76 1-6,11-13,15-20,29-34
+app/src/features/ask/types.ts
+  s_a7ff7d93efa787::t_3fbf3724347e06 1-22
+server/src/core/dao/workspace-options.ts
+  s_a7ff7d93efa787::t_e7b715f93f6e2b 1-52
+app/src/features/workspace/store.ts
+  s_a7ff7d93efa787::t_69d0337ef81d0b 1,3,6-16,20,22-25,32,35,37-52,60,62
+  s_a7ff7d93efa787::t_9aa727c05b2a9e 67-70
+  s_a7ff7d93efa787::t_f7796952537a76 5,19,28,33-34,64
+  s_a7ff7d93efa787::t_5099aec737c025 26,53-59,61
+server/test/workspace-options.test.mjs
+  s_a7ff7d93efa787::t_ae2907c2d7ddc9 54-56
+  s_a7ff7d93efa787::t_9aa727c05b2a9e 1-53,57-81
+app/src/features/workspace/workspace-page.tsx
+  s_a7ff7d93efa787::t_69d0337ef81d0b 3,22,84-87,89
+  s_a7ff7d93efa787::t_f7796952537a76 2,6,14-17,29,83,90-94
+  s_a7ff7d93efa787::t_9aa727c05b2a9e 23-25
+  s_a7ff7d93efa787::t_e0f177b4e6493e 32,47-48,51,60,75,78-80
+  s_a7ff7d93efa787::t_5a593491fae6fe 9
+server/.env.example
+  s_a7ff7d93efa787::t_60d4f548f7bd72 17-20
+server/src/core/service/model-options.ts
+  s_a7ff7d93efa787::t_60d4f548f7bd72 2,33-42,66,68-69
+server/src/core/router/search.ts
+  s_c6fd3c1d7b431e::t_e49b6ba6dc2c27 9
+  s_c6fd3c1d7b431e::t_ababcb703765f7 1,5,8,13
+server/src/core/service/operation-logs.ts
+  s_c6fd3c1d7b431e::t_ababcb703765f7 3
+  s_c6fd3c1d7b431e::t_951471825e47c3 1-2,4-5,7-18,37-44,46-63,65-126,128-138,145-148,156-187
+  s_c6fd3c1d7b431e::t_e49b6ba6dc2c27 19,24-36,45,64,127,139-144,149-155
+  s_a7ff7d93efa787::t_3bf53047942b8b 6,20-23
+server/src/core/dao/operation-logs.ts
+  s_c6fd3c1d7b431e::t_951471825e47c3 1-147,149-160
+  s_c6fd3c1d7b431e::t_c31741985c30b2 148
+app/src/features/ask/answer-markdown.tsx
+  s_a7ff7d93efa787::t_333d6b930d1069 13,45
+  s_a7ff7d93efa787::t_7f0dfbafd4f06f 1-12,14-44,46-64
+app/src/styles.css
+  s_a7ff7d93efa787::t_54868c96f2eaa5 523-670,686-1273,1275-1293,1296-1325,1328-1375,1378-1380,1386,1388,1391-1393,1396-1397,1402,1405-1406,1409,1411,1480,1482,1486-1487,1491
+  s_a7ff7d93efa787::t_e0f177b4e6493e 521-522,1274,1294-1295,1326-1327,1376
+  s_a7ff7d93efa787::t_41904f9fb5ade0 671,673-685
+  s_a7ff7d93efa787::t_7f0dfbafd4f06f 1387,1413-1479
+  s_a7ff7d93efa787::t_ae2907c2d7ddc9 672
+  s_a7ff7d93efa787::t_5099aec737c025 1381,1384,1389,1394,1398,1400,1403,1407,1412,1484,1489,1492,1495-1518
+  s_a7ff7d93efa787::t_cffe80692a7ab0 128
+  s_a7ff7d93efa787::t_5c79f10d7abf56 1377,1382-1383,1385,1390,1395,1399,1401,1404,1408,1410,1481,1483,1485,1488,1490,1493-1494
+server/src/core/router/documents.ts
+  s_c6fd3c1d7b431e::t_ababcb703765f7 1,5,8,13
+  s_c6fd3c1d7b431e::t_e49b6ba6dc2c27 9
+server/src/error-codes.ts
+  s_c6fd3c1d7b431e::t_ababcb703765f7 236-244
+  s_a7ff7d93efa787::t_3bf53047942b8b 85-89
+  s_a7ff7d93efa787::t_e7b715f93f6e2b 73,245-253
+app/src/features/workspace/use-operation.ts
+  s_a7ff7d93efa787::t_dce62ac2b204fc 10-11,14,17,37
+  s_a7ff7d93efa787::t_69d0337ef81d0b 27
+  s_a7ff7d93efa787::t_f7796952537a76 1-9,12-13,15-16,18-26,28-36,38-41
+server/src/core/router/logs.ts
+  s_c6fd3c1d7b431e::t_951471825e47c3 1-6
+app/src/features/workspace/model-fields.tsx
+  s_a7ff7d93efa787::t_9aa727c05b2a9e 2
+  s_a7ff7d93efa787::t_f7796952537a76 3,11,27-28
+  s_a7ff7d93efa787::t_69d0337ef81d0b 1,4-10,12-13,23-26
+  s_a7ff7d93efa787::t_5a593491fae6fe 14-22
+app/src/features/pipeline/ingestion-steps.ts
+  s_a7ff7d93efa787::t_3fbf3724347e06 30,35
+app/src/components/ui/popover.tsx
+  s_a7ff7d93efa787::t_5099aec737c025 1-15
+server/src/core/service/search.ts
+  s_c6fd3c1d7b431e::t_ababcb703765f7 1,10,12-13,21,24,34-35
+server/test/operation-logs.test.mjs
+  s_c6fd3c1d7b431e::t_7f4a41ef86442e 1-113,127-129,134-202,209
+  s_c6fd3c1d7b431e::t_4d1b06fe23b4c1 123,131-133
+  s_c6fd3c1d7b431e::t_c31741985c30b2 114-122,124-126,130,203-208
+server/src/rag/enrichment/README.md
+  s_a7ff7d93efa787::t_5333bf5a687776 113
+server/src/core/README.md
+  s_a7ff7d93efa787::t_033cba3cc30114 15
+  s_a7ff7d93efa787::t_92dec06a74bb2d 16
+  s_a7ff7d93efa787::t_5333bf5a687776 78-79
+  s_a7ff7d93efa787::t_ae2907c2d7ddc9 136-146,148-149
+  s_a7ff7d93efa787::t_5099aec737c025 147
+  s_a7ff7d93efa787::t_cffe80692a7ab0 77,80-135
+server/src/core/service/documents.ts
+  s_a7ff7d93efa787::t_cbe1a670b5675a 21
+  s_a7ff7d93efa787::t_60d4f548f7bd72 7,20,26
+  s_c6fd3c1d7b431e::t_ababcb703765f7 1,8,10-11,27-28
+README.md
+  s_a7ff7d93efa787::t_ae2907c2d7ddc9 121
+  s_a7ff7d93efa787::t_cffe80692a7ab0 3,30,32,114-115,119-120,122,404-411
+  s_a7ff7d93efa787::t_5099aec737c025 116
+  s_a7ff7d93efa787::t_033cba3cc30114 246
+server/src/llm/README.md
+  s_a7ff7d93efa787::t_033cba3cc30114 56
+server/src/core/router/workspace.ts
+  s_a7ff7d93efa787::t_e7b715f93f6e2b 1-4
+app/src/features/logs/types.ts
+  s_a7ff7d93efa787::t_e0f177b4e6493e 6,8-24,26-30
+  s_a7ff7d93efa787::t_c06c6c0151be9b 1-5,7,25
+server/src/core/service/workspace-options.ts
+  s_a7ff7d93efa787::t_e7b715f93f6e2b 1-18
+app/src/features/logs/logs-view.tsx
+  s_a7ff7d93efa787::t_dce62ac2b204fc 15,18,36,48-73,82-104,110
+  s_a7ff7d93efa787::t_5a593491fae6fe 7,233-238,377-389
+  s_a7ff7d93efa787::t_41904f9fb5ade0 13,23,113-117,119-121,123-124,179-183,197-201,204-211
+  s_a7ff7d93efa787::t_54868c96f2eaa5 16-17,19-20,155-161,218-228,269-270,275-276,280-292,314-322,332-333,396-397,411-412
+  s_a7ff7d93efa787::t_e0f177b4e6493e 1-6,8-12,14,21-22,24-35,37-39,45-47,74-81,105-109,111-112,118,122,125-141,151-154,162-178,184-196,202-203,212-217,229-232,239-246,248-268,271-274,277-279,293-313,323-331,334-359,361-376,390-395,398-410,413-427,429-446
+  s_a7ff7d93efa787::t_9aa727c05b2a9e 142-150
+  s_a7ff7d93efa787::t_cffe80692a7ab0 247,360
+  s_a7ff7d93efa787::t_800876befbd56e 40-44
+  s_a7ff7d93efa787::t_81fdd153c9d4c9 428
+server/src/core/router/index.ts
+  s_a7ff7d93efa787::t_e7b715f93f6e2b 6,8
+  s_c6fd3c1d7b431e::t_ababcb703765f7 4
+server/src/core/middleware/operation-logging.ts
+  s_c6fd3c1d7b431e::t_951471825e47c3 1-29
+app/src/features/ask/ask-view.tsx
+  s_a7ff7d93efa787::t_3fbf3724347e06 1,3-4,8,10,16-20,24,26-28,30-31,49-50,56,101-103,247-248
+  s_a7ff7d93efa787::t_69d0337ef81d0b 6,14-15,21-23,25,29,57,62,98,118
+  s_a7ff7d93efa787::t_e0f177b4e6493e 2,36,41,43-44,46-48,59-61,63-74,90-97,99-100,104-117,119-136,144-149,151-171,173-246
+  s_a7ff7d93efa787::t_9aa727c05b2a9e 7,9
+  s_a7ff7d93efa787::t_54868c96f2eaa5 51-55,75-89,138-140,142-143
+  s_a7ff7d93efa787::t_dce62ac2b204fc 137,141
+  s_a7ff7d93efa787::t_7f0dfbafd4f06f 11,150
+  s_a7ff7d93efa787::t_5099aec737c025 58
+app/src/features/pipeline/pipeline-view.tsx
+  s_a7ff7d93efa787::t_54868c96f2eaa5 126,153-161,283-290
+  s_a7ff7d93efa787::t_5a593491fae6fe 134-141,178-182,185-195
+  s_a7ff7d93efa787::t_dce62ac2b204fc 57,267
+  s_a7ff7d93efa787::t_69d0337ef81d0b 6,14-16,19-20,26-40,42-43,49-52,68,127,131-133,142-146,184,196-197,201
+  s_a7ff7d93efa787::t_9aa727c05b2a9e 7,9
+  s_a7ff7d93efa787::t_3fbf3724347e06 1,3-5,8,10,13,17-18,21-24,53-56,58-67,69-74
+  s_a7ff7d93efa787::t_e0f177b4e6493e 2,80,82,85-116,119-125,128-130,147-152,162-177,183,198-200,202-266,268-282,291-309,311,319-320
+  s_a7ff7d93efa787::t_41904f9fb5ade0 41,44-48
+server/src/core/app.ts
+  s_a7ff7d93efa787::t_3bf53047942b8b 4,30-36
+server/src/rag/enrichment/enricher.ts
+  s_a7ff7d93efa787::t_3bf53047942b8b 70-74
+app/package.json
+  s_a7ff7d93efa787::t_b35068942a075a 13,20-21,27
+app/src/features/logs/log-models.tsx
+  s_a7ff7d93efa787::t_da659d04be3cb1 1-51
+pnpm-lock.yaml
+  s_a7ff7d93efa787::t_9bb0f33110e1e3 32-34,53-58,69-71,627-641,930-945,955-1072,1082-1138,1508-1510,1581-1584,1678-1680,1756-1758,2159-2162,2199-2204,2218-2220,2249-2251,2503-2505,2835-2837,2862-2867,2872-2901,2930-2932,2994-2996,3028-3033,3072-3074,3087-3089,3129-3131,3153-3172,3781-3797,4121-4131,4138-4249,4257-4300,4624-4625,4706-4709,4786-4787,4836-4837,5371-5372,5408-5431,5440-5441,5467-5468,5803-5814,6294-6295,6325-6342,6345-6371,6423-6430,6508-6509,6540-6547,6584-6585,6594-6595,6636-6639,6670-6684
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3bc76eb652c5aec3ed08096e4ae444da7cba1251",
+  "prompts": {},
+  "humans": {
+    "h_8d050896203f0f": {
+      "author": "qinghuan <1041220793@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_a7ff7d93efa787": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f01a-bd10-7ac1-872b-34a03d20095d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "qinghuan <1041220793@qq.com>"
+    },
+    "s_c6fd3c1d7b431e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0eaee-3740-7cf1-9250-1ecb79014ce4",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "qinghuan <1041220793@qq.com>"
+    }
+  }
+}
