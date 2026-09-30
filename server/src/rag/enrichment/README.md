@@ -110,7 +110,7 @@ interface KnowledgeEnrichment {
 
 提取结果交给 [buildWiki](../wiki/README.md) 聚合跨节语义节点；`buildChunks(section, options?)` 独立运行，不接收 enrichment 或 Wiki。本阶段不构建 embeddingText、Metadata Build 或数据库记录。
 
-`maxInputCharacters` 默认 60000，按完整 user 消息（包含规则提取结果）计数；超限直接失败，不静默截断。`maxOutputTokens` 默认 6000。拒答、截断、过滤和未知完成原因一律失败。`enrich(section, { signal })` 保持调用前后取消检查；上游 AppError 保留原语义，不叠加重试。
+`maxInputCharacters` 默认 60000，按完整 user 消息（包含规则提取结果）计数；超限直接失败，不静默截断。`maxOutputTokens` 默认 6000。拒答、截断、过滤和未知完成原因一律失败，分别使用 `ENRICHMENT_REFUSED`、`ENRICHMENT_OUTPUT_TRUNCATED`、`ENRICHMENT_CONTENT_FILTERED` 和 `ENRICHMENT_INCOMPLETE_RESPONSE`，即使部分文本是合法 JSON 也不接受。`enrich(section, { signal })` 保持调用前后取消检查；上游 AppError 保留原语义，不叠加重试。
 
 追踪复用 LlmClient，不记录正文、提示词、模型内容或凭据。模型调用完成不代表后续校验通过。错误码仍统一在 `../../error-codes.ts`。
 

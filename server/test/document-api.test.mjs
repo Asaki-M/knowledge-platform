@@ -6,8 +6,11 @@ import process from 'node:process'
 import { test } from 'node:test'
 // eslint-disable-next-line antfu/no-import-dist -- 实际 HTTP 路由调用真实 SDK，本地模拟上游和存储。
 import { app } from '../dist/core/app.js'
+// eslint-disable-next-line antfu/no-import-dist -- 观察操作记录，常规测试不访问数据库。
+import { OperationLogDao } from '../dist/core/dao/operation-logs.js'
 // eslint-disable-next-line antfu/no-import-dist -- 验证接口配置解析而不是复制其实现。
-import { embeddingSelection, ingestionEmbeddingOptions, llmOptions } from '../dist/core/service/model-options.js'
+import { embeddingSelection, ingestionEmbeddingOptions, ingestionLlmOptions, llmOptions } from '../dist/core/service/model-options.js'
+
 // eslint-disable-next-line antfu/no-import-dist -- 替换数据库边界，实际数据库原子性由独立集成测试验证。
 import { PgVectorStore } from '../dist/rag/vector-store/index.js'
 
@@ -33,10 +36,42 @@ test('API selectors accept DS/OpenAI and Gemini/SiliconFlow, reject invalid opti
   assert.equal((await app.request('/api/documents/ingest', { method: 'POST', body: 'x'.repeat(1048577) })).status, 413)
 })
 
+test('ingestion budgets include reasoning and validate overrides without changing query settings', (t) => {
+  const previous = process.env.ENRICHMENT_MAX_OUTPUT_TOKENS
+  t.after(() => {
+    if (previous === undefined)
+      delete process.env.ENRICHMENT_MAX_OUTPUT_TOKENS
+    else
+      process.env.ENRICHMENT_MAX_OUTPUT_TOKENS = previous
+  })
+  delete process.env.ENRICHMENT_MAX_OUTPUT_TOKENS
+  assert.equal(ingestionLlmOptions({ provider: 'ds', model: 'test' }).maxOutputTokens, 32768)
+  assert.equal(ingestionLlmOptions({ provider: 'openai', model: 'test' }).maxOutputTokens, 10000)
+  process.env.ENRICHMENT_MAX_OUTPUT_TOKENS = '24000'
+  assert.equal(ingestionLlmOptions({ provider: 'ds', model: 'test' }).maxOutputTokens, 24000)
+  assert.deepEqual(llmOptions({ provider: 'ds', model: 'test' }), { provider: 'deepseek', model: 'test' })
+  for (const invalid of ['0', '-1', '1.5', 'NaN', 'Infinity']) {
+    process.env.ENRICHMENT_MAX_OUTPUT_TOKENS = invalid
+    assert.throws(() => ingestionLlmOptions({ provider: 'ds', model: 'test' }), { code: 'ENRICHMENT_CONFIGURATION_ERROR' })
+  }
+  process.env.ENRICHMENT_MAX_OUTPUT_TOKENS = '  '
+  assert.equal(ingestionLlmOptions({ provider: 'ds', model: 'test' }).maxOutputTokens, 32768)
+})
+
 test('four HTTP model combinations normalize, enrich, embed, store and answer via actual SDK protocols', { timeout: 20000 }, async (t) => {
+  const completedLogs = []
+  let logId = 0
+  t.mock.method(OperationLogDao.prototype, 'initialize', async () => {})
+  t.mock.method(OperationLogDao.prototype, 'start', async input => `${input.type}-${++logId}`)
+  t.mock.method(OperationLogDao.prototype, 'setScope', async () => {})
+  t.mock.method(OperationLogDao.prototype, 'finish', async (id, input) => {
+    completedLogs.push({ id, ...input })
+  })
   const calls = []
   let failEmbedding = false
+  let failLlm = false
   let invalidEnrichment = false
+  let finishReason = 'stop'
   const server = createServer(async (req, res) => {
     const chunks = []
     for await (const chunk of req)
@@ -59,12 +94,20 @@ test('four HTTP model combinations normalize, enrich, embed, store and answer vi
       response = { results: Array.from({ length: body.top_n }, (_, index) => ({ index, relevance_score: 1 - index / 10 })) }
     }
     else {
+      if (failLlm) {
+        res.writeHead(500).end(JSON.stringify({ error: { message: 'private-llm-error' } }))
+        return
+      }
       const openai = req.url.endsWith('/responses')
       const input = openai ? body.input[1].content : body.messages[1].content
+      const query = Boolean(JSON.parse(input).sources)
+      assert.equal(openai ? body.max_output_tokens : body.max_tokens, query ? 8000 : openai ? 10000 : 32768)
+      assert.equal(body.reasoning_effort, undefined)
+      assert.equal(body.thinking, undefined)
       const text = JSON.parse(input).sources ? '生产环境使用 HTTPS。[S1]' : invalidEnrichment ? '{}' : JSON.stringify(enrichment)
       response = openai
         ? { id: 'response', object: 'response', model: body.model, status: 'completed', output: [{ type: 'message', role: 'assistant', status: 'completed', content: [{ type: 'output_text', text, annotations: [] }] }] }
-        : { id: 'chat', model: body.model, choices: [{ index: 0, finish_reason: 'stop', message: { role: 'assistant', content: text } }] }
+        : { id: 'chat', model: body.model, choices: [{ index: 0, finish_reason: finishReason, message: { role: 'assistant', content: text } }] }
     }
     res.end(JSON.stringify(response))
   })
@@ -75,7 +118,7 @@ test('four HTTP model combinations normalize, enrich, embed, store and answer vi
     return new Promise(resolve => server.close(resolve))
   })
   const baseURL = `http://127.0.0.1:${server.address().port}`
-  const env = { VECTOR_DATABASE_URL: 'postgresql://test:test@127.0.0.1:1/test', DEEPSEEK_API_KEY: 'test', DEEPSEEK_BASE_URL: `${baseURL}/v1`, OPENAI_API_KEY: 'test', OPENAI_BASE_URL: `${baseURL}/v1`, GOOGLE_API_KEY: 'test', EMBEDDING_API_KEY: 'test', EMBEDDING_BASE_URL: `${baseURL}/v1`, RERANK_API_KEY: 'test', RERANK_BASE_URL: `${baseURL}/v1` }
+  const env = { ENRICHMENT_MAX_OUTPUT_TOKENS: '', VECTOR_DATABASE_URL: 'postgresql://test:test@127.0.0.1:1/test', DEEPSEEK_API_KEY: 'test', DEEPSEEK_BASE_URL: `${baseURL}/v1`, OPENAI_API_KEY: 'test', OPENAI_BASE_URL: `${baseURL}/v1`, GOOGLE_API_KEY: 'test', EMBEDDING_API_KEY: 'test', EMBEDDING_BASE_URL: `${baseURL}/v1`, RERANK_API_KEY: 'test', RERANK_BASE_URL: `${baseURL}/v1` }
   const previous = Object.fromEntries(Object.keys(env).map(key => [key, process.env[key]]))
   Object.assign(process.env, env)
   t.after(() => {
@@ -120,6 +163,10 @@ test('four HTTP model combinations normalize, enrich, embed, store and answer vi
       const result = await response.json()
       assert.equal(response.status, 200, JSON.stringify(result))
       assert.deepEqual(result.counts, { sections: 1, chunks: 1, wikiNodes: 1, wikiEdges: 0, vectors: 2 })
+      assert.equal(completedLogs.at(-1).status, 'succeeded')
+      assert.equal(completedLogs.at(-1).summary.resultStatus, 'stored')
+      assert.deepEqual(completedLogs.at(-1).summary.counts, result.counts)
+      assert.ok(completedLogs.at(-1).id.startsWith('ingestion-'))
       assert.equal(result.enrichment[0].provider, llm === 'ds' ? 'deepseek' : llm)
       assert.equal(result.embedding.provider, embedding === 'gemini' ? 'google' : embedding)
       const answerResponse = await post('/api/search', { knowledgeBaseId: body.knowledgeBaseId, question: '生产环境使用什么协议？', llm: body.llm, embedding: body.embedding })
@@ -129,8 +176,42 @@ test('four HTTP model combinations normalize, enrich, embed, store and answer vi
       assert.equal(answer.generation.provider, result.enrichment[0].provider)
       assert.equal(answer.embedding.provider, result.embedding.provider)
       assert.equal(answer.sources.length, 2)
+      assert.equal(completedLogs.at(-1).status, 'succeeded')
+      assert.equal(completedLogs.at(-1).summary.resultStatus, 'answered')
+      assert.deepEqual(completedLogs.at(-1).summary.counts, answer.counts)
+      assert.ok(completedLogs.at(-1).id.startsWith('query-'))
     }
   }
+  // 即使模型返回可解析 JSON，非正常结束也不能入库；错误原因需贯通 HTTP 与操作日志。
+  for (const [reason, code, message] of [
+    ['length', 'ENRICHMENT_OUTPUT_TRUNCATED', '生成长度限制'],
+    ['content_filter', 'ENRICHMENT_CONTENT_FILTERED', '内容过滤'],
+    ['unknown', 'ENRICHMENT_INCOMPLETE_RESPONSE', '未正常结束'],
+  ]) {
+    finishReason = reason
+    const beforeCalls = calls.length
+    const response = await post('/api/documents/ingest', { ...ingestBody, knowledgeBaseId: `incomplete-${reason}` })
+    const failure = await response.json()
+    assert.equal(response.status, 502)
+    assert.equal(failure.error.code, code)
+    assert.ok(failure.error.message.includes(message))
+    assert.ok(failure.requestId)
+    assert.equal(completedLogs.at(-1).error.code, code)
+    assert.ok(completedLogs.at(-1).error.message.includes(message))
+    assert.equal(completedLogs.at(-1).status, 'failed')
+    assert.equal(saved.has(`incomplete-${reason}`), false)
+    assert.equal(calls.length - beforeCalls, 1)
+    assert.equal(writes, 4)
+  }
+  finishReason = 'stop'
+  failLlm = true
+  const beforeFailure = calls.length
+  const failedLlm = await post('/api/documents/ingest', { ...ingestBody, knowledgeBaseId: 'llm-failure' })
+  assert.equal(failedLlm.status, 502)
+  assert.equal(calls.length - beforeFailure, 1)
+  assert.equal(saved.has('llm-failure'), false)
+  assert.ok(!JSON.stringify(await failedLlm.json()).includes('private-llm-error'))
+  failLlm = false
   const before = calls.length
   const mismatch = await post('/api/search', { knowledgeBaseId: 'ds-siliconflow', question: 'test', embedding: { provider: 'gemini' } })
   assert.equal(mismatch.status, 409)

@@ -113,12 +113,12 @@ test('invalid model schemas, entity links, categories and evidence fail without 
 
 test('refusals and incomplete responses never become successful enrichment or get retried', async () => {
   let calls = 0
-  for (const finishReason of ['length', 'content_filter', 'unknown', 'refusal']) {
+  for (const [finishReason, code] of [['length', 'ENRICHMENT_OUTPUT_TRUNCATED'], ['content_filter', 'ENRICHMENT_CONTENT_FILTERED'], ['unknown', 'ENRICHMENT_INCOMPLETE_RESPONSE'], ['refusal', 'ENRICHMENT_REFUSED']]) {
     const enricher = create(async () => {
       calls++
       return response(undefined, { finishReason })
     })
-    await assert.rejects(enricher.enrich(section), { code: finishReason === 'refusal' ? 'ENRICHMENT_REFUSED' : 'ENRICHMENT_INCOMPLETE_RESPONSE' })
+    await assert.rejects(enricher.enrich(section), { code })
   }
   assert.equal(calls, 4)
   await assert.rejects(create(async () => response(undefined, { refusal: 'private-refusal' })).enrich(section), { code: 'ENRICHMENT_REFUSED' })

@@ -53,7 +53,7 @@ llm/
 
 `DeepSeekAdapter` 位于 [providers/deepseek/adapter.ts](providers/deepseek/adapter.ts)，通过公共入口导入并注册，调用时使用 `provider: 'deepseek'`。构造参数 `apiKey` / `baseURL` 优先于 `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL`，默认地址为 `https://api.deepseek.com`。模型由调用方读取 `DEEPSEEK_MODEL` 并显式传入，目前配置示例选择 `deepseek-flash`。
 
-[mapping.ts](providers/deepseek/mapping.ts) 将输出预算映射到 `max_tokens`，只从单个 choice 的 `message.content` 读取最终回答，不把推理内容混入文本。截断、过滤、拒答及未知结束原因分别保留，正常完成但无文本、缺失 choice 或无效用量明确失败。缺失用量返回 `null`。思考模式沿用供应商默认值，公共契约未扩展推理、流式或工具调用字段。
+[mapping.ts](providers/deepseek/mapping.ts) 将输出预算映射到 `max_tokens`，只从单个 choice 的 `message.content` 读取最终回答，不把推理内容混入文本。截断、过滤、拒答及未知结束原因分别保留，正常完成但无文本、缺失 choice 或无效用量明确失败。缺失用量返回 `null`。思考模式沿用供应商默认值，公共契约未扩展推理、流式或工具调用字段。HTTP 入库调用层为 DeepSeek 默认分配 32768 Token（可由 `ENRICHMENT_MAX_OUTPUT_TOKENS` 覆盖），使用 180 秒单次超时并关闭 SDK 重试；问答不受影响。参考 [DeepSeek 思考模式](https://api-docs.deepseek.com/guides/thinking_mode/)。
 
 [deepseek.test.mjs](../../test/deepseek.test.mjs) 使用真实 SDK 连接本地模拟 Chat Completions API，覆盖配置隔离、请求映射、响应语义、错误分类、取消和超时；不依赖真实 Key。
 

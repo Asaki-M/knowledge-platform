@@ -70,7 +70,7 @@ export const SECTION_SPLIT_ERROR_CODES = {
 export type SectionSplitErrorCode = typeof SECTION_SPLIT_ERROR_CODES[keyof typeof SECTION_SPLIT_ERROR_CODES]
 
 /** 所有业务异常共用的错误码类型，具体字符串与中文含义仍在上面的分组中维护。 */
-export type AppErrorCode = HttpErrorCode | LlmErrorCode | NormalizationErrorCode | SectionSplitErrorCode | EnrichmentErrorCode | ChunkBuildErrorCode | EmbeddingErrorCode | WikiErrorCode | IngestionErrorCode | IndexingErrorCode | VectorStoreErrorCode | RerankErrorCode | QueryErrorCode
+export type AppErrorCode = WorkspaceErrorCode | HttpErrorCode | LlmErrorCode | NormalizationErrorCode | SectionSplitErrorCode | EnrichmentErrorCode | ChunkBuildErrorCode | EmbeddingErrorCode | WikiErrorCode | IngestionErrorCode | IndexingErrorCode | VectorStoreErrorCode | RerankErrorCode | QueryErrorCode | OperationLogErrorCode
 
 /** 知识补充阶段的错误；上游网络、鉴权和取消错误继续沿用 LLM 错误码。 */
 export const ENRICHMENT_ERROR_CODES = {
@@ -82,7 +82,11 @@ export const ENRICHMENT_ERROR_CODES = {
   INPUT_TOO_LARGE: 'ENRICHMENT_INPUT_TOO_LARGE',
   /** 模型明确拒答，不能将拒答内容当成补充结果。 */
   REFUSED: 'ENRICHMENT_REFUSED',
-  /** 模型生成被截断、过滤或未正常结束，即使部分文本是 JSON 也不接受。 */
+  /** 模型达到生成长度限制；不接受截断的 JSON，也不自动重试。 */
+  OUTPUT_TRUNCATED: 'ENRICHMENT_OUTPUT_TRUNCATED',
+  /** 模型输出被内容过滤；增加输出预算不能解决此类失败。 */
+  CONTENT_FILTERED: 'ENRICHMENT_CONTENT_FILTERED',
+  /** 模型以未知原因结束，即使部分文本是 JSON 也不接受。 */
   INCOMPLETE_RESPONSE: 'ENRICHMENT_INCOMPLETE_RESPONSE',
   /** 输出不是约定 JSON，字段类型、分类、实体引用或原文证据校验失败。 */
   INVALID_OUTPUT: 'ENRICHMENT_INVALID_OUTPUT',
@@ -229,3 +233,21 @@ export const QUERY_ERROR_CODES = {
   ABORTED: 'QUERY_ABORTED',
 } as const
 export type QueryErrorCode = typeof QUERY_ERROR_CODES[keyof typeof QUERY_ERROR_CODES]
+
+/** 操作日志持久化错误，与模型和向量业务错误分离。 */
+export const OPERATION_LOG_ERROR_CODES = {
+  /** 日志数据库连接配置缺失或无效。 */
+  CONFIGURATION_ERROR: 'OPERATION_LOG_CONFIGURATION_ERROR',
+  /** 日志建表、写入或查询失败，不透出连接串或 SQL。 */
+  DATABASE_ERROR: 'OPERATION_LOG_DATABASE_ERROR',
+} as const
+export type OperationLogErrorCode = typeof OPERATION_LOG_ERROR_CODES[keyof typeof OPERATION_LOG_ERROR_CODES]
+
+/** 工作台选项查询错误。 */
+export const WORKSPACE_ERROR_CODES = {
+  /** 工作台数据库配置缺失或无效。 */
+  CONFIGURATION_ERROR: 'WORKSPACE_CONFIGURATION_ERROR',
+  /** 读取知识库及筛选范围失败。 */
+  DATABASE_ERROR: 'WORKSPACE_DATABASE_ERROR',
+} as const
+export type WorkspaceErrorCode = typeof WORKSPACE_ERROR_CODES[keyof typeof WORKSPACE_ERROR_CODES]

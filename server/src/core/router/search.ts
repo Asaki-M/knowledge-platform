@@ -1,13 +1,14 @@
+import type { OperationLogEnv } from '../middleware/operation-logging.js'
 import { Hono } from 'hono'
 import { bodyLimit } from 'hono/body-limit'
 import { HTTPException } from 'hono/http-exception'
+import { operationLogging } from '../middleware/operation-logging.js'
 import { search } from '../service/search.js'
 
-export const searchRouter = new Hono()
-  .use('*', bodyLimit({ maxSize: 32768 }))
-  .post('/', async (c) => {
+export const searchRouter = new Hono<OperationLogEnv>()
+  .post('/', operationLogging('query'), bodyLimit({ maxSize: 32768 }), async (c) => {
     const body: unknown = await c.req.json().catch(() => {
       throw new HTTPException(400, { message: 'Invalid JSON body' })
     })
-    return c.json(await search(body, c.req.raw.signal))
+    return c.json(await search(body, c.req.raw.signal, c.get('operationLog')))
   })

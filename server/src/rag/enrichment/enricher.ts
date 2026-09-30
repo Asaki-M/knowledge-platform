@@ -67,6 +67,11 @@ export class KnowledgeEnricher {
     const errorOptions = { provider: response.provider, requestId: response.requestId }
     if (response.refusal || response.finishReason === 'refusal')
       throw new AppError(CODES.REFUSED, 'Model declined knowledge enrichment', errorOptions)
+    // 区分长度、过滤与未知结束，便于调用方选择处理方式；不接受部分结果。
+    if (response.finishReason === 'length')
+      throw new AppError(CODES.OUTPUT_TRUNCATED, 'Knowledge enrichment reached the generation length limit', errorOptions)
+    if (response.finishReason === 'content_filter')
+      throw new AppError(CODES.CONTENT_FILTERED, 'Knowledge enrichment was filtered by the model service', errorOptions)
     if (response.finishReason !== 'stop')
       throw new AppError(CODES.INCOMPLETE_RESPONSE, 'Knowledge enrichment did not complete', errorOptions)
     try {

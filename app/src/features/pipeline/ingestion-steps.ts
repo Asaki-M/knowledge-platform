@@ -27,11 +27,11 @@ export const ingestionSteps = [
   {
     name: '向量化',
     code: 'EMBEDDING',
-    description: '为内容片段生成语义向量。',
+    description: '组合 Chunk 原文与关联知识、Wiki 语义文本，生成同一向量空间的双索引。',
   },
   {
     name: '向量存储',
     code: 'VECTOR STORE',
-    description: '计划保存向量、文本及所属 Section，尚未接入存储。',
+    description: '以事务写入向量、文本与来源；替换当前文档旧索引，保留其他文档。',
   },
 ]

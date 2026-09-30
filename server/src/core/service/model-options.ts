@@ -1,5 +1,5 @@
 import process from 'node:process'
-import { EMBEDDING_ERROR_CODES, HTTP_ERROR_CODES, LLM_ERROR_CODES } from '../../error-codes.js'
+import { EMBEDDING_ERROR_CODES, ENRICHMENT_ERROR_CODES, HTTP_ERROR_CODES, LLM_ERROR_CODES } from '../../error-codes.js'
 import { AppError } from '../../errors.js'
 import { DeepSeekAdapter, LlmClient, OpenAIAdapter } from '../../llm/index.js'
 import { EmbeddingClient, GoogleEmbeddingAdapter, SiliconFlowEmbeddingAdapter } from '../../rag/embedding/index.js'
@@ -30,6 +30,16 @@ export function llmOptions(value: unknown) {
   return { provider: provider as 'deepseek' | 'openai', model: model.trim() }
 }
 
+/** 提取预算由 API 调用层决定；DeepSeek 的生成预算还需容纳推理 Token。 */
+export function ingestionLlmOptions(value: unknown) {
+  const selected = llmOptions(value)
+  const configured = process.env.ENRICHMENT_MAX_OUTPUT_TOKENS?.trim()
+  const maxOutputTokens = configured ? Number(configured) : selected.provider === 'deepseek' ? 32768 : 10000
+  if (!Number.isSafeInteger(maxOutputTokens) || maxOutputTokens < 1)
+    throw new AppError(ENRICHMENT_ERROR_CODES.CONFIGURATION_ERROR, 'ENRICHMENT_MAX_OUTPUT_TOKENS must be a positive integer')
+  return { ...selected, maxOutputTokens }
+}
+
 export function embeddingSelection(value: unknown): EmbeddingSelection | undefined {
   if (value === undefined)
     return undefined
@@ -53,9 +63,10 @@ export function ingestionEmbeddingOptions(value: unknown) {
 }
 
 /** 只在实际调用时实例化所选 SDK，未选供应商缺少 Key 不阻断其他模型。 */
-export function createLlmClient() {
+export function createLlmClient(purpose: 'query' | 'enrichment' = 'query') {
   return new LlmClient([
-    { provider: 'deepseek', generate: input => new DeepSeekAdapter().generate(input) },
+    // 完整提取可能超过一分钟；延长单次等待且关闭 SDK 重试，避免重复消耗预算。
+    { provider: 'deepseek', generate: input => new DeepSeekAdapter(purpose === 'enrichment' ? { timeoutMs: 180000, maxRetries: 0 } : {}).generate(input) },
     { provider: 'openai', generate: input => new OpenAIAdapter({ maxRetries: 0 }).generate(input) },
   ])
 }

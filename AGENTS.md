@@ -93,6 +93,7 @@ server/src/
 - 保持模型 ID 显式传入。`OPENAI_MODEL` 是调用方可使用的配置来源，客户端不会自动读取它作为默认模型。
 - OpenAI 适配器当前使用 Responses API；配置中转地址时确认它支持该协议，不假设所有兼容站点都支持。
 - DeepSeek 适配器位于 `llm/providers/deepseek/`，复用 OpenAI SDK 的 Chat Completions API，读取 `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL`。`DEEPSEEK_MODEL` 由调用方读取并显式传入；不自动回退到 OpenAI 配置，不将推理内容混入最终回答。
+- HTTP 入库的 DeepSeek 单节生成预算默认 32768 Token，单次超时 180 秒且 SDK 不重试；OpenAI 入库默认 10000 Token。`ENRICHMENT_MAX_OUTPUT_TOKENS` 可覆盖入库预算，思考模式沿用供应商默认值，问答设置不变。
 - 当前契约只支持非流式文本消息；扩展流式、工具调用或多模态时，明确调整公共契约与测试，不偷偷透传 SDK 专有参数。
 - 保留 `finishReason`、拒答和部分文本的语义；缺失用量使用 `null`，不要伪造为零。调用方应判断结束原因再使用结果。
 - 保留取消信号、超时及可重试错误语义；不要在 SDK 已有重试之外无意叠加重试。
@@ -205,7 +206,7 @@ server/src/
 - 问题向量沿用库内 Embedding 模型与维度；双路搜索绑定同一快照，版本或空间变化明确失败。按记录 ID 和完全相同的文本去重，保留全部来源，不按标题或 Section 粗暴合并。
 - Rerank SDK 归 `rag/rerank/providers/siliconflow`，默认使用 `BAAI/bge-reranker-v2-m3`。模型由调用方传入；凭据和地址可复用 `EMBEDDING_*`，不将余弦排序冒充重排模型。
 - LLM 上下文仅包含重排后的最多 5 条完整证据；来源使用 `[S1]` 等标签。保留入选记录、来源、向量分数、重排分数与阶段数量。空库跳过模型调用，拒答、截断、非法引用及上下文超限明确失败。来源编号合法不等于事实核验。
-- 常规测试使用本地 SDK 模拟服务与内存 stub；真实数据库集成测试使用独立临时库。前端问答页面、Graph Expand 与原文回查尚未实现。
+- 常规测试使用本地 SDK 模拟服务与内存 stub；真实数据库集成测试使用独立临时库。前端问答页面已接入，支持模型选择、引用与检索证据展示；Graph Expand 与原文回查尚未实现。
 
 ## 入库与模型选择接口
 
@@ -213,4 +214,23 @@ server/src/
 - 两接口共享 `core/service/model-options.ts`：LLM 支持 deepseek / ds、openai；Embedding 支持 gemini / google、siliconflow。模型 ID 可由请求显式指定或由调用层读取环境变量，凭据 / Base URL 仅使用服务端配置。
 - 入库按 knowledgeBaseId + documentId 新增或完整更新，只替换该文档旧索引，不清空其他文档；跨文档共享节点要求走完整 Wiki 重建。写入保留事务、版本比较和失败回滚，不自动重跑模型。
 - 问答 Embedding 默认沿用库内空间，显式选择不一致时返回 409；LLM 可以独立切换。Rerank 仍使用 SiliconFlow。
-- 上传格式目前为 JSON 中的 nextra-mdx / Markdown 文本；原始文件存档、完整中间对象持久化、按变更节缓存复用、multipart / PDF / Word 上传与前端接入未实现。
+- 上传格式目前为 JSON 中的 nextra-mdx / Markdown 文本；原始文件存档、完整中间对象持久化、按变更节缓存复用、multipart / PDF / Word 上传未实现；前端 RAG 过程页已接入正文与本地 Markdown / MDX 文本读取、模型选择和最终入库摘要。
+
+## 操作日志接口
+
+- `GET /api/logs` 与 `GET /api/logs/:id` 查询入库（ingestion）/ 问答（query）操作记录；支持状态、知识库、文档、requestId、时间范围和数字 ID 游标分页。
+- HTTP 记录入口归 `core/middleware/operation-logging.ts`，摘要与筛选校验归 `core/service/operation-logs.ts`，PostgreSQL 访问归 `core/dao/operation-logs.ts`，复用 `VECTOR_DATABASE_URL`。不让独立 RAG 能力依赖 HTTP 日志层。
+- 仅对实际入库和问答 POST 路由记 running / succeeded / failed / cancelled，包含解析失败和请求体超限；日志查询不重复生成业务记录。摘要通过字段白名单构造，不持久化正文、问题、答案、路径、提示词、向量或原始异常。
+- 日志尽力写入，故障只输出遥测，不改变原业务结果；读取失败必须明确报错。初始化惰性执行，启动和健康检查不连接日志库。历史日志不自动回填；进程退出或写入故障可能留下 running，不伪造已完成状态。
+- 常规测试使用本地 stub；真实日志数据库测试与向量库沿用显式测试连接配置并创建独立临时库。
+
+## 前端三页工作台
+
+- 当前导航为知识问答、RAG 过程、操作日志，对应 `features/ask`、`features/pipeline`、`features/logs`；旧文档库与 Wiki 占位页已移除。
+- 页面切换保留正在进行的请求、草稿与结果，刷新后清空；不持久化用户正文、问题或答案。
+- 入库与问答使用现有同步 HTTP 接口，只展示请求等待状态和真实最终结果，不模拟逐阶段进度。
+- 日志支持筛选、游标分页和单条详情，读取错误不伪装为空记录。界面改动以桌面端验证为准。
+
+- 工作台选项来自 `GET /api/workspace/options`，模型选项只暴露已配置的 provider/model，目录读取现有向量元数据，日志筛选读取历史范围；不调用模型、不建表，数据库故障明确报错。
+- 前端技术参数用下拉与自动生成：知识库选择或通过 Popover 填写名称创建，新增文档 UUID、更新显式选目标，来源取文件名，已有库锁定向量模型和自动沿用维度。除新建知识库名称外，只保留问题和正文文本输入。
+- 用户要求后续验证使用假数据 / 本地模拟接口，不再调用其真实 LLM、Embedding 或 Rerank 服务消耗额度。

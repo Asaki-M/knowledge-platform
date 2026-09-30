@@ -1,6 +1,6 @@
 # 知序 · Knowledge Platform
 
-pnpm monorepo 的 Wiki RAG 知识库起步项目。当前包含前端工作台、HTTP 服务、OpenTelemetry、统一 LLM 适配接口、OpenAI / DeepSeek 接入，可扩展的文档标准化接入层、按标题的 Section Split 、结构化 Knowledge Enrichment、跨节 Wiki 聚合、独立 Chunk Build、增量影响计算、SiliconFlow / Google Embedding 接入及 Chunk / Wiki 双索引向量生成及 pgvector 事务写入、双路检索、Rerank 与引用式问答；前端问答页面尚未接入。
+pnpm monorepo 的 Wiki RAG 知识库起步项目。当前包含前端工作台、HTTP 服务、OpenTelemetry、统一 LLM 适配接口、OpenAI / DeepSeek 接入，可扩展的文档标准化接入层、按标题的 Section Split 、结构化 Knowledge Enrichment、跨节 Wiki 聚合、独立 Chunk Build、增量影响计算、SiliconFlow / Google Embedding 接入及 Chunk / Wiki 双索引向量生成及 pgvector 事务写入、双路检索、Rerank 与引用式问答；前端已接入操作日志、RAG 入库过程与知识问答三个页面。
 
 ## 启动
 
@@ -27,10 +27,9 @@ pnpm dev
 │       ├── components/ui/          # shadcn/ui 基础组件
 │       ├── features/
 │       │   ├── workspace/          # 布局、Zustand 状态与健康检查
-│       │   ├── documents/          # 文档库页面
-│       │   ├── wiki/               # Wiki 节点页面
+│       │   ├── logs/               # 操作日志、筛选与详情
 │       │   ├── ask/                # 问答页面
-│       │   └── pipeline/           # 流程预览页面
+│       │   └── pipeline/           # 文档入库与处理结果
 │       └── utils/                  # 通用样式工具
 ├── server/                         # Hono + Node.js，包名 @knowledge/server
 │   ├── src/
@@ -112,11 +111,15 @@ HTTP → core/router → core/service → core/dao
 
 ## 当前范围
 
-- 文档库、Wiki 节点、问答及处理流程页面，支持桌面与移动布局。
-- Zustand 保存页面切换、文档搜索词、问题草稿（只保存在内存中）。
+- 桌面工作台包含知识问答、RAG 过程和操作日志三个页面，分别接入 `/api/search`、`/api/documents/ingest` 和 `/api/logs`。
+- Zustand 保存页面切换、知识库 ID 和问题草稿；切换页面保留请求及结果，刷新浏览器后清空，不将正文和回答写入本地持久化存储。
+- `GET /api/workspace/options` 提供现有知识库、文档、日志筛选范围和已配置模型。知识库可选择或通过 Popover 填写名称创建，新增文档使用 UUID；更新已有文档需明确选择目标。来源自动取文件名，已有知识库沿用向量模型与维度，名称仅在新建时填写，其余仅问题和正文需要手填。选项读取不会调用模型或创建数据表。
 - 前端每 30 秒读取健康检查，可手动刷新，显示连接、检查中、离线状态。
 - `GET /api/health` 返回 `status`、`service`、`timestamp`；未知路由返回 JSON 404；错误响应带请求 ID。
-- 文档与统计当前为空状态，占位数值为 0；导入与发送按钮禁用，不执行上传或模型调用。
+- RAG 过程页支持粘贴或读取本地 Markdown / MDX 文件为 JSON 正文，选择模型后入库，展示真实统计和标准化警告。相同知识库与文档 ID 完整更新原文档。
+- 问答页支持模型选择、Ctrl / ⌘ + Enter 发送、答案复制、引用跳转和来源展开，显示双路召回及重排数量。
+- 日志页通过下拉选择类型、状态、知识库、文档及快捷时间范围，支持游标分页、详情、同请求筛选和手动刷新；加载失败与空结果分别展示。
+- 当前接口仅返回完整结果，前端不模拟逐阶段进度；原始文件存档、中间对象预览和 Wiki 浏览页仍未实现。
 
 已提供通用文本生成接口和 OpenAI / DeepSeek 适配器。已实现可扩展的 Normalization 接口和 Nextra MDX 适配器。已实现 H1–H3 分节、来源版本、结构化知识提取、跨节语义聚合、独立 Chunk Build 和增量影响计算。已接入 SiliconFlow 与 Google 的文本 Embedding，推荐模型见下文。已实现 Chunk 原文加本节 Wiki 信息的 embeddingText、Wiki 节点 embeddingText 和双索引向量生成。已接入本地 PostgreSQL / pgvector，原子写入双索引向量、文本与来源元数据。已提供 `POST /api/search`：Chunk / Wiki 双路各取 Top 30，合并去重后使用 SiliconFlow Rerank 取 Top 5，交给 DeepSeek 生成带引用的答案。Wiki 页面接入、原始文档持久化、Graph Expand 与自动文档级增量入库仍待实现。
 
@@ -240,7 +243,7 @@ export async function generateAnswer(question: string) {
 
 DeepSeek 使用独立的 `DeepSeekAdapter`，读取 `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL`（默认 `https://api.deepseek.com`），通过已有 OpenAI SDK 调用 Chat Completions。显式构造参数优先于环境变量，不回退到 `OPENAI_*` 配置。
 
-当前选择 `DEEPSEEK_MODEL=deepseek-flash` 作为成本优先的起步模型；模型与价格以 [DeepSeek 官方文档](https://api-docs.deepseek.com/quick_start/pricing/) 为准。适配器不自动读取模型、不切换思考模式，沿用上游默认行为；公共响应只保留最终回答，不返回或重放 `reasoning_content`。输出预算是否包含推理 Token 由模型决定。
+当前选择 `DEEPSEEK_MODEL=deepseek-flash` 作为成本优先的起步模型；模型与价格以 [DeepSeek 官方文档](https://api-docs.deepseek.com/quick_start/pricing/) 为准。适配器不自动读取模型、不切换思考模式，沿用上游默认行为；公共响应只保留最终回答，不返回或重放 `reasoning_content`。输出预算是否包含推理 Token 由模型决定。HTTP 入库对 DeepSeek 默认使用每节 32768 Token、180 秒单次超时且关闭 SDK 重试；OpenAI 入库仍默认 10000 Token。可通过服务端 `ENRICHMENT_MAX_OUTPUT_TOKENS` 覆盖单节预算，问答设置保持不变。
 
 ```ts
 import process from 'node:process'
@@ -398,3 +401,11 @@ curl http://127.0.0.1:3000/api/documents/ingest \
 ```
 
 `POST /api/search` 保留原来的双路 Top 30 → 去重 → Rerank Top 5 → LLM 答案流程，可通过相同参数切换答案模型。完整参数、响应、Gemini / OpenAI 配置及错误语义见 [接口文档](server/src/core/README.md)。
+
+## 操作日志查询
+
+- `GET /api/logs?type=ingestion`：文档入库日志。
+- `GET /api/logs?type=query`：问答日志。
+- `GET /api/logs/:id`：单条详情。
+
+支持按状态、知识库、文档、请求 ID、时间范围筛选，使用 `limit` / `cursor` 分页。记录开始和结束时间、耗时、成功 / 失败 / 取消状态、模型用量、流程数量和错误码，不保存正文、问题或答案。数据保存在现有 PostgreSQL 的 `operation_logs` 表，无需新增环境配置；历史控制台日志不自动补录。完整字段与示例见 [接口文档](server/src/core/README.md#get-apilogs操作日志列表)。
