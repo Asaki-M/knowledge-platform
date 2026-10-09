@@ -1,6 +1,7 @@
 import type { IngestionStage, IngestionStageId } from './types'
 import { AlertCircle, CheckCircle2, Circle, LoaderCircle } from 'lucide-react'
 import { useState } from 'react'
+import { Button } from '@/components/ui/button'
 import { ingestionSteps } from './ingestion-steps'
 
 export function PipelineStages({ stages, pending, failed, unconfirmed, interrupted, failureMessage }: { stages: Partial<Record<IngestionStageId, IngestionStage>>, pending: boolean, failed: boolean, unconfirmed: boolean, interrupted?: boolean, failureMessage?: string }) {
@@ -32,6 +33,7 @@ export function PipelineStages({ stages, pending, failed, unconfirmed, interrupt
           {ingestionSteps.length}
         </span>
       </div>
+      <progress className="stage-progress" value={completed} max={ingestionSteps.length} aria-label={`已完成 ${completed} 个阶段，共 ${ingestionSteps.length} 个`} />
       <div className="stage-workspace">
         <nav className="stage-navigation" aria-label="选择入库阶段">
           {ingestionSteps.map((step, index) => {
@@ -60,7 +62,7 @@ export function PipelineStages({ stages, pending, failed, unconfirmed, interrupt
               <h3>{definition.name}</h3>
             </div>
             <div className="stage-inspector-actions">
-              {pending && selected && <button type="button" onClick={() => setSelected(null)}>跟随当前阶段</button>}
+              {selected && <Button variant="outline" size="sm" onClick={() => setSelected(null)}>{pending ? '跟随当前阶段' : '返回最新阶段'}</Button>}
               <span className={`stage-status ${stage?.status ?? ''}`}>{status(stage)}</span>
             </div>
           </div>
@@ -105,15 +107,18 @@ export function PipelineStages({ stages, pending, failed, unconfirmed, interrupt
                 <div className="stage-placeholder">
                   <p>{stage?.status === 'failed' ? failureMessage ?? '此阶段失败，后续阶段未执行。已完成阶段的预览仍可查看。' : stage?.status === 'running' ? pending ? '正在处理，完成后显示本阶段产物。' : interrupted ? '处理已中断，已完成的章节已保存。继续重试将复用这些结果。' : '进度连接已中断，最后收到的状态为处理中。可继续重试，服务端会复用已经保存的结果。' : '本阶段完成后，可在这里查看真实产物。'}</p>
                   {stage?.progress && (
-                    <strong>
-                      已提取
-                      {stage.progress.completed}
-                      {' '}
-                      /
-                      {stage.progress.total}
-                      {' '}
-                      个章节
-                    </strong>
+                    <div className="section-progress">
+                      <strong>
+                        已提取
+                        {stage.progress.completed}
+                        {' '}
+                        /
+                        {stage.progress.total}
+                        {' '}
+                        个章节
+                      </strong>
+                      <progress className="stage-progress" value={stage.progress.completed} max={stage.progress.total} aria-label="章节提取进度" />
+                    </div>
                   )}
                 </div>
               )}

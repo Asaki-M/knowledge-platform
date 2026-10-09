@@ -1,6 +1,6 @@
 import type { QueryResult } from './types'
 import type { ModelChoice } from '@/features/workspace/model-fields'
-import { ArrowRight, ArrowUp, BookOpen, Check, Copy, Sparkles } from 'lucide-react'
+import { ArrowRight, BookOpen, Check, Copy, Sparkles } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { KnowledgeBaseField } from '@/features/workspace/knowledge-base-field'
@@ -55,7 +55,15 @@ export function AskView() {
           >
             <fieldset disabled={pending} className="form-fields">
               <KnowledgeBaseField />
-              {options && !options.knowledgeBases.some(kb => kb.id === knowledgeBaseId) && <p className="field-hint">请先前往 RAG 过程页新建或选择知识库，并导入文档。</p>}
+              {options && !options.knowledgeBases.some(kb => kb.id === knowledgeBaseId) && (
+                <div className="setup-hint">
+                  <p className="field-hint">还没有可提问的知识库，请先导入文档。</p>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setSection('pipeline')}>
+                    去导入文档
+                    <ArrowRight />
+                  </Button>
+                </div>
+              )}
               <details className="model-options">
                 <summary>
                   模型设置
@@ -95,7 +103,10 @@ export function AskView() {
                     {' '}
                     <span className="keyboard-hint">· ⌘ / Ctrl + Enter 发送</span>
                   </span>
-                  <Button type="submit" size="icon" disabled={pending || !question.trim() || !ready} aria-label="发送问题"><ArrowUp /></Button>
+                  <Button type="submit" disabled={pending || !question.trim() || !ready} aria-label="发送问题">
+                    <Sparkles />
+                    {pending ? '正在回答' : '发送问题'}
+                  </Button>
                 </div>
               </div>
             </fieldset>
