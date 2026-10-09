@@ -23,5 +23,10 @@ CREATE TABLE IF NOT EXISTS rag_vectors (
   PRIMARY KEY (knowledge_base_id, id),
   CHECK (metadata->>'id' = id AND metadata->>'kind' = kind AND metadata->>'knowledgeBaseId' = knowledge_base_id)
 );
+CREATE TABLE IF NOT EXISTS rag_vector_write_receipts (
+  knowledge_base_id text NOT NULL, write_key text NOT NULL, fingerprint text NOT NULL,
+  result jsonb NOT NULL, created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (knowledge_base_id, write_key)
+);
 CREATE INDEX IF NOT EXISTS rag_vectors_scope_idx ON rag_vectors (knowledge_base_id, kind);
 `

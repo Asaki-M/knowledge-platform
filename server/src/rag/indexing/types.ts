@@ -1,5 +1,5 @@
 import type { DocumentChunk } from '../chunking/types.js'
-import type { EmbeddingUsage } from '../embedding/types.js'
+import type { EmbeddingResponse, EmbeddingUsage } from '../embedding/types.js'
 import type { SectionHeading } from '../sections/types.js'
 import type { WikiBuildResult } from '../wiki/types.js'
 
@@ -60,6 +60,11 @@ export interface DualIndexEmbeddingOptions {
   /** 默认 32，顺序分批；实际允许的上限仍由目标适配器校验。 */
   batchSize?: number
   signal?: AbortSignal
+  /** 仅复用已校验成功的批次，缓存键绑定模型、维度和完整文本版本。 */
+  checkpoint?: {
+    load: <T>(key: string) => Promise<T | undefined>
+    save: (key: string, value: EmbeddingResponse) => Promise<void>
+  }
 }
 
 export interface EmbeddedIndexDocument extends IndexDocument {

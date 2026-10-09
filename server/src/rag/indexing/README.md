@@ -101,3 +101,7 @@ export async function buildDocumentIndexes(
 `server/test/indexing.test.mjs` 以真实 Normalization / Split / Chunk / Wiki 和内存 Embedding stub 验证来源、文本版本、跨节隔离、预算、批次顺序、取消与失败。真实 DeepSeek + SiliconFlow 短文测试的完整阶段数据见 [报告](../../../test/reports/dual-index/report.md)；报告里的余弦排序只是本次内存检查，数据库写入及精确余弦查询已由 [vector-store](../vector-store/README.md) 实现；双路检索、结果去重、Rerank 和单文档完整入库已通过 [HTTP 接口](../../core/README.md) 接入；原始文件独立持久化仍未实现。
 
 错误码统一在 `server/src/error-codes.ts` 的 `INDEXING_ERROR_CODES`，SDK 的取消、鉴权、超时等错误沿用 `EMBEDDING_ERROR_CODES`。文本构造不写日志；网络调用复用现有 SDK 客户端的追踪，只记录元数据。
+
+## 向量批次检查点
+
+embedDualIndex 可注入 options.checkpoint 保存成功的完整批次响应。缓存键绑定供应商、请求模型、维度、记录身份和文本版本；恢复仍校验供应商、数量、维度和有限向量，以及批次间实际模型/维度一致。部分失败仍不返回双索引结果，显式重试可复用成功批次，不自动重试 SDK。

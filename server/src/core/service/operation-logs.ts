@@ -8,6 +8,7 @@ import { AppError } from '../../errors.js'
 import { log } from '../../telemetry/logger.js'
 import { isRecord } from '../../utils/type-guards.js'
 import { OperationLogDao } from '../dao/operation-logs.js'
+import { enrichmentValidationMessage } from '../error-response.js'
 
 function safeIdentifier(value: unknown, max = 256): string | null {
   return typeof value === 'string' && value.trim().length > 0 && value.length <= max ? value.trim() : null
@@ -33,11 +34,13 @@ function failureSummary(error: unknown, httpStatus: number): NonNullable<Operati
     [httpStatus === 413, '请求体超过大小限制。'],
     [httpStatus === 400, '请求参数或内容无效。'],
   ]
-  const message = reasons.find(([matches]) => matches)?.[1] ?? '操作未完成，请根据错误码和请求 ID 排查。'
+  const message = (error instanceof AppError ? enrichmentValidationMessage(error) : undefined) ?? reasons.find(([matches]) => matches)?.[1] ?? '操作未完成，请根据错误码和请求 ID 排查。'
   return { code, message, retryable: error instanceof AppError && error.retryable }
 }
 
 export class OperationTracker {
+  /** 流式响应返回响应头后仍在执行，由流处理器记录最终业务状态。 */
+  completionDeferred = false
   private dao?: OperationLogDao
   private id?: string
   private summary: OperationSummary = {}

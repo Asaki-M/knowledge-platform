@@ -4,6 +4,15 @@ export interface LlmMessage {
   content: string
 }
 
+/** 可序列化的 JSON Schema 值；公共契约不引用供应商 SDK 类型。 */
+export type LlmJsonValue = string | number | boolean | null | LlmJsonValue[] | { [key: string]: LlmJsonValue }
+
+export interface LlmStructuredOutput {
+  name: string
+  /** 根节点必须是 object；供应商支持的 Schema 子集由调用方负责选择。 */
+  schema: { [key: string]: LlmJsonValue }
+}
+
 /** 与供应商无关的非流式生成输入，适配器不在请求之间维护会话状态。 */
 export interface LlmRequest {
   /** 显式指定模型 ID；客户端不会自动读取供应商的模型环境变量作为默认值。 */
@@ -15,6 +24,8 @@ export interface LlmRequest {
   temperature?: number
   /** 将调用方的取消意图传递到 SDK，避免请求取消后继续等待上游结果。 */
   signal?: AbortSignal
+  /** 要求供应商按 JSON Schema 生成，响应仍为文本，业务层仍需校验。 */
+  structuredOutput?: LlmStructuredOutput
 }
 
 /** 供应商实际报告的 Token 用量，不在本地估算或补齐。 */

@@ -49,6 +49,16 @@ test('enrichment uses an in-memory model and binds output to the section revisio
     return response()
   }).enrich(section)
   assert.equal(request.model, 'test-model')
+  assert.equal(request.structuredOutput.name, 'knowledge_enrichment')
+  const schema = request.structuredOutput.schema
+  assert.deepEqual(schema.required, Object.keys(enrichment()))
+  for (const item of [schema, ...['entities', 'concepts', 'relations', 'facts'].map(key => schema.properties[key].items)]) {
+    assert.equal(item.additionalProperties, false)
+    assert.deepEqual(item.required, Object.keys(item.properties))
+  }
+  assert.equal(Object.hasOwn(schema.properties.concepts.items.properties, 'type'), false)
+  assert.equal(schema.properties.entities.items.properties.type.type, 'string')
+  assert.deepEqual(schema.properties.knowledgeType.enum, Object.keys(DEFAULT_KNOWLEDGE_TYPES))
   assert.deepEqual(request.messages.map(message => message.role), ['system', 'user'])
   assert.equal(JSON.parse(request.messages[1].content).markdown, section.markdown)
   assert.equal(JSON.stringify(request).includes('private/local/path.mdx'), false)
@@ -67,6 +77,7 @@ test('knowledge type dictionary extends without changing adapters and rejects un
   const value = { ...enrichment(), knowledgeType: 'runbook' }
   const enricher = create(async (input) => {
     prompt = input.messages[0].content
+    assert.ok(input.structuredOutput.schema.properties.knowledgeType.enum.includes('runbook'))
     return response(value)
   }, config)
   config.knowledgeTypes.runbook = 'changed-after-construction'
@@ -109,6 +120,52 @@ test('invalid model schemas, entity links, categories and evidence fail without 
   }
   for (const text of ['not JSON secret-model-output', 'null', '[]', `\`\`\`json\n${JSON.stringify(enrichment())}\n\`\`\``])
     await assert.rejects(create(async () => response(undefined, { text })).enrich(section), { code: 'ENRICHMENT_INVALID_OUTPUT' })
+})
+
+test('invalid enrichment reports safe field positions and rules for the failing section without retrying', async () => {
+  const cases = [
+    [value => delete value.summary, 'summary', 'missing-field'],
+    [value => value.keywords = 'private-model-value', 'keywords', 'invalid-array'],
+    [value => value.concepts[0].evidence = ['private-model-value'], 'concepts[0].evidence[0]', 'evidence-not-found'],
+    [value => value.entities[0].evidence = [], 'entities[0].evidence', 'empty-evidence'],
+    [value => value.relations[0].targetId = 'private-model-value', 'relations[0].targetId', 'unknown-reference'],
+    [value => value.facts[0].nodeIds = ['private-model-value'], 'facts[0].nodeIds[0]', 'unknown-reference'],
+    [value => value.knowledgeType = 'private-model-value', 'knowledgeType', 'unsupported-value'],
+    [value => value.entities.push({ ...value.entities[0] }), 'entities[2].id', 'duplicate-id'],
+    [value => value.concepts[0].type = 'private-model-value', 'concepts[0].type', 'unexpected-field'],
+    [value => value.concepts[0].extra = 'private-model-value', 'concepts[0]', 'unexpected-field'],
+    [value => value.entities[0].extra = 'private-model-value', 'entities[0]', 'unexpected-field'],
+    [value => value.relations[0].extra = 'private-model-value', 'relations[0]', 'unexpected-field'],
+    [value => value.facts[0].extra = 'private-model-value', 'facts[0]', 'unexpected-field'],
+    [value => value.summary = '   ', 'summary', 'invalid-text'],
+    [value => value.summary = 'x'.repeat(4001), 'summary', 'text-too-long'],
+    [value => value.keywords = Array.from({ length: 101 }).fill('Atlas'), 'keywords', 'too-many-items'],
+    [value => value.concepts[0].name = null, 'concepts[0].name', 'invalid-text'],
+    [value => value.concepts[0].aliases = null, 'concepts[0].aliases', 'invalid-array'],
+    [value => value.concepts[0].id = 'bad id', 'concepts[0].id', 'invalid-id'],
+    [value => value.concepts[0].evidence = Array.from({ length: 11 }).fill('HTTPS'), 'concepts[0].evidence', 'too-many-items'],
+
+  ]
+  let calls = 0
+  for (const [mutate, path, reason] of cases) {
+    const value = enrichment()
+    mutate(value)
+    await assert.rejects(create(async () => {
+      calls++
+      return response(value)
+    }).enrich(section), (error) => {
+      assert.deepEqual(error.validation, { path, reason, sectionIndex: 0 })
+      assert.ok(!JSON.stringify(error).includes('private-model-value'))
+      return true
+    })
+  }
+  assert.equal(calls, cases.length)
+  const document = await new NormalizationClient([new NextraMdxAdapter()]).normalize({ adapter: 'nextra-mdx', source: { id: 'two-sections' }, content: `# 前言\n\n说明。\n\n${markdown}` })
+  const second = splitSections(document)[1]
+  await assert.rejects(create(async () => response(undefined, { text: '```json\nprivate-model-value\n```' })).enrich(second), (error) => {
+    assert.deepEqual(error.validation, { path: 'JSON', reason: 'invalid-json', sectionIndex: 1 })
+    return true
+  })
 })
 
 test('refusals and incomplete responses never become successful enrichment or get retried', async () => {

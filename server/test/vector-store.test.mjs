@@ -166,9 +166,12 @@ test('pgvector transactions persist, search, replace, roll back and reject concu
   }
   const docA = documentVectors('a')
   const docB = documentVectors('b')
-  const infoA = await store.replaceDocument(docA, 'a', { expectedRevision: null })
+  const infoA = await store.replaceDocument(docA, 'a', { expectedRevision: null, writeKey: 'receipt-a' })
   const infoB = await store.replaceDocument(docB, 'b', { expectedRevision: infoA.revision })
   assert.deepEqual([infoB.chunks, infoB.wikiNodes], [4, 20])
+  assert.deepEqual(await store.replaceDocument(docA, 'a', { expectedRevision: null, writeKey: 'receipt-a' }), infoA)
+  assert.equal((await store.getSnapshot('document-api')).revision, infoB.revision)
+  await assert.rejects(store.replaceDocument(docB, 'b', { expectedRevision: infoB.revision, writeKey: 'receipt-a' }), { code: 'VECTOR_STORE_CONFLICT' })
   assert.equal((await store.replaceDocument(docB, 'b', { expectedRevision: infoB.revision })).revision, infoB.revision)
   await assert.rejects(store.replaceDocument(docA, 'a', { expectedRevision: infoA.revision }), { code: 'VECTOR_STORE_CONFLICT' })
   await assert.rejects(store.replaceDocument(docA, 'b', { expectedRevision: infoB.revision }), { code: 'VECTOR_STORE_INVALID_INPUT' })
@@ -188,6 +191,7 @@ test('pgvector transactions persist, search, replace, roll back and reject concu
   rejected.chunks[0].title = 'reject-document'
   await assert.rejects(store.replaceDocument(rejected, 'a', { expectedRevision: reducedInfo.revision }), { code: 'VECTOR_STORE_DATABASE_ERROR' })
   assert.equal((await store.getSnapshot('document-api')).revision, reducedInfo.revision)
+  assert.equal((await control.query('SELECT count(*)::int AS count FROM rag_vector_write_receipts WHERE write_key = $1', ['rejected-write'])).rows[0].count, 0)
   await control.query('ALTER TABLE rag_vectors DROP CONSTRAINT reject_doc_title')
   const shared = structuredClone(docA)
   shared.wikiNodes[0].sources.push({ ...shared.wikiNodes[0].sources[0], documentId: 'b' })

@@ -26,6 +26,8 @@ export function validateSnapshot(input: DualIndexEmbeddingResult, options: Snaps
       || !options || (options.expectedRevision !== null && !isNonEmptyString(options.expectedRevision))) {
       throw new Error('Invalid snapshot')
     }
+    if (options.writeKey !== undefined && (!isNonEmptyString(options.writeKey) || options.writeKey.length > 256))
+      throw new Error('Invalid write key')
     const records = [...input.chunks, ...input.wikiNodes]
     if (records.length ? !isNonEmptyString(input.model) || input.dimensions === null : input.model !== null || input.dimensions !== null)
       throw new Error('Invalid vector space')

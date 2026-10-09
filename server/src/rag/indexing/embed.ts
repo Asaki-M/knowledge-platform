@@ -1,9 +1,11 @@
 import type { EmbeddingClient } from '../embedding/client.js'
+import type { EmbeddingResponse } from '../embedding/types.js'
 import type { DualIndexEmbeddingOptions, DualIndexEmbeddingResult, EmbeddedIndexDocument, IndexBuildResult } from './types.js'
 import { INDEXING_ERROR_CODES as CODES, EMBEDDING_ERROR_CODES } from '../../error-codes.js'
 import { AppError } from '../../errors.js'
 import { isNonEmptyString } from '../../utils/type-guards.js'
 import { contentHash } from '../content-hash.js'
+import { validateResponse } from '../embedding/validation.js'
 import { validateDocuments } from './validation.js'
 
 /** 两类索引共用一个向量空间；分批失败时整次抛错，不返回半套索引。 */
@@ -38,10 +40,17 @@ export async function embedDualIndex(input: IndexBuildResult, client: EmbeddingC
   for (let offset = 0; offset < documents.length; offset += batchSize) {
     checkCancelled()
     const batch = documents.slice(offset, offset + batchSize)
-    const response = await client.embed({ provider, model, dimensions, signal, input: batch.map(item => item.embeddingText) })
+    const request = { provider, model, dimensions, signal, input: batch.map(item => item.embeddingText) }
+    const key = `embedding:${contentHash([provider, model, dimensions ?? null, batch.map(item => [item.id, item.textRevision])])}`
+    const saved = await options.checkpoint?.load<EmbeddingResponse>(key)
+    const response = saved ?? await client.embed(request)
+    // 恢复时仍校验数量、维度、供应商和有限向量，不把缓存当作无条件可信结果。
+    validateResponse(response, request)
     checkCancelled()
     if (result.model !== null && (response.model !== result.model || response.dimensions !== result.dimensions))
       throw new AppError(CODES.INCONSISTENT_SPACE, 'Embedding batches must use the same actual model and dimensions', { provider })
+    if (!saved)
+      await options.checkpoint?.save(key, response)
     result.model = response.model
     result.dimensions = response.dimensions
     result.batches.push({ documentIds: batch.map(item => item.id), requestId: response.requestId, usage: response.usage && { ...response.usage } })

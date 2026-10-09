@@ -9,6 +9,7 @@ import { deduplicateEnrichment, deduplicateExtracted } from './deduplication.js'
 import { extractSectionData } from './extraction.js'
 import { DEFAULT_KNOWLEDGE_TYPES } from './knowledge-types.js'
 import { buildMessages } from './prompt.js'
+import { buildEnrichmentSchema } from './schema.js'
 import { parseEnrichment } from './validation.js'
 
 /** 每次处理一个 section；模型调用和追踪复用 LlmClient，不另建供应商适配层。 */
@@ -60,6 +61,7 @@ export class KnowledgeEnricher {
       model: this.options.model,
       maxOutputTokens: this.options.maxOutputTokens,
       messages,
+      structuredOutput: buildEnrichmentSchema(this.knowledgeTypes),
       signal: options.signal,
     })
     if (options.signal?.aborted)
@@ -91,7 +93,7 @@ export class KnowledgeEnricher {
     }
     catch (error) {
       if (error instanceof AppError)
-        throw new AppError(error.code, error.message, errorOptions)
+        throw new AppError(error.code, error.message, { ...errorOptions, ...(error.validation ? { validation: { ...error.validation, sectionIndex: section.index } } : {}) })
       throw new AppError(CODES.INVALID_OUTPUT, 'Invalid knowledge enrichment output', errorOptions)
     }
   }

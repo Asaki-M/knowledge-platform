@@ -10,7 +10,7 @@ llm/
 ├── types.ts                 # 公共消息、请求、响应与 LlmAdapter 契约
 ├── client.ts                # 注册、校验、供应商选择与日志追踪
 ├── providers/
-│   ├── deepseek/            # 与 openai 同样分工，使用 Chat Completions API
+│   ├── deepseek/            # 与 openai 同样分工，普通文本 Chat Completions，Schema 输出 Responses
 │   └── openai/
 │       ├── index.ts         # 仅导出适配器与连接配置类型
 │       ├── adapter.ts       # 创建 SDK 客户端、调用、协调映射和错误转换
@@ -19,7 +19,7 @@ llm/
 └── README.md
 ```
 
-根目录文件随通用能力演进，厂商相关文件随厂商目录扩展。当前实现 OpenAI Responses API 和 DeepSeek Chat Completions API，两者复用已有 OpenAI SDK，分别管理配置、映射与错误转换。
+根目录文件随通用能力演进，厂商相关文件随厂商目录扩展。当前实现 OpenAI Responses API，以及 DeepSeek 普通文本的 Chat Completions 和 Schema 输出的 Responses API，两者复用已有 OpenAI SDK，分别管理配置、映射与错误转换。
 
 服务端错误码共同维护在上一级的 [error-codes.ts](../error-codes.ts)，每项都有中文含义。LLM 实现引用其中的 `LLM_ERROR_CODES`，异常类统一使用 [AppError](../errors.ts)，不再在 LLM 模块内定义；厂商 `normalize-error.ts` 负责把 SDK 异常映射到这些既有错误码。
 
@@ -29,7 +29,7 @@ llm/
 2. [../error-codes.ts](../error-codes.ts) → [../errors.ts](../errors.ts)：先看每个错误码的中文含义，再了解统一异常类以及 `retryable`、`status`、`requestId` 的含义。
 3. [client.ts](client.ts)：从 `register()` 到 `generate()`，串起校验、选择适配器、取消判断、子 span 和日志。
 4. [providers/openai/adapter.ts](providers/openai/adapter.ts)：看一个厂商如何实现契约，重点是构造函数的配置读取和 `generate()` 的调用编排。
-5. [providers/openai/mapping.ts](providers/openai/mapping.ts)：理解输入字段如何映射到 Responses API，以及完成、截断、过滤、拒答和 Token 用量如何归一化。
+5. [providers/openai/mapping.ts](providers/openai/mapping.ts)：理解输入字段如何映射到 Responses API，以及可选 JSON Schema 如何传入。响应归一化见 `providers/openai-sdk-response.ts`，保留完成、截断、过滤、拒答和 Token 用量。
 6. [providers/openai/normalize-error.ts](providers/openai/normalize-error.ts)：看取消、超时、连接失败、鉴权与限流等 SDK 异常如何转换成统一错误。
 7. [providers/openai/index.ts](providers/openai/index.ts) 与 [index.ts](index.ts)：确认模块对外暴露的范围，映射函数和 SDK 错误转换不通过公共入口导出。
 8. [llm.test.mjs](../../test/llm.test.mjs) 与 [telemetry.test.mjs](../../test/telemetry.test.mjs)：最后用测试理解输入输出实例、边界行为及 HTTP → LLM 的 trace 关联。
@@ -47,9 +47,15 @@ llm/
   → LlmClient：记录元数据、结束 span，返回结果或抛出错误
 ```
 
-`providers/openai-sdk.ts` 统一 OpenAI / DeepSeek 共用的 SDK 连接选项校验、实例创建与异常分类；各厂商仍读取自己的环境变量、实现协议映射，并由 `normalize-error.ts` 绑定厂商身份。该文件不经公共入口导出，公共 LLM 契约不包含 SDK 类型。
+`providers/openai-sdk.ts` 统一 OpenAI / DeepSeek 共用的 SDK 连接选项校验、实例创建与异常分类；各厂商仍读取自己的环境变量、实现协议映射，并由 `normalize-error.ts` 绑定厂商身份。共用的 `providers/openai-sdk-response.ts` 参数化供应商身份并归一化 Responses 输出，避免厂商目录相互依赖。两文件不经公共入口导出，公共 LLM 契约不包含 SDK 类型。
 
-`client.ts` 不根据厂商写分支，也不负责具体 SDK 字段；`mapping.ts` 只做转换和响应语义校验，不调用网络、不写日志。
+`client.ts` 不根据厂商写分支，也不负责具体 SDK 字段；`mapping.ts` 和共享 `openai-sdk-response.ts` 只做转换和响应语义校验，不调用网络、不写日志。
+
+## JSON Schema 输出
+
+调用方可显式传入 `structuredOutput: { name, schema }`，其中 `schema` 是可序列化的 object JSON Schema，不包含 SDK 类型。客户端在调用前检查名称、根类型及序列化约束。OpenAI 映射到 Responses `text.format` 的 `json_schema` 并设 `strict: true`；DeepSeek 仅此类请求改走 Responses，按其协议发送 `json_schema`，不透传未声明的 `strict`、`store` 或思考配置。
+
+模型和服务地址必须支持该协议与 Schema 子集，不自动回退普通 JSON、切换接口或重新调用。参考 [OpenAI Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs) 和 [DeepSeek Responses](https://api-docs.deepseek.com/zh-cn/api/create-response/)。响应仍是非流式文本，业务层必须检查结束原因并执行本地校验；结构符合 Schema 不代表事实核验。知识提取从自己的 Zod 契约生成 Schema，LLM 层不依赖 RAG。
 
 ## DeepSeek
 
@@ -57,7 +63,7 @@ llm/
 
 [mapping.ts](providers/deepseek/mapping.ts) 将输出预算映射到 `max_tokens`，只从单个 choice 的 `message.content` 读取最终回答，不把推理内容混入文本。截断、过滤、拒答及未知结束原因分别保留，正常完成但无文本、缺失 choice 或无效用量明确失败。缺失用量返回 `null`。思考模式沿用供应商默认值，公共契约未扩展推理、流式或工具调用字段。HTTP 入库调用层为 DeepSeek 默认分配 32768 Token（可由 `ENRICHMENT_MAX_OUTPUT_TOKENS` 覆盖），使用 180 秒单次超时并关闭 SDK 重试；问答不受影响。参考 [DeepSeek 思考模式](https://api-docs.deepseek.com/guides/thinking_mode/)。
 
-[deepseek.test.mjs](../../test/deepseek.test.mjs) 使用真实 SDK 连接本地模拟 Chat Completions API，覆盖配置隔离、请求映射、响应语义、错误分类、取消和超时；不依赖真实 Key。
+[deepseek.test.mjs](../../test/deepseek.test.mjs) 使用真实 SDK 连接本地模拟 Chat Completions / Responses API，覆盖配置隔离、请求映射、响应语义、错误分类、取消和超时；不依赖真实 Key。
 
 ## 接入下一个厂商
 

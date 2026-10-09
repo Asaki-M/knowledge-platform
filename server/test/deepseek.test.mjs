@@ -155,6 +155,99 @@ test('DeepSeek via OpenAI SDK maps the common contract, refusals, partial respon
   assert.equal(requests.length, count)
 })
 
+test('DeepSeek structured output uses Responses without retrying or falling back to Chat', { timeout: 15000 }, async (t) => {
+  const requests = []
+  const server = createServer(async (req, res) => {
+    const chunks = []
+    for await (const chunk of req)
+      chunks.push(chunk)
+    const body = JSON.parse(Buffer.concat(chunks).toString())
+    requests.push({ path: req.url, body })
+    res.setHeader('content-type', 'application/json')
+    res.setHeader('x-request-id', 'structured_request')
+    const response = {
+      id: 'resp_test',
+      object: 'response',
+      model: body.model,
+      status: 'completed',
+      output: [
+        { type: 'reasoning', summary: [{ type: 'summary_text', text: 'private-reasoning' }] },
+        { type: 'message', role: 'assistant', status: 'completed', content: [{ type: 'output_text', text: '{"answer":"ok"}', annotations: [] }] },
+      ],
+      usage: { input_tokens: 12, output_tokens: 8, total_tokens: 20 },
+    }
+    if (body.model === 'unsupported') {
+      res.writeHead(400).end(JSON.stringify({ error: { message: 'private-schema-error' } }))
+      return
+    }
+    if (body.model === 'slow') {
+      setTimeout(() => res.end(JSON.stringify(response)), 150)
+      return
+    }
+    if (['length', 'filter', 'unknown'].includes(body.model)) {
+      response.status = 'incomplete'
+      response.incomplete_details = { reason: body.model === 'length' ? 'max_output_tokens' : body.model === 'filter' ? 'content_filter' : 'unrecognized' }
+    }
+    if (body.model === 'refusal')
+      response.output[1].content = [{ type: 'refusal', refusal: 'Declined' }]
+    if (body.model === 'no-usage')
+      delete response.usage
+    if (body.model === 'bad-usage')
+      response.usage.output_tokens = -1
+    if (body.model === 'empty')
+      response.output = []
+    if (body.model === 'failed') {
+      response.status = 'failed'
+      response.error = { message: 'private-provider-error' }
+    }
+    res.end(JSON.stringify(response))
+  })
+  server.listen(0, '127.0.0.1')
+  await once(server, 'listening')
+  t.after(() => {
+    server.closeAllConnections()
+    return new Promise(resolve => server.close(resolve))
+  })
+  const options = { apiKey: 'local-test', baseURL: `http://127.0.0.1:${server.address().port}`, maxRetries: 0 }
+  const client = new LlmClient([new DeepSeekAdapter(options)])
+  const structuredOutput = { name: 'example', schema: { type: 'object', properties: { answer: { type: 'string' } }, required: ['answer'], additionalProperties: false } }
+  const input = { provider: 'deepseek', model: 'complete', messages, maxOutputTokens: 32768, structuredOutput }
+  const result = await client.generate(input)
+  assert.equal(result.provider, 'deepseek')
+  assert.equal(result.text, '{"answer":"ok"}')
+  assert.equal(result.requestId, 'structured_request')
+  assert.deepEqual(result.usage, { inputTokens: 12, outputTokens: 8, totalTokens: 20 })
+  assert.deepEqual(requests[0], {
+    path: '/responses',
+    body: { model: 'complete', input: messages, max_output_tokens: 32768, stream: false, text: { format: { type: 'json_schema', ...structuredOutput } } },
+  })
+  for (const [model, reason] of [['length', 'length'], ['filter', 'content_filter'], ['unknown', 'unknown'], ['refusal', 'refusal']]) {
+    const response = await client.generate({ ...input, model })
+    assert.equal(response.finishReason, reason)
+    if (model === 'refusal') {
+      assert.equal(response.text, '')
+      assert.equal(response.refusal, 'Declined')
+    }
+  }
+  assert.equal((await client.generate({ ...input, model: 'no-usage' })).usage, null)
+  for (const [model, code] of [['unsupported', 'INVALID_REQUEST'], ['failed', 'PROVIDER_ERROR'], ['empty', 'INVALID_RESPONSE'], ['bad-usage', 'INVALID_RESPONSE']]) {
+    const before = requests.length
+    await assert.rejects(client.generate({ ...input, model }), (error) => {
+      assert.equal(error.code, code)
+      assert.equal(error.provider, 'deepseek')
+      assert.ok(!error.message.includes('private-'))
+      return true
+    })
+    assert.equal(requests.length, before + 1)
+  }
+  await assert.rejects(new LlmClient([new DeepSeekAdapter({ ...options, timeoutMs: 30 })]).generate({ ...input, model: 'slow' }), { code: 'TIMEOUT' })
+  await assert.rejects(client.generate({ ...input, model: 'slow', signal: AbortSignal.timeout(30) }), { code: 'ABORTED' })
+  const before = requests.length
+  await assert.rejects(client.generate({ ...input, signal: AbortSignal.abort() }), { code: 'ABORTED' })
+  assert.equal(requests.length, before)
+  assert.ok(requests.every(request => request.path === '/responses'))
+})
+
 test('DeepSeek reads its own environment and explicit configuration takes precedence', async (t) => {
   const names = ['DEEPSEEK_API_KEY', 'DEEPSEEK_BASE_URL', 'OPENAI_API_KEY', 'OPENAI_BASE_URL']
   const original = Object.fromEntries(names.map(name => [name, process.env[name]]))

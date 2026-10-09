@@ -1,100 +1,91 @@
+import type { z } from 'zod'
+import type { ValidationReason } from '../../errors.js'
 import type { KnowledgeEnrichment } from './types.js'
 import { ENRICHMENT_ERROR_CODES } from '../../error-codes.js'
 import { AppError } from '../../errors.js'
-import { isNonEmptyString, isRecord } from '../../utils/type-guards.js'
+import { createEnrichmentSchema } from './schema.js'
 
-function invalid(path: string): never {
-  // path 仅由本文件中的固定字段名组成，不拼接模型返回值或解析器错误正文。
-  throw new AppError(ENRICHMENT_ERROR_CODES.INVALID_OUTPUT, `Invalid enrichment output at ${path}`)
+function invalid(path: string, reason: ValidationReason): never {
+  // 路径仅由固定字段和数组序号组成，诊断不能拼接模型返回值或解析器正文。
+  throw new AppError(ENRICHMENT_ERROR_CODES.INVALID_OUTPUT, `Invalid enrichment output at ${path}`, { validation: { path, reason } })
 }
 
-function object(value: unknown, path: string, required: readonly string[], optional: readonly string[] = []): Record<string, unknown> {
-  if (!isRecord(value))
-    invalid(path)
-  if (required.some(key => !Object.hasOwn(value, key)) || Object.keys(value).some(key => !required.includes(key) && !optional.includes(key)))
-    invalid(path)
-  return value
+function issuePath(parts: readonly PropertyKey[]): string {
+  return parts.reduce<string>((path, part) => typeof part === 'number' ? `${path}[${part}]` : `${path ? `${path}.` : ''}${String(part)}`, '') || 'root'
 }
 
-function text(value: unknown, path: string): string {
-  if (!isNonEmptyString(value) || value.length > 4000)
-    invalid(path)
-  return value.trim()
+/** 只转换规则代码和固定路径，不把 Zod 原始错误消息、输入或任意未知键传到 HTTP/日志。 */
+function invalidSchema(issue: z.core.$ZodIssue, parsed: unknown): never {
+  let path = issuePath(issue.path)
+  if (issue.code === 'unrecognized_keys') {
+    const known = issue.keys.find(key => ['id', 'name', 'type', 'aliases', 'description', 'evidence', 'sourceId', 'targetId', 'statement', 'nodeIds'].includes(key))
+    if (known && path !== 'root')
+      path = `${path}.${known}`
+    invalid(path, 'unexpected-field')
+  }
+  if (issue.code === 'invalid_type') {
+    const value = issue.path.reduce<unknown>((current, part) => current && typeof current === 'object' ? Reflect.get(current, part) : undefined, parsed)
+    if (value === undefined && issue.path.length)
+      invalid(path, 'missing-field')
+    invalid(path, issue.expected === 'object' ? 'invalid-object' : issue.expected === 'array' ? 'invalid-array' : 'invalid-text')
+  }
+  if (issue.code === 'too_big')
+    invalid(path, issue.origin === 'string' ? 'text-too-long' : 'too-many-items')
+  if (issue.code === 'too_small')
+    invalid(path, issue.origin === 'array' ? 'empty-evidence' : 'invalid-text')
+  if (issue.code === 'invalid_format')
+    invalid(path, 'invalid-id')
+  if (issue.code === 'invalid_value')
+    invalid(path, 'unsupported-value')
+  invalid(path, 'invalid-object')
 }
 
-function array(value: unknown, path: string): unknown[] {
-  if (!Array.isArray(value) || value.length > 100)
-    invalid(path)
-  return value
-}
-
-function strings(value: unknown, path: string): string[] {
-  return array(value, path).map(item => text(item, path))
-}
-
-/** 严格校验结构、已配置分类、实体引用和逐字证据；不尝试修复或补齐模型缺失字段。 */
+/** 先严格 Zod 校验，再检查引用和逐字证据；不修复、补字段或删除未知字段。 */
 export function parseEnrichment(output: string, markdown: string, knowledgeTypes: Readonly<Record<string, string>>): KnowledgeEnrichment {
-  if (typeof output !== 'string' || output.length > 200000)
-    invalid('JSON')
+  if (typeof output !== 'string')
+    invalid('JSON', 'invalid-json')
+  if (output.length > 200000)
+    invalid('JSON', 'text-too-long')
   let parsed: unknown
   try {
     parsed = JSON.parse(output)
   }
   catch {
-    invalid('JSON')
+    invalid('JSON', 'invalid-json')
   }
-  const root = object(parsed, 'root', ['summary', 'keywords', 'aliases', 'questions', 'entities', 'concepts', 'relations', 'facts', 'knowledgeType'])
-  const evidence = (value: unknown): string[] => {
-    const quotes = strings(value, 'evidence')
-    if (!quotes.length || quotes.length > 10 || quotes.some(quote => !markdown.includes(quote)))
-      invalid('evidence')
-    return quotes
+  const result = createEnrichmentSchema(knowledgeTypes).safeParse(parsed)
+  if (!result.success)
+    invalidSchema(result.error.issues[0]!, parsed)
+  const value = result.data
+  const evidence = (quotes: string[], path: string) => {
+    const unmatched = quotes.findIndex(quote => !markdown.includes(quote))
+    if (unmatched !== -1)
+      invalid(`${path}[${unmatched}]`, 'evidence-not-found')
   }
-  const entities = array(root.entities, 'entities').map((value) => {
-    const item = object(value, 'entities', ['id', 'name', 'type', 'aliases', 'description', 'evidence'])
-    const id = text(item.id, 'entities.id')
-    if (!/^[\w-]{1,80}$/.test(id))
-      invalid('entities.id')
-    return { id, name: text(item.name, 'entities.name'), type: text(item.type, 'entities.type'), aliases: strings(item.aliases, 'entities.aliases'), description: text(item.description, 'entities.description'), evidence: evidence(item.evidence) }
-  })
-  const concepts = array(root.concepts, 'concepts').map((value) => {
-    const item = object(value, 'concepts', ['id', 'name', 'aliases', 'description', 'evidence'])
-    const id = text(item.id, 'concepts.id')
-    if (!/^[\w-]{1,80}$/.test(id))
-      invalid('concepts.id')
-    return { id, name: text(item.name, 'concepts.name'), aliases: strings(item.aliases, 'concepts.aliases'), description: text(item.description, 'concepts.description'), evidence: evidence(item.evidence) }
-  })
-  const nodes = [...entities, ...concepts]
-  const nodeIds = new Set(nodes.map(node => node.id))
-  if (nodeIds.size !== nodes.length)
-    invalid('nodes.id')
-  const nodeId = (value: unknown): string => {
-    const id = text(value, 'node reference')
+  const nodeIds = new Set<string>()
+  for (const [key, nodes] of [['entities', value.entities], ['concepts', value.concepts]] as const) {
+    for (const [index, node] of nodes.entries()) {
+      const path = `${key}[${index}]`
+      if (nodeIds.has(node.id))
+        invalid(`${path}.id`, 'duplicate-id')
+      nodeIds.add(node.id)
+      evidence(node.evidence, `${path}.evidence`)
+    }
+  }
+  const nodeId = (id: string, path: string) => {
     if (!nodeIds.has(id))
-      invalid('node reference')
-    return id
+      invalid(path, 'unknown-reference')
   }
-  const relations = array(root.relations, 'relations').map((value) => {
-    const item = object(value, 'relations', ['sourceId', 'targetId', 'type', 'description', 'evidence'])
-    return { sourceId: nodeId(item.sourceId), targetId: nodeId(item.targetId), type: text(item.type, 'relations.type'), description: text(item.description, 'relations.description'), evidence: evidence(item.evidence) }
-  })
-  const facts = array(root.facts, 'facts').map((value) => {
-    const item = object(value, 'facts', ['statement', 'nodeIds', 'evidence'])
-    return { statement: text(item.statement, 'facts.statement'), nodeIds: strings(item.nodeIds, 'facts.nodeIds').map(nodeId), evidence: evidence(item.evidence) }
-  })
-  const knowledgeType = text(root.knowledgeType, 'knowledgeType')
-  if (!Object.hasOwn(knowledgeTypes, knowledgeType))
-    invalid('knowledgeType')
-
-  return {
-    summary: text(root.summary, 'summary'),
-    keywords: strings(root.keywords, 'keywords'),
-    aliases: strings(root.aliases, 'aliases'),
-    questions: strings(root.questions, 'questions'),
-    concepts,
-    entities,
-    relations,
-    facts,
-    knowledgeType,
+  for (const [index, relation] of value.relations.entries()) {
+    const path = `relations[${index}]`
+    nodeId(relation.sourceId, `${path}.sourceId`)
+    nodeId(relation.targetId, `${path}.targetId`)
+    evidence(relation.evidence, `${path}.evidence`)
   }
+  for (const [index, fact] of value.facts.entries()) {
+    const path = `facts[${index}]`
+    fact.nodeIds.forEach((id, nodeIndex) => nodeId(id, `${path}.nodeIds[${nodeIndex}]`))
+    evidence(fact.evidence, `${path}.evidence`)
+  }
+  return value
 }

@@ -34,10 +34,9 @@ export function useHealth() {
   }, [])
 
   useEffect(() => {
+    // 仅进入工作台时检查，后续由用户手动刷新，避免空闲页面持续请求。
     void refresh()
-    const interval = window.setInterval(() => void refresh(), 30000)
     return () => {
-      window.clearInterval(interval)
       const previous = controllerRef.current
       controllerRef.current = null
       previous?.abort()

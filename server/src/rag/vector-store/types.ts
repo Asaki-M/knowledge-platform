@@ -15,6 +15,8 @@ export interface SnapshotWriteOptions {
   /** 首次写入传 null；更新必须传读取到的版本，防止并发任务覆盖新数据。 */
   expectedRevision: string | null
   signal?: AbortSignal
+  /** 可选写入幂等键，提交成功但响应丢失时恢复原事务结果。 */
+  writeKey?: string
 }
 
 /** 输入代表整个知识库的完整双索引快照，遗漏的旧记录会在同一事务中删除。 */

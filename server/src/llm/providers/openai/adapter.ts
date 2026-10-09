@@ -2,8 +2,9 @@ import type OpenAI from 'openai'
 import type { LlmAdapter, LlmRequest, LlmResponse } from '../../types.js'
 import type { OpenAISdkOptions } from '../openai-sdk.js'
 import process from 'node:process'
+import { normalizeResponsesOutput } from '../openai-sdk-response.js'
 import { createOpenAISdk } from '../openai-sdk.js'
-import { toLlmResponse, toOpenAIRequest } from './mapping.js'
+import { toOpenAIRequest } from './mapping.js'
 import { normalizeError } from './normalize-error.js'
 
 /** 显式连接参数优先，未传时使用 OPENAI_API_KEY / OPENAI_BASE_URL。 */
@@ -31,7 +32,7 @@ export class OpenAIAdapter implements LlmAdapter {
         toOpenAIRequest(request),
         { signal: request.signal },
       )
-      return toLlmResponse(response)
+      return normalizeResponsesOutput(response, this.provider)
     }
     catch (error) {
       throw normalizeError(error)

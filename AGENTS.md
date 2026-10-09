@@ -10,7 +10,7 @@
 - `server/`：Hono、OpenTelemetry、统一 LLM Adapter、OpenAI 官方 SDK。
 - 保持工作区名称 `@knowledge/app` 与 `@knowledge/server`，不自行将 `server/` 改为 `api/`。
 - 已实现基础页面、健康检查、日志追踪、非流式文本生成适配器、可扩展的文档标准化接入层、按标题的 Section Split、Knowledge Enrichment 和 Chunk Build。
-- RAG 中 normalization 已实现 Nextra MDX 的 AST 标准化，sections 已实现 H1–H3 分节与来源版本，chunking 已实现独立 Chunk Build，enrichment 已实现通过 LLM 提取结构化知识，wiki 已实现显式身份映射的跨节语义聚合及增量更新，ingestion 已实现纯函数影响计算与完整知识库快照的双索引写入，embedding 已接入 SiliconFlow / Google 文本向量化 SDK，indexing 已实现 Chunk / Wiki 文本构造和双索引向量生成，vector-store 已实现 PostgreSQL / pgvector 持久化与精确余弦查询；retrieval / rerank / generation / query 已实现双路各 Top 30、合并去重、SiliconFlow 重排 Top 5 与可选 DeepSeek / OpenAI 引用式回答；单文档标准化到双索引入库已接入 HTTP，原始文件及完整中间对象的持久化仍待实现，Wiki 页面尚未接入后端节点。不要将占位页面或目录描述为已实现功能，也不要在无关任务中补写这些能力。
+- RAG 中 normalization 已实现 Nextra MDX 的 AST 标准化，sections 已实现 H1–H3 分节与来源版本，chunking 已实现独立 Chunk Build，enrichment 已实现通过 LLM 提取结构化知识，wiki 已实现显式身份映射的跨节语义聚合及增量更新，ingestion 已实现纯函数影响计算与完整知识库快照的双索引写入，embedding 已接入 SiliconFlow / Google 文本向量化 SDK，indexing 已实现 Chunk / Wiki 文本构造和双索引向量生成，vector-store 已实现 PostgreSQL / pgvector 持久化与精确余弦查询；retrieval / rerank / generation / query 已实现双路各 Top 30、合并去重、SiliconFlow 重排 Top 5 与可选 DeepSeek / OpenAI 引用式回答；单文档标准化到双索引入库已接入 HTTP，入库断点已保存正文和完整阶段对象，原始文件存档与通用文档/Wiki 查询仍待实现，Wiki 页面尚未接入后端节点。不要将占位页面或目录描述为已实现功能，也不要在无关任务中补写这些能力。
 
 计划链路：
 
@@ -92,9 +92,9 @@ server/src/
 - 每个适配器负责输入映射、输出归一化和 `AppError` 转换；共享校验、供应商选择和追踪留在 `LlmClient`。
 - 保持模型 ID 显式传入。`OPENAI_MODEL` 是调用方可使用的配置来源，客户端不会自动读取它作为默认模型。
 - OpenAI 适配器当前使用 Responses API；配置中转地址时确认它支持该协议，不假设所有兼容站点都支持。
-- DeepSeek 适配器位于 `llm/providers/deepseek/`，复用 OpenAI SDK 的 Chat Completions API，读取 `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL`。`DEEPSEEK_MODEL` 由调用方读取并显式传入；不自动回退到 OpenAI 配置，不将推理内容混入最终回答。
+- DeepSeek 适配器位于 `llm/providers/deepseek/`，复用 OpenAI SDK：普通文本使用 Chat Completions，`structuredOutput` 使用 Responses JSON Schema，读取 `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL`。`DEEPSEEK_MODEL` 由调用方读取并显式传入；不自动回退到 OpenAI 配置，不将推理内容混入最终回答。
 - HTTP 入库的 DeepSeek 单节生成预算默认 32768 Token，单次超时 180 秒且 SDK 不重试；OpenAI 入库默认 10000 Token。`ENRICHMENT_MAX_OUTPUT_TOKENS` 可覆盖入库预算，思考模式沿用供应商默认值，问答设置不变。
-- 当前契约只支持非流式文本消息；扩展流式、工具调用或多模态时，明确调整公共契约与测试，不偷偷透传 SDK 专有参数。
+- 当前契约支持非流式文本消息及可选 `structuredOutput: { name, schema }`，结构化结果仍返回文本；扩展流式、工具调用或多模态时，明确调整公共契约与测试，不偷偷透传 SDK 专有参数。
 - 保留 `finishReason`、拒答和部分文本的语义；缺失用量使用 `null`，不要伪造为零。调用方应判断结束原因再使用结果。
 - 保留取消信号、超时及可重试错误语义；不要在 SDK 已有重试之外无意叠加重试。
 - 不在模块导入或 HTTP 启动时调用模型。缺少模型 Key 不应影响健康检查和基础服务启动。
@@ -129,12 +129,13 @@ server/src/
 ## Knowledge Enrichment 约定
 
 - `rag/enrichment/index.ts` 导出 `KnowledgeEnricher`，单节调用已有 `LlmClient`，不再增加模型或文档适配层。
+- `enrichment/schema.ts` 用 Zod strictObject 定义唯一字段契约、推导类型和生成模型请求 JSON Schema；返回结果先 Zod 校验，再检查逐字证据及引用，不静默删除未知字段。DeepSeek 入库使用 Responses JSON Schema，问答保持 Chat Completions；地址/模型必须支持所选协议，不静默降级。
 - 按规则提取 → LLM 补充 → 校验去重 → 复查执行。`extractSectionData` 从 AST / Split 元数据提取 title、headingPath、metadata、codeBlocks、links；模型只输出语义字段。
 - `EnrichedSection` 使用 schemaVersion 3，绑定 documentId、sectionId、sectionRevision，保留 extracted 和生成元数据；语义结果在 enrichment 中。Concept 为带局部 ID、别名、描述和证据的结构，主题归入 Concept。metadata 只取原文 frontmatter。
 - `knowledgeType` 使用内置字典加调用方扩展，运行时只接受配置过的分类，不让模型自由增加类型。
 - 实体、概念、关系、事实保留逐字原文证据；关系端点和事实 nodeIds 可引用本节实体或概念。证据存在不等于语义蕴含，不能宣称自动事实核验。
 - 去重在校验之后进行，实体合并需重映射关系与事实的引用，再复查证据数量等边界。不用模糊匹配合并不同含义的实体。
-- 字段缺失、无效 JSON、拒答、截断、超长输入均明确失败，不自动修复、补事实或叠加重试。错误继续共用 AppError 与统一错误码。
+- 字段缺失、无效 JSON、拒答、截断、超长输入均明确失败，不自动修复、补事实或叠加重试。校验失败仅保留固定字段路径、规则和章节序号，由 HTTP / 操作日志翻译为安全文案；不保存或暴露模型返回值和原始证据。错误继续共用 AppError 与统一错误码。
 - 不在本阶段构建 Wiki/KG 实体全局 ID、chunk、embeddingText 或数据库写入；常规验证使用本地模拟模型。
 
 ## Wiki 构建与增量更新约定
@@ -156,7 +157,7 @@ server/src/
 - 保留批量顺序、用量缺失、维度约束、取消和超时语义；拒绝缺失/重复索引与非法向量，不静默丢文本、截断或自动重试。
 - Google Embedding 2 每条文本包装为独立 Content，避免字符串列表被合并为单个向量。当前只接收准备好的文本，不拼接检索指令或 embeddingText。
 - 错误继续共用 AppError 与 EMBEDDING_ERROR_CODES；追踪由客户端负责，日志不记录文本或向量。
-- 常规验证用真实 SDK 对本地模拟服务；不在导入模块或启动 HTTP 时调用模型。`indexing` 已组合来源元数据、embeddingText 和内存向量产物；`vector-store` 已保存双索引向量、文本与来源元数据；原始文档持久化和完整文档级入库编排仍待实现。
+- 常规验证用真实 SDK 对本地模拟服务；不在导入模块或启动 HTTP 时调用模型。`indexing` 已组合来源元数据、embeddingText 和内存向量产物；`vector-store` 已保存双索引向量、文本与来源元数据；单文档入库编排与任务检查点已实现，原始文件存档和跨任务变更节复用仍待实现。
 
 ## 双索引约定
 
@@ -172,7 +173,7 @@ server/src/
 - `rag/vector-store` 导出 `PgVectorStore`，显式 `initialize()` 建扩展与表；模块导入、构造与 HTTP 启动不自动连接或迁移。
 - `replaceSnapshot` 接受完整知识库双索引快照与 `expectedRevision`，同一事务完成 upsert、旧记录删除和版本更新；空快照清空当前知识库向量，不影响其他知识库。不把单份文档增量误作完整知识库快照。
 - SQL 参数化，事务复用同一个连接；取消或 SQL 失败回滚，错误不透出连接串、SQL 参数或正文。向量写入前校验模型、维度、非零有限 float32 数值和文本指纹。
-- 当前精确余弦查询按知识库和 chunk/wiki 类型隔离，并检查实际模型与维度；`searchDual` 在同一只读事务快照中执行两路查询，并校验生成问题向量前的版本；尚无 HNSW。源文档与完整 Section / Wiki 的应用持久化另行实现。
+- 当前精确余弦查询按知识库和 chunk/wiki 类型隔离，并检查实际模型与维度；`searchDual` 在同一只读事务快照中执行两路查询，并校验生成问题向量前的版本；尚无 HNSW。源正文与完整 Section / Wiki 已作为入库任务检查点保存，通用文档/Wiki 查询另行实现。
 - 常规测试不依赖本机数据库；显式设置 `VECTOR_STORE_TEST_DATABASE_URL` 才运行真实数据库测试，它创建并删除独立临时数据库，不能清理用户库。
 
 ## 日志与配置
@@ -214,7 +215,7 @@ server/src/
 - 两接口共享 `core/service/model-options.ts`：LLM 支持 deepseek / ds、openai；Embedding 支持 gemini / google、siliconflow。模型 ID 可由请求显式指定或由调用层读取环境变量，凭据 / Base URL 仅使用服务端配置。
 - 入库按 knowledgeBaseId + documentId 新增或完整更新，只替换该文档旧索引，不清空其他文档；跨文档共享节点要求走完整 Wiki 重建。写入保留事务、版本比较和失败回滚，不自动重跑模型。
 - 问答 Embedding 默认沿用库内空间，显式选择不一致时返回 409；LLM 可以独立切换。Rerank 仍使用 SiliconFlow。
-- 上传格式目前为 JSON 中的 nextra-mdx / Markdown 文本；原始文件存档、完整中间对象持久化、按变更节缓存复用、multipart / PDF / Word 上传未实现；前端 RAG 过程页已接入正文与本地 Markdown / MDX 文本读取、模型选择和最终入库摘要。
+- 上传格式目前为 JSON 中的 nextra-mdx / Markdown 文本；入库正文与完整阶段对象已作为断点持久化；原始文件存档、跨任务按变更节复用、multipart / PDF / Word 上传未实现；前端 RAG 过程页已接入正文与本地 Markdown / MDX 文本读取、模型选择、实时阶段进度、受限产物预览和最终入库摘要。
 
 ## 操作日志接口
 
@@ -227,10 +228,19 @@ server/src/
 ## 前端三页工作台
 
 - 当前导航为知识问答、RAG 过程、操作日志，对应 `features/ask`、`features/pipeline`、`features/logs`；旧文档库与 Wiki 占位页已移除。
-- 页面切换保留正在进行的请求、草稿与结果，刷新后清空；不持久化用户正文、问题或答案。
-- 入库与问答使用现有同步 HTTP 接口，只展示请求等待状态和真实最终结果，不模拟逐阶段进度。
+- 页面切换保留请求、草稿与结果；浏览器仅保存最近入库任务 ID，刷新可从服务端恢复任务，不把正文、问题或答案写入浏览器存储。
+- 入库通过现有 POST 接口的 NDJSON 响应展示真实阶段进度及受限产物预览；问答继续使用 JSON 响应。不模拟进度，连接中断时入库状态未确认，需查操作日志。
 - 日志支持筛选、游标分页和单条详情，读取错误不伪装为空记录。界面改动以桌面端验证为准。
 
 - 工作台选项来自 `GET /api/workspace/options`，模型选项只暴露已配置的 provider/model，目录读取现有向量元数据，日志筛选读取历史范围；不调用模型、不建表，数据库故障明确报错。
 - 前端技术参数用下拉与自动生成：知识库选择或通过 Popover 填写名称创建，新增文档 UUID、更新显式选目标，来源取文件名，已有库锁定向量模型和自动沿用维度。除新建知识库名称外，只保留问题和正文文本输入。
 - 用户要求后续验证使用假数据 / 本地模拟接口，不再调用其真实 LLM、Embedding 或 Rerank 服务消耗额度。
+
+## 入库断点恢复
+
+- 入库可传 UUID ingestionId，同任务重试只传该 ID。GET `/api/documents/ingestions/:id` 返回任务状态、预览和结果；POST `/api/documents/ingestions/:id/interrupt` 请求取消，接受取消不表示事务必然未提交。
+- `core/dao/document-ingestions.ts` 保存任务输入、固定模型配置与检查点，和摘要日志分表；RAG 只依赖注入的 IngestionCheckpointStore，不依赖 HTTP 或 DAO。
+- 每阶段、每节成功 enrichment、每个成功 Embedding 批次立即保存；仅用户显式重试才调用未完成部分。失败响应不缓存，未保存的在途调用额度无法追回。
+- 输入与配置指纹/版本不可变，修改必须新任务。PostgreSQL 会话锁阻止同任务并发重试，进程退出释放锁；遗留 running 查询为 interrupted，不自动恢复。
+- 向量写入与 writeKey 回执事务提交，响应或完成状态丢失可恢复原结果；正常 expectedRevision 冲突仍拒绝覆盖。
+- 前端支持中断、继续重试和刷新恢复最近任务；浏览器 sessionStorage 只保存任务 ID。仅无进度流且仍运行的恢复任务每 2 秒查状态，完成后停止，不轮询健康检查。

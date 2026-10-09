@@ -1,14 +1,14 @@
-import type { IngestionResult } from './types'
 import type { ModelChoice } from '@/features/workspace/model-fields'
-import { ArrowRight, CheckCircle2, FileText, Upload } from 'lucide-react'
-import { useState } from 'react'
+import { ArrowRight, CheckCircle2, FileText, RotateCcw, Square, Upload } from 'lucide-react'
+import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { KnowledgeBaseField } from '@/features/workspace/knowledge-base-field'
 import { ModelFields } from '@/features/workspace/model-fields'
 import { OperationFeedback } from '@/features/workspace/operation-feedback'
 import { selectedModel, useWorkspaceStore } from '@/features/workspace/store'
-import { useOperation } from '@/features/workspace/use-operation'
 import { ingestionSteps } from './ingestion-steps'
+import { PipelineStages } from './pipeline-stages'
+import { useIngestion } from './use-ingestion'
 
 export function PipelineView() {
   const { knowledgeBaseId, options, optionsPending, optionsError, refreshOptions, setKnowledgeBaseId, setSection } = useWorkspaceStore()
@@ -20,7 +20,8 @@ export function PipelineView() {
   const [embedding, setEmbedding] = useState<ModelChoice | null>(null)
   const [fileError, setFileError] = useState('')
   const [reading, setReading] = useState(false)
-  const operation = useOperation<IngestionResult>()
+  const operation = useIngestion()
+  const stagesRef = useRef<HTMLDivElement>(null)
   const { result, pending } = operation
 
   const knowledgeBase = options?.knowledgeBases.find(kb => kb.id === knowledgeBaseId)
@@ -34,20 +35,29 @@ export function PipelineView() {
     if (pending || reading || !content.trim() || !ready || !model || !vectorModel)
       return
     setFileError('')
-    const stored = await operation.run('/api/documents/ingest', {
+    stagesRef.current?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' })
+    const stored = await operation.run({
       knowledgeBaseId,
       document: { id: documentId, format: 'nextra-mdx', content, ...(sourcePath && { sourcePath }) },
       llm: model,
       embedding: { provider: vectorModel.provider, model: vectorModel.model },
     })
-    if (stored) {
-      // 成功后准备下一份新文档；失败时保留正文和身份，方便修正后重新提交。
-      setContent('')
-      setSourcePath('')
-      setTarget({ knowledgeBaseId: '', documentId: '' })
-      setNewDocumentId(`doc-${crypto.randomUUID()}`)
-      await refreshOptions()
-    }
+    if (stored)
+      await completed()
+  }
+
+  async function completed() {
+    setContent('')
+    setSourcePath('')
+    setTarget({ knowledgeBaseId: '', documentId: '' })
+    setNewDocumentId(`doc-${crypto.randomUUID()}`)
+    await refreshOptions()
+  }
+
+  async function retry() {
+    const stored = await operation.retry()
+    if (stored)
+      await completed()
   }
 
   async function readFile(file: File | undefined) {
@@ -207,12 +217,30 @@ export function PipelineView() {
           </form>
           {reading && <p role="status" className="field-hint">正在读取文件…</p>}
           {fileError && <div role="alert" className="notice error-notice">{fileError}</div>}
+          {operation.ingestionId && !result && (
+            <div className="ingestion-controls">
+              <p className="field-hint">{operation.recovering ? '正在恢复最近一次入库任务…' : pending ? '已完成结果会逐节保存，中断后可以继续。' : '继续任务会沿用原文档与模型配置，复用已保存结果。修改内容后“开始入库”将创建新任务。'}</p>
+              {pending && !operation.recovering
+                ? (
+                    <Button type="button" variant="outline" disabled={operation.interrupting} onClick={() => void operation.interrupt()}>
+                      <Square />
+                      {operation.interrupting ? '正在中断' : '中断处理'}
+                    </Button>
+                  )
+                : !operation.recovering && (
+                    <Button type="button" variant="outline" disabled={reading || operation.interrupting} onClick={() => void retry()}>
+                      <RotateCcw />
+                      继续重试
+                    </Button>
+                  )}
+            </div>
+          )}
           <OperationFeedback pending={pending} error={operation.error} />
         </section>
         <aside className="ingest-result">
           <div className="panel-heading">
             <h2>处理结果</h2>
-            <span>{pending ? '等待返回' : result ? '已入库' : '等待导入'}</span>
+            <span>{pending ? '等待返回' : result ? '已入库' : operation.ingestionId ? '未完成' : '等待导入'}</span>
           </div>
           {result
             ? (
@@ -296,12 +324,15 @@ export function PipelineView() {
             : (
                 <div className="inline-empty">
                   <FileText size={30} strokeWidth={1.3} />
-                  <h3>{pending ? '文档正在处理' : '等待第一份文档'}</h3>
-                  <p>{pending ? '服务端处理完成后，会在这里显示真实的章节、知识节点和向量数量。' : '提交文档后，在这里查看构建数量、模型信息与入库结果。'}</p>
+                  <h3>{pending ? '文档正在处理' : operation.ingestionId ? '任务未完成' : '等待第一份文档'}</h3>
+                  <p>{pending ? '下方实时显示当前阶段，全部完成后在这里查看入库结果。' : operation.ingestionId ? '已保存的处理结果可以复用。点击继续重试，从未完成的位置继续。' : '提交文档后，在这里查看构建数量、模型信息与入库结果。'}</p>
                 </div>
               )}
-          <div className="capability-note">当前提供处理完成后的结果摘要；暂不提供实时阶段进度和中间对象预览。文件在浏览器读取为文本，原始文件暂不存档。</div>
+          <div className="capability-note">文件在浏览器读取为文本，原始文件暂不存档。下方可查看实时阶段与产物预览。</div>
         </aside>
+      </div>
+      <div ref={stagesRef}>
+        <PipelineStages key={operation.requestId ?? 'draft'} stages={operation.stages} pending={pending} failed={!!operation.error} unconfirmed={operation.error?.code === 'STREAM_INTERRUPTED' || operation.error?.code === 'INVALID_STREAM'} interrupted={operation.error?.code === 'INGESTION_ABORTED'} failureMessage={operation.error?.message} />
       </div>
       <details className="pipeline-reference">
         <summary>了解各阶段的输入与输出</summary>

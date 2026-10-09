@@ -1,4 +1,5 @@
 import type { ChatCompletion, ChatCompletionCreateParamsNonStreaming } from 'openai/resources/chat/completions'
+import type { ResponseCreateParamsNonStreaming } from 'openai/resources/responses/responses'
 import type { LlmFinishReason, LlmRequest, LlmResponse } from '../../types.js'
 import { LLM_ERROR_CODES } from '../../../error-codes.js'
 import { AppError } from '../../../errors.js'
@@ -10,6 +11,18 @@ export function toDeepSeekRequest(request: LlmRequest): ChatCompletionCreatePara
     messages: request.messages.map(message => ({ role: message.role, content: message.content })),
     max_tokens: request.maxOutputTokens,
     temperature: request.temperature,
+    stream: false,
+  }
+}
+
+/** DeepSeek 的 Schema 约束走 Responses；不添加未声明的 strict/store 或思考配置。 */
+export function toDeepSeekStructuredRequest(request: LlmRequest): ResponseCreateParamsNonStreaming {
+  return {
+    model: request.model,
+    input: request.messages.map(message => ({ role: message.role, content: message.content })),
+    max_output_tokens: request.maxOutputTokens,
+    temperature: request.temperature,
+    text: { format: { type: 'json_schema', name: request.structuredOutput!.name, schema: request.structuredOutput!.schema } },
     stream: false,
   }
 }

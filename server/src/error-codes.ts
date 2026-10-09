@@ -153,6 +153,14 @@ export const INGESTION_ERROR_CODES = {
   ABORTED: 'INGESTION_ABORTED',
   /** Section 快照内容无效、版本不匹配或身份重复。 */
   INVALID_SNAPSHOT: 'INGESTION_INVALID_SNAPSHOT',
+  /** 断点存储连接配置不合法。 */
+  CHECKPOINT_CONFIGURATION_ERROR: 'INGESTION_CHECKPOINT_CONFIGURATION_ERROR',
+  /** 断点读写失败；不能在未保存结果时继续消耗模型额度。 */
+  CHECKPOINT_DATABASE_ERROR: 'INGESTION_CHECKPOINT_DATABASE_ERROR',
+  /** 恢复任务不存在。 */
+  TASK_NOT_FOUND: 'INGESTION_TASK_NOT_FOUND',
+  /** 同一任务仍在执行、请求内容变化或检查点版本不兼容。 */
+  TASK_CONFLICT: 'INGESTION_TASK_CONFLICT',
 } as const
 
 export type IngestionErrorCode = typeof INGESTION_ERROR_CODES[keyof typeof INGESTION_ERROR_CODES]

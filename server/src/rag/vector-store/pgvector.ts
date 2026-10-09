@@ -119,10 +119,19 @@ export class PgVectorStore implements VectorSnapshotStore {
       chunks: snapshot.chunks.length,
       wikiNodes: snapshot.wikiNodes.length,
     }
+    const fingerprint = contentHash([documentId ?? null, snapshot])
     const result = await this.transaction(async (client) => {
       // 锁也覆盖尚不存在的知识库行，避免两个首次写入任务同时通过版本检查。
       await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [info.knowledgeBaseId])
       checkCancelled()
+      if (options.writeKey !== undefined) {
+        const receipt = (await client.query<{ fingerprint: string, result: VectorSnapshotInfo }>('SELECT fingerprint, result FROM rag_vector_write_receipts WHERE knowledge_base_id = $1 AND write_key = $2', [info.knowledgeBaseId, options.writeKey])).rows[0]
+        if (receipt) {
+          if (receipt.fingerprint !== fingerprint)
+            throw new AppError(CODES.CONFLICT, 'Write key belongs to a different vector snapshot')
+          return receipt.result
+        }
+      }
       const current = (await client.query<VectorSnapshotInfo>(snapshotSql, [info.knowledgeBaseId])).rows[0]
       if ((current?.revision ?? null) !== expectedRevision)
         throw new AppError(CODES.CONFLICT, 'Vector snapshot changed after it was read')
@@ -167,6 +176,9 @@ export class PgVectorStore implements VectorSnapshotStore {
         await client.query('UPDATE rag_vector_snapshots SET revision = $2, chunk_count = $3, wiki_count = $4 WHERE knowledge_base_id = $1', [info.knowledgeBaseId, info.revision, info.chunks, info.wikiNodes])
       }
       checkCancelled()
+      // 回执与向量在同一事务提交，覆盖提交后断线/崩溃的恢复窗口。
+      if (options.writeKey !== undefined)
+        await client.query('INSERT INTO rag_vector_write_receipts (knowledge_base_id, write_key, fingerprint, result) VALUES ($1, $2, $3, $4::jsonb)', [info.knowledgeBaseId, options.writeKey, fingerprint, JSON.stringify(info)])
       return info
     })
     log.info('vector-store.snapshot.written', { 'vector-store.chunks': info.chunks, 'vector-store.wiki_nodes': info.wikiNodes, 'vector-store.dimensions': info.dimensions ?? undefined })

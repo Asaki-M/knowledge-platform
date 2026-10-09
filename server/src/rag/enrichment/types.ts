@@ -1,37 +1,17 @@
+import type { z } from 'zod'
 import type { LlmUsage } from '../../llm/types.js'
 import type { NormalizedDocument } from '../normalization/types.js'
 import type { SectionHeading } from '../sections/types.js'
+import type { conceptSchema, createEnrichmentSchema, entitySchema, factSchema, relationSchema } from './schema.js'
 
 /** 分类是可配置字典的 key，运行时校验是否已注册，不让模型自由创造分类。 */
 export type KnowledgeType = string
 
-export interface Concept {
-  /** 仅在本节内唯一；跨节合并实体由后续 Wiki/KG 阶段处理。 */
-  id: string
-  name: string
-  aliases: string[]
-  description: string
-  /** 来自本节 Markdown 的连续原文片段，不是模型改写的说明。 */
-  evidence: string[]
-}
-
-export interface Entity extends Concept {
-  type: string
-}
-
-export interface Relation {
-  sourceId: string
-  targetId: string
-  type: string
-  description: string
-  evidence: string[]
-}
-
-export interface Fact {
-  statement: string
-  nodeIds: string[]
-  evidence: string[]
-}
+/** 结构类型由实际校验契约推导，避免字段定义与运行时规则漂移。 */
+export type Concept = z.infer<typeof conceptSchema>
+export type Entity = z.infer<typeof entitySchema>
+export type Relation = z.infer<typeof relationSchema>
+export type Fact = z.infer<typeof factSchema>
 
 export interface ExtractedCodeBlock {
   language: string | null
@@ -58,17 +38,7 @@ export interface ExtractedSectionData {
 }
 
 /** 模型仅补充语义字段，不返回规则已经确定的字段。 */
-export interface KnowledgeEnrichment {
-  summary: string
-  keywords: string[]
-  aliases: string[]
-  questions: string[]
-  entities: Entity[]
-  concepts: Concept[]
-  relations: Relation[]
-  facts: Fact[]
-  knowledgeType: KnowledgeType
-}
+export type KnowledgeEnrichment = z.infer<ReturnType<typeof createEnrichmentSchema>>
 
 export interface EnrichmentOptions {
   provider: string

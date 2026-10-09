@@ -1,6 +1,6 @@
 # 文档入库与问答接口
 
-服务默认地址 `http://127.0.0.1:3000`，请求与响应使用 JSON。模型密钥和服务地址只读服务端 `.env`，客户端仅选择供应商、模型和可选向量维度。导入和问答为同步请求，大文档需要等待多次模型调用完成。
+服务默认地址 `http://127.0.0.1:3000`，请求与响应使用 JSON。模型密钥和服务地址只读服务端 `.env`，客户端仅选择供应商、模型和可选向量维度。导入和问答在单次请求内处理，大文档需要等待多次模型调用完成；入库可订阅实时阶段事件。
 
 ## 统一模型选择
 
@@ -18,7 +18,7 @@ HTTP 入库单节生成预算默认 DeepSeek 32768 / OpenAI 10000 Token，可通
 
 同一知识库只能使用同一个 Embedding 向量空间。入库或问答显式选择不匹配的供应商、模型或维度时返回 409；更换 Embedding 模型应使用新的知识库，或由完整快照流程重建全库。LLM 可按请求切换，不影响向量空间。
 
-OpenAI 继续使用现有 **Responses API** 适配器，`OPENAI_BASE_URL` 必须支持该协议。DeepSeek 使用 Chat Completions。Rerank 保持 SiliconFlow，与所选 LLM / Embedding 无关：使用 `RERANK_MODEL`，凭据 / 地址优先 `RERANK_*`，未设置时复用 `EMBEDDING_*`。选择 Gemini 后，问答仍需配置 SiliconFlow Rerank。
+OpenAI 继续使用现有 **Responses API** 适配器，`OPENAI_BASE_URL` 必须支持该协议。DeepSeek 问答使用 Chat Completions，知识提取使用 Responses JSON Schema；入库地址和模型必须支持该协议，不自动降级或重试。Rerank 保持 SiliconFlow，与所选 LLM / Embedding 无关：使用 `RERANK_MODEL`，凭据 / 地址优先 `RERANK_*`，未设置时复用 `EMBEDDING_*`。选择 Gemini 后，问答仍需配置 SiliconFlow Rerank。
 
 ## POST /api/documents/ingest
 
@@ -45,14 +45,27 @@ OpenAI 继续使用现有 **Responses API** 适配器，`OPENAI_BASE_URL` 必须
 
 成功返回 `status: stored`，包含：
 
-- `knowledgeBaseId`、`documentId`。
+- `ingestionId`、`knowledgeBaseId`、`documentId`。
 - `normalization`：标题、标准化警告、纯文本字符数。
 - `counts`：本次文档的 Section、Chunk、Wiki 节点 / 边、向量数量。
 - `enrichment`：逐节 LLM 供应商、实际模型、请求 ID 和用量。
 - `embedding`：供应商、请求 / 实际模型、维度和用量。
 - `stored`：写入后的**整个知识库**版本、向量空间及 Chunk / Wiki 数量。
 
-持久化内容是双索引向量、embeddingText、来源和版本；原始上传文件、完整 NormalizedDocument / Section / Wiki 对象尚未独立存档。更新文档需要重新传入完整正文，当前不按变更节缓存和复用模型结果。
+### 实时阶段与产物预览
+
+同一 `POST /api/documents/ingest` 请求增加 `Accept: application/x-ndjson`，响应变为逐行 JSON 事件（`Content-Type: application/x-ndjson`）。请求正文不变，默认仍返回上述完整 JSON 摘要。前端 RAG 过程页使用此模式。
+
+- `start`：包含 `requestId` 和有效任务的 `ingestionId`。
+- `stage`：包含 `stage: { id, status, durationMs, reused?, progress?, preview? }`。`id` 依次为 `normalize`、`sections`、`chunks`、`enrichment`、`wiki`、`indexing`、`embedding`、`storage`；`status` 为 `running` / `completed` / `failed`。知识提取的 `progress` 为 `{ completed, total }`，单位是章节。
+- `preview`：`metrics` 是 `{ label, value }[]`，`items` 是 `{ id, title, text, truncated }[]`，`totalItems` 为实际产物数量。每阶段最多预览前 20 项，每项最多 6000 字符，不返回 AST 或向量数组。预览截取不影响实际入库。
+- `result`：包含 `result`，与普通 JSON 入库的最终响应一致；仅事务提交成功后发送。
+- `error`：包含共用的 `error: { code, message }` 和 `requestId`。流开启后的业务错误通过此事件报告，HTTP 状态已为 200，客户端必须检查事件；JSON 解析失败或请求体超限仍返回普通 HTTP 错误。
+- `ping`：每 15 秒保活，客户端忽略。
+
+客户端逐行解码，流结束但未收到 `result` 或 `error` 时显示“入库状态未确认”，可按任务 ID 查询状态，不能推断失败或自动重试。连接断开会取消尚未完成的处理；事务已提交时仍可能收不到最终结果。日志在实际处理结束后记最终业务状态，不因流响应头返回而提前标记成功。阶段预览和完整产物保存为任务检查点，刷新可恢复最近任务；不写入操作日志。
+
+双索引保存向量、embeddingText、来源和版本；任务检查点另行保存正文和完整阶段对象。原始上传文件不存档，尚无通用文档/Wiki 浏览接口。新任务/修改文档仍需完整正文，不做跨任务变更节复用。
 
 ## POST /api/search
 
@@ -74,6 +87,8 @@ OpenAI 继续使用现有 **Responses API** 适配器，`OPENAI_BASE_URL` 必须
 400：参数或 MDX 语法无效、文档 / 上下文超限；413：请求体过大；409：向量空间不匹配、快照冲突或跨文档共享节点；503：模型 / 数据库配置缺失；502：模型或数据库操作失败。错误响应包含 `error.code`、可控文案及 `requestId`，不返回凭据或上游原始错误正文。
 
 `server/test/document-api.test.mjs` 使用真实 SDK 和本地模拟上游验证四种 LLM / Embedding 组合，从实际 HTTP 路由走完整入库和问答。`vector-store.test.mjs` 的显式数据库测试验证单文档保留邻居数据、过期记录清理、重复写入、向量空间检查、共享节点保护和回滚；测试使用独立临时数据库。
+
+知识提取结构、引用或证据校验失败时返回 `ENRICHMENT_INVALID_OUTPUT`。新的错误消息显示失败章节、白名单字段位置和固定原因，例如缺少字段、非法 JSON、节点引用未定义、证据未在本节 Markdown 中逐字匹配；同一文案也保存在操作日志和失败阶段面板。不会传输被拒绝的模型值、证据文本或原始解析异常，也不会自动修复结果或重试模型。历史日志不反推失败字段。
 
 知识提取输出达到生成长度限制时返回 `ENRICHMENT_OUTPUT_TRUNCATED`，内容过滤返回 `ENRICHMENT_CONTENT_FILTERED`，未知结束原因返回 `ENRICHMENT_INCOMPLETE_RESPONSE`；HTTP 和操作日志均显示对应原因，本次文档不会提交部分索引，也不会自动重试模型。历史日志保持原始记录，不反推旧 `ENRICHMENT_INCOMPLETE_RESPONSE` 的原因。
 
@@ -147,3 +162,13 @@ API 只读现有表，不初始化数据库、不读取正文或向量。首次�
 前端通过 Popover 填写知识库名称（1–64 字符、去首尾空格、拒绝同名），名称沿用为知识库字符串标识；新文档生成 UUID，首次入库成功才持久化；同名文件默认新增，更新需从已有文档列表显式选择。已有知识库锁定原 Embedding 模型，维度由入库编排沿用；新库使用模型默认维度。失败保留正文与文档标识，成功后清空编辑器并重新读取目录。日志使用快捷时间范围，在详情中可一键按 requestId 筛选。
 
 `server/test/workspace-options.test.mjs` 使用本地数据库 stub 验证配置白名单、首次空库、现有目录、历史失败范围及读取错误，不调用真实模型。
+
+## 入库中断与恢复
+
+初次 `POST /api/documents/ingest` 可携带客户端生成的 UUID `ingestionId`，未传时服务端生成。继续同一任务只传 `{ "ingestionId": "a86ac373-1726-4afc-9efc-3f6f7d91255d" }`，可继续使用 NDJSON；沿用已保存的原文与配置。字段变化或任务仍运行返回 409，任务不存在返回 404。重试已成功任务直接返回原结果。
+
+`GET /api/documents/ingestions/:id` 返回 ingestionId、status（running / interrupted / failed / succeeded）、knowledgeBaseId、documentId、requestId、stages、可控 error 和已提交 result，不返回原始请求、AST 或向量。`POST /api/documents/ingestions/:id/interrupt` 请求取消，返回 `status: interrupt-requested`；前端同时关闭自己的进度流。接受取消不代表事务尚未提交，应检查最终状态。
+
+正文、配置、完整阶段结果、已通过校验的逐节知识和成功向量批次保存在 PostgreSQL，与日志分表。浏览器 sessionStorage 仅保存最近任务 ID，刷新后查询服务端恢复，不保存正文。命中的完成阶段带 `reused: true`。会话锁阻止同任务并发执行，进程退出释放锁，遗留 running 查询为 interrupted；不自动恢复或清理。新任务不跨文档/配置复用。
+
+向量提交和 writeKey 回执同事务完成，提交后断线或任务状态保存失败可恢复原结果；其他任务修改快照仍拒绝覆盖，不放宽 expectedRevision。检查点写入失败停止处理，不盲目重试。正在进行但尚未保存的调用可能已经消耗额度，取消不能追回。模型验证全部使用本地 stub；真实数据库验证只在独立临时库进行。

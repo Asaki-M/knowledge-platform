@@ -7,8 +7,10 @@ import { Pool } from 'pg'
 import { app } from '../dist/core/app.js'
 // eslint-disable-next-line antfu/no-import-dist -- 测试持久化边界。
 import { OperationLogDao } from '../dist/core/dao/operation-logs.js'
+// eslint-disable-next-line antfu/no-import-dist -- 校验 HTTP 与操作日志共用的安全诊断。
+import { errorResponse } from '../dist/core/error-response.js'
 // eslint-disable-next-line antfu/no-import-dist -- 验证摘要白名单及查询校验。
-import { parseLogFilters, summarizeIngestion, summarizeQuery } from '../dist/core/service/operation-logs.js'
+import { OperationTracker, parseLogFilters, summarizeIngestion, summarizeQuery } from '../dist/core/service/operation-logs.js'
 // eslint-disable-next-line antfu/no-import-dist -- 使用真实统一异常。
 import { AppError } from '../dist/errors.js'
 // eslint-disable-next-line antfu/no-import-dist -- 不调用模型，替换向量读取边界。
@@ -105,6 +107,32 @@ test('HTTP logging records running/success/failure/cancellation and scopes witho
   assert.equal((await app.request('/api/documents/not-a-route')).status, 404)
   assert.equal((await app.request('/api/search')).status, 404)
   assert.equal(records.length, before)
+})
+
+test('validation diagnostics use allowlisted paths and rules in both HTTP errors and operation logs', async (t) => {
+  setDatabase(t, 'postgresql://unused:unused@127.0.0.1:1/test')
+  const records = memoryLogs(t)
+  for (const validation of [
+    { path: 'concepts[0].evidence[0]', reason: 'evidence-not-found', sectionIndex: 1 },
+    { path: 'private-model-value', reason: 'evidence-not-found', sectionIndex: 1 },
+    { path: 'concepts[0].evidence[0]', reason: 'private-model-value', sectionIndex: 1 },
+    { path: 'concepts[0].evidence[0]', reason: 'evidence-not-found', sectionIndex: 'private-model-value' },
+  ]) {
+    const error = new AppError('ENRICHMENT_INVALID_OUTPUT', 'private-model-value', { validation })
+    const tracker = new OperationTracker('ingestion', 'validation-request')
+    await tracker.start()
+    await tracker.finish(502, error)
+    const failure = errorResponse(error, 'validation-request')
+    assert.equal(failure.status, 502)
+    assert.equal(records.at(-1).error.message, failure.body.error.message)
+    assert.ok(!JSON.stringify(failure).includes('private-model-value'))
+    assert.ok(!JSON.stringify(records).includes('private-model-value'))
+  }
+  const valid = new AppError('ENRICHMENT_INVALID_OUTPUT', 'private-model-value', { validation: { path: 'facts[2].nodeIds[0]', reason: 'unknown-reference', sectionIndex: 1 } })
+  const message = errorResponse(valid, 'validation-request').body.error.message
+  assert.ok(message.includes('第 2 节'))
+  assert.ok(message.includes('facts[2].nodeIds[0]'))
+  assert.ok(message.includes('未在本节实体或概念中定义'))
 })
 
 test('logging initialization/completion failures do not replace original success or errors; read errors are explicit', async (t) => {

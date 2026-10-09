@@ -23,7 +23,8 @@ export function operationLogging(type: OperationType) {
     }
     finally {
       // Hono 会在 next() 内执行 onError，因此同时检查 c.error 和响应状态。
-      await tracker.finish(failure ? 500 : c.res.status, c.error ?? failure)
+      if (!tracker.completionDeferred)
+        await tracker.finish(failure ? 500 : c.res.status, c.error ?? failure)
     }
   })
 }

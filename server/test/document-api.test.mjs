@@ -13,11 +13,12 @@ import { embeddingSelection, ingestionEmbeddingOptions, ingestionLlmOptions, llm
 
 // eslint-disable-next-line antfu/no-import-dist -- 替换数据库边界，实际数据库原子性由独立集成测试验证。
 import { PgVectorStore } from '../dist/rag/vector-store/index.js'
+import { stubIngestionCheckpoints } from './ingestion-checkpoint-stub.mjs'
 
 const content = '# Atlas\n\n生产环境必须使用 HTTPS。'
 const enrichment = { summary: '生产环境协议要求。', keywords: ['HTTPS'], aliases: [], questions: [], entities: [], concepts: [{ id: 'c1', name: 'HTTPS', aliases: [], description: '生产环境协议要求', evidence: ['生产环境必须使用 HTTPS。'] }], relations: [], facts: [], knowledgeType: 'security-rule' }
 const ingestBody = { knowledgeBaseId: 'test', document: { id: 'article', content }, llm: { provider: 'ds', model: 'llm-test' }, embedding: { provider: 'siliconflow', model: 'embed-test' } }
-const post = (path, body) => app.request(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+const post = (path, body, headers = {}) => app.request(path, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) })
 
 test('API selectors accept DS/OpenAI and Gemini/SiliconFlow, reject invalid options before accessing storage', async () => {
   assert.equal(llmOptions({ provider: 'ds', model: 'test' }).provider, 'deepseek')
@@ -59,19 +60,26 @@ test('ingestion budgets include reasoning and validate overrides without changin
 })
 
 test('four HTTP model combinations normalize, enrich, embed, store and answer via actual SDK protocols', { timeout: 20000 }, async (t) => {
+  stubIngestionCheckpoints(t)
   const completedLogs = []
   let logId = 0
+  let nextCompletion
   t.mock.method(OperationLogDao.prototype, 'initialize', async () => {})
   t.mock.method(OperationLogDao.prototype, 'start', async input => `${input.type}-${++logId}`)
   t.mock.method(OperationLogDao.prototype, 'setScope', async () => {})
   t.mock.method(OperationLogDao.prototype, 'finish', async (id, input) => {
     completedLogs.push({ id, ...input })
+    nextCompletion?.(input)
+    nextCompletion = undefined
   })
   const calls = []
   let failEmbedding = false
   let failLlm = false
   let invalidEnrichment = false
+  let invalidEvidence = false
+  let unexpectedConceptField = false
   let finishReason = 'stop'
+  let llmGate
   const server = createServer(async (req, res) => {
     const chunks = []
     for await (const chunk of req)
@@ -98,15 +106,29 @@ test('four HTTP model combinations normalize, enrich, embed, store and answer vi
         res.writeHead(500).end(JSON.stringify({ error: { message: 'private-llm-error' } }))
         return
       }
-      const openai = req.url.endsWith('/responses')
-      const input = openai ? body.input[1].content : body.messages[1].content
+      const responses = req.url.endsWith('/responses')
+      const openai = req.headers.authorization === 'Bearer openai-test'
+      const input = responses ? body.input[1].content : body.messages[1].content
       const query = Boolean(JSON.parse(input).sources)
-      assert.equal(openai ? body.max_output_tokens : body.max_tokens, query ? 8000 : openai ? 10000 : 32768)
+      if (!query && llmGate)
+        await llmGate
+      assert.equal(responses ? body.max_output_tokens : body.max_tokens, query ? 8000 : openai ? 10000 : 32768)
+      if (!query) {
+        assert.equal(responses, true)
+        assert.equal(body.text.format.type, 'json_schema')
+        assert.equal(body.text.format.schema.properties.concepts.items.additionalProperties, false)
+        assert.equal(Object.hasOwn(body.text.format.schema.properties.concepts.items.properties, 'type'), false)
+        assert.equal(body.text.format.strict, openai ? true : undefined)
+      }
+      else {
+        assert.equal(body.text, undefined)
+        assert.equal(responses, openai)
+      }
       assert.equal(body.reasoning_effort, undefined)
       assert.equal(body.thinking, undefined)
-      const text = JSON.parse(input).sources ? '生产环境使用 HTTPS。[S1]' : invalidEnrichment ? '{}' : JSON.stringify(enrichment)
-      response = openai
-        ? { id: 'response', object: 'response', model: body.model, status: 'completed', output: [{ type: 'message', role: 'assistant', status: 'completed', content: [{ type: 'output_text', text, annotations: [] }] }] }
+      const text = JSON.parse(input).sources ? '生产环境使用 HTTPS。[S1]' : invalidEnrichment ? '{}' : JSON.stringify(invalidEvidence ? { ...enrichment, concepts: [{ ...enrichment.concepts[0], evidence: ['private-invalid-evidence'] }] } : unexpectedConceptField ? { ...enrichment, concepts: [{ ...enrichment.concepts[0], type: 'private-extra-value' }] } : enrichment)
+      response = responses
+        ? { id: 'response', object: 'response', model: body.model, status: finishReason === 'stop' ? 'completed' : 'incomplete', incomplete_details: finishReason === 'stop' ? null : { reason: finishReason === 'length' ? 'max_output_tokens' : finishReason }, output: [{ type: 'message', role: 'assistant', status: 'completed', content: [{ type: 'output_text', text, annotations: [] }] }] }
         : { id: 'chat', model: body.model, choices: [{ index: 0, finish_reason: finishReason, message: { role: 'assistant', content: text } }] }
     }
     res.end(JSON.stringify(response))
@@ -118,7 +140,7 @@ test('four HTTP model combinations normalize, enrich, embed, store and answer vi
     return new Promise(resolve => server.close(resolve))
   })
   const baseURL = `http://127.0.0.1:${server.address().port}`
-  const env = { ENRICHMENT_MAX_OUTPUT_TOKENS: '', VECTOR_DATABASE_URL: 'postgresql://test:test@127.0.0.1:1/test', DEEPSEEK_API_KEY: 'test', DEEPSEEK_BASE_URL: `${baseURL}/v1`, OPENAI_API_KEY: 'test', OPENAI_BASE_URL: `${baseURL}/v1`, GOOGLE_API_KEY: 'test', EMBEDDING_API_KEY: 'test', EMBEDDING_BASE_URL: `${baseURL}/v1`, RERANK_API_KEY: 'test', RERANK_BASE_URL: `${baseURL}/v1` }
+  const env = { ENRICHMENT_MAX_OUTPUT_TOKENS: '', VECTOR_DATABASE_URL: 'postgresql://test:test@127.0.0.1:1/test', DEEPSEEK_API_KEY: 'deepseek-test', DEEPSEEK_BASE_URL: `${baseURL}/v1`, OPENAI_API_KEY: 'openai-test', OPENAI_BASE_URL: `${baseURL}/v1`, GOOGLE_API_KEY: 'test', EMBEDDING_API_KEY: 'test', EMBEDDING_BASE_URL: `${baseURL}/v1`, RERANK_API_KEY: 'test', RERANK_BASE_URL: `${baseURL}/v1` }
   const previous = Object.fromEntries(Object.keys(env).map(key => [key, process.env[key]]))
   Object.assign(process.env, env)
   t.after(() => {
@@ -232,4 +254,123 @@ test('four HTTP model combinations normalize, enrich, embed, store and answer vi
   assert.ok(calls.some(call => call.path.endsWith('/responses')))
   assert.ok(calls.some(call => call.path.endsWith('/chat/completions')))
   assert.ok(calls.some(call => call.path.includes('batchEmbedContents')))
+
+  // 先读到知识提取运行事件，再放行模型；验证响应不是处理完才一次性返回。
+  invalidEnrichment = false
+  let releaseLlm
+  llmGate = new Promise((resolve) => {
+    releaseLlm = resolve
+  })
+  const logsBeforeStream = completedLogs.length
+  const streamResponse = await post('/api/documents/ingest', { ...ingestBody, knowledgeBaseId: 'stream-success' }, { Accept: 'application/x-ndjson' })
+  assert.equal(streamResponse.status, 200)
+  assert.ok(streamResponse.headers.get('content-type').includes('application/x-ndjson'))
+  const reader = streamResponse.body.getReader()
+  const decoder = new TextDecoder()
+  const events = []
+  let buffer = ''
+  async function readEvents() {
+    const { value, done } = await reader.read()
+    buffer += decoder.decode(value, { stream: !done })
+    const lines = buffer.split('\n')
+    buffer = lines.pop()
+    for (const line of lines.filter(Boolean))
+      events.push(JSON.parse(line))
+    return done
+  }
+  while (!events.some(event => event.type === 'stage' && event.stage.id === 'enrichment'))
+    assert.equal(await readEvents(), false)
+  assert.equal(writes, 4)
+  assert.equal(completedLogs.length, logsBeforeStream)
+  releaseLlm()
+  llmGate = undefined
+  while (!await readEvents()) {
+    // 持续读取每行事件直到服务端结束响应。
+  }
+  reader.releaseLock()
+  const stages = events.filter(event => event.type === 'stage').map(event => event.stage)
+  assert.deepEqual(stages.filter(stage => stage.status === 'completed').map(stage => stage.id), ['normalize', 'sections', 'chunks', 'enrichment', 'wiki', 'indexing', 'embedding', 'storage'])
+  assert.ok(stages.some(stage => stage.id === 'enrichment' && stage.progress?.completed === 1 && stage.progress.total === 1))
+  assert.ok(stages.every(stage => stage.durationMs >= 0))
+  assert.ok(stages.find(stage => stage.id === 'normalize' && stage.preview).preview.items[0].text.includes('HTTPS'))
+  assert.ok(stages.find(stage => stage.id === 'enrichment' && stage.preview).preview.items[0].text.includes('证据：生产环境必须使用 HTTPS。'))
+  assert.ok(stages.find(stage => stage.id === 'wiki' && stage.preview).preview.items[0].text.includes('HTTPS'))
+  assert.ok(!JSON.stringify(events).includes('"vector":'))
+  assert.equal(events.at(-1).type, 'result')
+  assert.equal(events.at(-1).result.status, 'stored')
+  assert.equal(events[0].requestId, streamResponse.headers.get('X-Request-Id'))
+  assert.equal(completedLogs.at(-1).status, 'succeeded')
+  assert.ok(!JSON.stringify(completedLogs.at(-1)).includes('HTTPS'))
+  assert.equal(writes, 5)
+
+  invalidEnrichment = true
+  const failedStream = await post('/api/documents/ingest', { ...ingestBody, knowledgeBaseId: 'stream-failure' }, { Accept: 'application/x-ndjson' })
+  const failures = (await failedStream.text()).trim().split('\n').map(line => JSON.parse(line))
+  assert.equal(failures.at(-1).type, 'error')
+  assert.equal(failures.at(-1).error.code, 'ENRICHMENT_INVALID_OUTPUT')
+  assert.ok(failures.at(-1).error.message.includes('第 1 节'))
+  assert.ok(failures.at(-1).error.message.includes('字段 summary'))
+  assert.equal(completedLogs.at(-1).error.message, failures.at(-1).error.message)
+  assert.ok(failures.some(event => event.stage?.id === 'enrichment' && event.stage.status === 'failed'))
+  assert.ok(!failures.some(event => event.stage?.id === 'wiki' || event.type === 'result'))
+  assert.equal(completedLogs.at(-1).status, 'failed')
+  assert.equal(completedLogs.at(-1).httpStatus, 502)
+  assert.equal(saved.has('stream-failure'), false)
+  assert.equal(writes, 5)
+
+  invalidEnrichment = false
+  invalidEvidence = true
+  for (const headers of [{}, { Accept: 'application/x-ndjson' }]) {
+    const evidenceFailure = await post('/api/documents/ingest', { ...ingestBody, knowledgeBaseId: 'invalid-evidence' }, headers)
+    const failure = headers.Accept ? (await evidenceFailure.text()).trim().split('\n').map(line => JSON.parse(line)).at(-1) : await evidenceFailure.json()
+    assert.equal(failure.error.code, 'ENRICHMENT_INVALID_OUTPUT')
+    assert.ok(failure.error.message.includes('第 1 节'))
+    assert.ok(failure.error.message.includes('concepts[0].evidence[0]'))
+    assert.ok(failure.error.message.includes('逐字匹配'))
+    assert.ok(!JSON.stringify(failure).includes('private-invalid-evidence'))
+    assert.equal(completedLogs.at(-1).error.message, failure.error.message)
+    assert.equal(saved.has('invalid-evidence'), false)
+    assert.equal(writes, 5)
+  }
+  invalidEvidence = false
+
+  unexpectedConceptField = true
+  for (const headers of [{}, { Accept: 'application/x-ndjson' }]) {
+    const beforeCalls = calls.length
+    const result = await post('/api/documents/ingest', { ...ingestBody, knowledgeBaseId: 'unexpected-concept-field' }, headers)
+    const failure = headers.Accept ? (await result.text()).trim().split('\n').map(line => JSON.parse(line)).at(-1) : await result.json()
+    assert.equal(failure.error.code, 'ENRICHMENT_INVALID_OUTPUT')
+    assert.ok(failure.error.message.includes('concepts[0].type'))
+    assert.ok(failure.error.message.includes('约定结构之外'))
+    assert.ok(!JSON.stringify(failure).includes('private-extra-value'))
+    assert.equal(completedLogs.at(-1).error.message, failure.error.message)
+    assert.equal(saved.has('unexpected-concept-field'), false)
+    assert.equal(writes, 5)
+    assert.equal(calls.length - beforeCalls, 1)
+  }
+  unexpectedConceptField = false
+
+  // 客户端关闭进度流时取消待完成的模型调用，不能继续写入或留下伪成功日志。
+  invalidEnrichment = false
+  llmGate = new Promise((resolve) => {
+    releaseLlm = resolve
+  })
+  const cancellationFinished = new Promise((resolve) => {
+    nextCompletion = resolve
+  })
+  const cancelledStream = await post('/api/documents/ingest', { ...ingestBody, knowledgeBaseId: 'stream-cancelled' }, { Accept: 'application/x-ndjson' })
+  const cancelledReader = cancelledStream.body.getReader()
+  let cancelledBuffer = ''
+  while (!cancelledBuffer.includes('"id":"enrichment"')) {
+    const { value, done } = await cancelledReader.read()
+    assert.equal(done, false)
+    cancelledBuffer += new TextDecoder().decode(value)
+  }
+  await cancelledReader.cancel()
+  releaseLlm()
+  llmGate = undefined
+  const cancelledLog = await cancellationFinished
+  assert.equal(cancelledLog.status, 'cancelled')
+  assert.equal(saved.has('stream-cancelled'), false)
+  assert.equal(writes, 5)
 })

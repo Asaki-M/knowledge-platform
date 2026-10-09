@@ -23,7 +23,7 @@
 
 `input` 是整个知识库的当前快照，不是单份文档增量。已有其他文档时必须一并提供它们当前的 Chunk 和 Wiki 数据；缺失的旧记录会被删除。多个任务基于同一数据库版本工作时，只允许一个提交，其他任务明确失败，不自动重试模型或覆盖新版本。模型调用失败不会写数据库。
 
-向量存储使用 [PgVectorStore](../vector-store/README.md)，复用已有 `buildIndexDocuments` / `embedDualIndex`。LLM 知识提取仍由调用方通过 DeepSeek 的 `KnowledgeEnricher` 先完成；本入口不重复提取或自动加载用户目录。原始文档、Section / Wiki 完整对象的持久化、按变更节缓存复用的增量调度仍待实现；单文档 HTTP 入库接口现已接入。
+向量存储使用 [PgVectorStore](../vector-store/README.md)，复用已有 `buildIndexDocuments` / `embedDualIndex`。LLM 知识提取仍由调用方通过 DeepSeek 的 `KnowledgeEnricher` 先完成；本入口不重复提取或自动加载用户目录。单文档 HTTP 入库已支持正文与完整阶段对象的检查点恢复；原始文件存档和跨任务按变更节复用的增量调度仍待实现。
 
 ## 单文档完整入库
 
@@ -31,4 +31,16 @@
 
 读取当前知识库版本后才开始模型调用；写入检查同一版本，冲突不覆盖。节点保持各文档 / 章节独立身份；重传同文档 ID 会完整重建该文档并删除它的旧索引，保留其他文档。涉及既有跨文档共享节点时失败，要求通过完整快照重建。不同文档不能混用 Embedding 空间。
 
-返回标准化警告、各阶段数量、逐节 LLM 与 Embedding 用量、整个知识库的写入版本和数量。不保存原始文件及完整中间对象，也不做按变更节复用模型结果。
+返回标准化警告、各阶段数量、逐节 LLM 与 Embedding 用量、整个知识库的写入版本和数量。原始文件不存档；传入 checkpoint 时保存完整中间产物，用于同任务恢复，不做跨任务变更节复用。
+
+## 阶段事件
+
+`ingestDocument` 可通过 `options.onStage(event)` 观察 normalize、sections、chunks、enrichment、wiki、indexing、embedding、storage 的真实运行、完成和失败事件。事件包含耗时；知识提取阶段逐节报告已完成数量。观察者只接收展示数据，不参与模型选择或事务写入。
+
+完成事件含文本预览和指标；每阶段最多展示前 20 项，每项最多 6000 字符，通过 `totalItems`、`truncated` 明确标注截取。截取仅影响预览，实际建索引和入库使用完整产物。不会传输 AST、向量数组或供应商原始响应，也不将产物预览写入操作日志。未订阅事件时返回原有入库摘要。
+
+## 检查点恢复
+
+options.checkpoint 注入 IngestionCheckpointStore（异步 load/save），各阶段结果、初次知识库版本、逐节 enrichment 和 Embedding 批次分别保存。命中仍报告完成事件并标记 reused；单节失败保留此前成功结果。options.writeKey 传给向量库事务回执，覆盖提交后断线窗口。expectedRevision 在恢复时不刷新，防止覆盖并发更新。
+
+HTTP 层保存输入/配置指纹与版本并持有 PostgreSQL 任务会话锁，RAG 不依赖 HTTP、DAO 或具体数据库。只保存校验成功的结果，不接受截断、拒答或非法证据，不自动重跑模型。服务重启后可按任务 ID 显式继续，未保存的在途调用无法复用。

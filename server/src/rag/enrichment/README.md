@@ -112,6 +112,8 @@ interface KnowledgeEnrichment {
 
 `maxInputCharacters` 默认 60000，按完整 user 消息（包含规则提取结果）计数；超限直接失败，不静默截断。`maxOutputTokens` 默认 6000。拒答、截断、过滤和未知完成原因一律失败，分别使用 `ENRICHMENT_REFUSED`、`ENRICHMENT_OUTPUT_TRUNCATED`、`ENRICHMENT_CONTENT_FILTERED` 和 `ENRICHMENT_INCOMPLETE_RESPONSE`，即使部分文本是合法 JSON 也不接受。`enrich(section, { signal })` 保持调用前后取消检查；上游 AppError 保留原语义，不叠加重试。
 
+`ENRICHMENT_INVALID_OUTPUT` 在 `AppError.validation` 中保留固定字段路径、规则原因及 Section 零基序号，例如 `concepts[0].evidence[0]` / `evidence-not-found`。诊断不包含模型返回值、证据文本或解析器原始异常。HTTP 和操作日志将其翻译为章节（从 1 开始）、字段和中文原因，失败阶段面板同步展示。历史记录没有此诊断时不反推具体原因。
+
 追踪复用 LlmClient，不记录正文、提示词、模型内容或凭据。模型调用完成不代表后续校验通过。错误码仍统一在 `../../error-codes.ts`。
 
 ## 阅读顺序
@@ -126,3 +128,11 @@ interface KnowledgeEnrichment {
 测试仅使用内存模型 stub，不启动模拟 API、不调用真实 SDK 或外部模型。
 
 规则提取、Section 引用补齐与 Chunk 位置清理共用 `rag/markdown.ts` 的标准 AST 遍历；引用大小写和空白归一化统一由 `rag/references.ts` 维护。各阶段仍负责自己的输入校验及错误码转换，不把富化规则放进通用遍历。
+
+## Zod 契约与模型约束
+
+[schema.ts](schema.ts) 使用 Zod `strictObject` 统一定义顶层、实体、概念、关系和事实的字段，禁止未知字段；校验非空字符串、4000 字符上限、数组项数、证据数量、局部 ID 格式与已配置知识分类。类型从 Schema 推导，`validation.ts` 使用 `safeParse`，不使用字段剥离、类型强制转换或默认值修补。
+
+同一契约经 `z.toJSONSchema` 投影为 `LlmRequest.structuredOutput`，请求对象各层都包含 `additionalProperties: false` 和全部必填字段。长度与正则规则只在本地执行，以适配供应商公共 Schema 子集；证据逐字匹配、ID 唯一和节点引用也继续本地检查。DeepSeek 入库使用 Responses JSON Schema，OpenAI 使用 Responses strict JSON Schema，问答协议不变。上游不支持时明确失败，不降级、不自动重试。
+
+Zod 错误只转换成白名单路径和固定规则原因，不把原始 issue/message/input 写入日志。概念误带契约已知的 `type` 时显示 `concepts[0].type`；任意未知字段只显示所属对象路径。常规验证使用本地模拟服务，不调用真实模型。

@@ -105,6 +105,9 @@ test('OpenAI SDK maps the common contract, refusals, partial responses and error
     store: false,
     stream: false,
   })
+  const structuredOutput = { name: 'example', schema: { type: 'object', properties: { answer: { type: 'string' } }, required: ['answer'], additionalProperties: false } }
+  await client.generate({ ...input, structuredOutput })
+  assert.deepEqual(requests.at(-1).body.text, { format: { type: 'json_schema', ...structuredOutput, strict: true } })
   for (const [model, finishReason] of [['length', 'length'], ['filter', 'content_filter'], ['refusal', 'refusal']]) {
     const response = await client.generate({ ...input, model })
     assert.equal(response.finishReason, finishReason)
@@ -155,8 +158,11 @@ test('new adapters plug in without SDK types and invalid input fails before invo
   assert.deepEqual(calls[0], { model: 'other-model', messages })
   assert.throws(() => client.register(adapter), { code: 'CONFIGURATION_ERROR' })
   await assert.rejects(client.generate({ ...input, provider: 'missing' }), { code: 'PROVIDER_NOT_FOUND' })
-  for (const invalid of [{ model: '' }, { messages: [] }, { messages: [{ role: 'tool', content: 'unsupported' }] }, { maxOutputTokens: 0 }, { maxOutputTokens: 1.5 }, { temperature: Number.NaN }, { temperature: 3 }])
+  for (const invalid of [{ model: '' }, { messages: [] }, { messages: [{ role: 'tool', content: 'unsupported' }] }, { maxOutputTokens: 0 }, { maxOutputTokens: 1.5 }, { temperature: Number.NaN }, { temperature: 3 }, ...[null, {}, { name: 'bad name', schema: { type: 'object' } }, { name: 'ok', schema: { type: 'array' } }, { name: 'ok', schema: { type: 'object', extra: undefined } }, { name: 'ok', schema: { type: 'object', extra: Infinity } }].map(structuredOutput => ({ structuredOutput }))])
     await assert.rejects(client.generate({ ...input, ...invalid }), { code: 'INVALID_REQUEST' })
+  const circular = { type: 'object' }
+  circular.self = circular
+  await assert.rejects(client.generate({ ...input, structuredOutput: { name: 'ok', schema: circular } }), { code: 'INVALID_REQUEST' })
   assert.equal(calls.length, 1)
   assert.throws(() => new OpenAIAdapter({ apiKey: '' }), { code: 'CONFIGURATION_ERROR' })
   assert.throws(() => new OpenAIAdapter({ apiKey: 'test', timeoutMs: 0 }), { code: 'CONFIGURATION_ERROR' })

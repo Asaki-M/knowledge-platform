@@ -3,7 +3,7 @@ import { SpanStatusCode, trace } from '@opentelemetry/api'
 import { LLM_ERROR_CODES } from '../error-codes.js'
 import { AppError } from '../errors.js'
 import { log } from '../telemetry/logger.js'
-import { isNonEmptyString } from '../utils/type-guards.js'
+import { isNonEmptyString, isRecord } from '../utils/type-guards.js'
 
 const tracer = trace.getTracer('knowledge-server.llm')
 
@@ -22,6 +22,26 @@ function validateRequest(request: LlmGenerateRequest) {
     throw invalid('maxOutputTokens must be a positive integer')
   if (request.temperature !== undefined && (!Number.isFinite(request.temperature) || request.temperature < 0 || request.temperature > 2))
     throw invalid('temperature must be between 0 and 2')
+  if (request.structuredOutput !== undefined) {
+    const output = request.structuredOutput
+    if (!isRecord(output) || typeof output.name !== 'string' || !/^[\w-]{1,64}$/.test(output.name)
+      || !isRecord(output.schema) || output.schema.type !== 'object') {
+      throw invalid('structuredOutput requires a name and an object JSON Schema')
+    }
+    // 拒绝循环、非有限数字及无法通过 JSON 保留的值，避免 SDK 静默改变契约。
+    try {
+      JSON.stringify(output.schema, (_key, value: unknown) => {
+        if (value === null || typeof value === 'string' || typeof value === 'boolean'
+          || (typeof value === 'number' && Number.isFinite(value)) || Array.isArray(value) || isRecord(value)) {
+          return value
+        }
+        throw new Error('Non-JSON schema value')
+      })
+    }
+    catch {
+      throw invalid('structuredOutput schema must contain serializable JSON values')
+    }
+  }
 }
 
 /** 业务层统一入口，负责适配器注册、请求分发、公共校验和调用追踪。 */

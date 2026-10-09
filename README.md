@@ -94,7 +94,7 @@ pnpm dev
 
 - `core/router` 负责 HTTP 路径与请求转发，在 `router/index.ts` 注册。
 - `core/service` 负责 API 输入处理、业务校验、调用能力模块和组织响应。
-- `core/dao` 当前负责操作日志持久化及工作台选项读取；文档与完整 Wiki 节点持久化尚未实现，按需新增模块，不预建空目录。
+- `core/dao` 负责操作日志、工作台选项和入库检查点；通用文档与 Wiki 查询尚未实现，按需新增模块，不预建空目录。
 - `rag` 负责入库和问答能力；Embedding、Rerank 接入各自归所属模块，向量存储也归 RAG 所有。
 - `llm` 负责通用大模型调用，可被 Wiki 化、答案生成等能力复用。
 - `telemetry` 负责 SDK 与通用日志，HTTP 追踪放在 `core/middleware/tracing.ts`。
@@ -111,16 +111,16 @@ HTTP → core/router → core/service → core/dao
 ## 当前范围
 
 - 桌面工作台包含知识问答、RAG 过程和操作日志三个页面，分别接入 `/api/search`、`/api/documents/ingest` 和 `/api/logs`。
-- Zustand 保存页面切换、知识库 ID 和问题草稿；切换页面保留请求及结果，刷新浏览器后清空，不将正文和回答写入本地持久化存储。
+- Zustand 保存页面切换、知识库 ID 和问题草稿；切换页面保留请求及结果，普通草稿刷新后清空；浏览器仅保存最近入库任务 ID，不将正文和回答写入浏览器存储。
 - `GET /api/workspace/options` 提供现有知识库、文档、日志筛选范围和已配置模型。知识库可选择或通过 Popover 填写名称创建，新增文档使用 UUID；更新已有文档需明确选择目标。来源自动取文件名，已有知识库沿用向量模型与维度，名称仅在新建时填写，其余仅问题和正文需要手填。选项读取不会调用模型或创建数据表。
-- 前端每 30 秒读取健康检查，可手动刷新，显示连接、检查中、离线状态。
+- 前端进入工作台时读取健康检查一次，后续仅手动刷新，显示连接、检查中、离线状态。
 - `GET /api/health` 返回 `status`、`service`、`timestamp`；未知路由返回 JSON 404；错误响应带请求 ID。
-- RAG 过程页支持粘贴或读取本地 Markdown / MDX 文件为 JSON 正文，选择模型后入库，展示真实统计和标准化警告。相同知识库与文档 ID 完整更新原文档。
+- RAG 过程页支持粘贴或读取本地 Markdown / MDX 文件为 JSON 正文，选择模型后入库，实时展示 Normalize 到入库的 8 个阶段、逐节提取进度及各阶段产物预览。相同知识库与文档 ID 完整更新原文档。
 - 问答页支持模型选择、Ctrl / ⌘ + Enter 发送、答案复制、引用跳转和来源展开，显示双路召回及重排数量。
 - 日志页通过下拉选择类型、状态、知识库、文档及快捷时间范围，支持游标分页、详情、同请求筛选和手动刷新；加载失败与空结果分别展示。
-- 当前接口仅返回完整结果，前端不模拟逐阶段进度；原始文件存档、中间对象预览和 Wiki 浏览页仍未实现。
+- 入库支持 NDJSON 实时阶段、中断、继续重试与刷新恢复最近任务。完整阶段、已完成章节和向量批次保存在 PostgreSQL，服务重启后仍可按任务 ID 恢复。原始文件存档、跨任务变更节复用和 Wiki 浏览页未实现。
 
-已提供通用文本生成接口和 OpenAI / DeepSeek 适配器。已实现可扩展的 Normalization 接口和 Nextra MDX 适配器。已实现 H1–H3 分节、来源版本、结构化知识提取、跨节语义聚合、独立 Chunk Build 和增量影响计算。已接入 SiliconFlow 与 Google 的文本 Embedding，推荐模型见下文。已实现 Chunk 原文加本节 Wiki 信息的 embeddingText、Wiki 节点 embeddingText 和双索引向量生成。已接入本地 PostgreSQL / pgvector，原子写入双索引向量、文本与来源元数据。已提供 `POST /api/search`：Chunk / Wiki 双路各取 Top 30，合并去重后使用 SiliconFlow Rerank 取 Top 5，交给 DeepSeek 生成带引用的答案。Wiki 页面接入、原始文档持久化、Graph Expand 与自动文档级增量入库仍待实现。
+已提供通用文本生成接口和 OpenAI / DeepSeek 适配器。已实现可扩展的 Normalization 接口和 Nextra MDX 适配器。已实现 H1–H3 分节、来源版本、结构化知识提取、跨节语义聚合、独立 Chunk Build 和增量影响计算。已接入 SiliconFlow 与 Google 的文本 Embedding，推荐模型见下文。已实现 Chunk 原文加本节 Wiki 信息的 embeddingText、Wiki 节点 embeddingText 和双索引向量生成。已接入本地 PostgreSQL / pgvector，原子写入双索引向量、文本与来源元数据。已提供 `POST /api/search`：Chunk / Wiki 双路各取 Top 30，合并去重后使用 SiliconFlow Rerank 取 Top 5，交给 DeepSeek 生成带引用的答案。Wiki 页面接入、原始文件存档、Graph Expand 与自动文档级增量入库仍待实现。
 
 计划中的链路：
 
@@ -205,10 +205,10 @@ HTTP 导出自动使用 `/v1/traces` 与 `/v1/logs`。SDK 同样支持 `http/pro
 
 ```text
 API Service / RAG → LlmClient → OpenAIAdapter → OpenAI SDK Responses API
-                             → DeepSeekAdapter → OpenAI SDK Chat Completions API
+                             → DeepSeekAdapter → OpenAI SDK Chat Completions / Responses API
 ```
 
-当前实现为非流式、无服务端会话状态的文本生成，支持 `system` / `user` / `assistant` 消息。每次调用传入所需的完整文本历史；不重放模型内部推理或工具调用记录。通用 LLM 的流式、多模态、工具调用和结构化输出尚未接入；Embedding 由独立的 `rag/embedding` 模块提供。
+当前实现为非流式、无服务端会话状态的文本生成，支持 `system` / `user` / `assistant` 消息。每次调用传入所需的完整文本历史；不重放模型内部推理或工具调用记录。通过 `structuredOutput: { name, schema }` 支持 JSON Schema 约束的文本输出；流式、多模态和工具调用尚未接入；Embedding 由独立的 `rag/embedding` 模块提供。
 
 在 `server/.env` 配置 `OPENAI_API_KEY`，并将 `OPENAI_MODEL` 设为账号可用的模型 ID。`OPENAI_BASE_URL` 可选，默认使用 SDK 的 OpenAI 地址；自定义地址必须支持 Responses API，仅兼容 Chat Completions 的服务不能直接使用此适配器。
 
@@ -240,7 +240,9 @@ export async function generateAnswer(question: string) {
 
 适配器仅在实例化时读取 Key；公共模块导入和 HTTP 服务启动不会创建适配器或调用模型。`model` 始终显式传入，`OPENAI_MODEL` 只是上面示例的配置来源。
 
-DeepSeek 使用独立的 `DeepSeekAdapter`，读取 `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL`（默认 `https://api.deepseek.com`），通过已有 OpenAI SDK 调用 Chat Completions。显式构造参数优先于环境变量，不回退到 `OPENAI_*` 配置。
+DeepSeek 使用独立的 `DeepSeekAdapter`，读取 `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL`（默认 `https://api.deepseek.com`），普通文本通过已有 OpenAI SDK 调用 Chat Completions；知识提取指定 `structuredOutput` 后使用 Responses 的 `text.format: json_schema`。显式构造参数优先于环境变量，不回退到 `OPENAI_*` 配置。
+
+知识提取的契约集中定义在 `rag/enrichment/schema.ts`：Zod `strictObject` 拒绝任何额外字段，校验字符串、长度、数组和分类，类型由 Schema 推导；同一 Zod 契约生成模型请求使用的 JSON Schema。逐字原文证据、唯一 ID 和节点引用继续在本地检查。不静默删除字段、不修复响应、不回退协议或自动重试。DeepSeek 的入库地址和模型必须支持 [Responses JSON Schema](https://api-docs.deepseek.com/zh-cn/api/create-response/)，OpenAI 模型须支持 [Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs)。
 
 当前选择 `DEEPSEEK_MODEL=deepseek-flash` 作为成本优先的起步模型；模型与价格以 [DeepSeek 官方文档](https://api-docs.deepseek.com/quick_start/pricing/) 为准。适配器不自动读取模型、不切换思考模式，沿用上游默认行为；公共响应只保留最终回答，不返回或重放 `reasoning_content`。输出预算是否包含推理 Token 由模型决定。HTTP 入库对 DeepSeek 默认使用每节 32768 Token、180 秒单次超时且关闭 SDK 重试；OpenAI 入库仍默认 10000 Token。可通过服务端 `ENRICHMENT_MAX_OUTPUT_TOKENS` 覆盖单节预算，问答设置保持不变。
 
@@ -302,7 +304,7 @@ pnpm dlx shadcn@latest add dialog
 
 `server/src/rag/normalization` 沿用 LLM 的 Adapter 注册模式，当前接入 `nextra-docs` 的 MDX：先解析 AST，再输出标准 Markdown / GFM AST、Markdown、纯文本、元数据和处理提示。支持图片、下载链接、Callout、嵌套字段表格等组件；不执行文档代码。
 
-使用示例、扩展约定和阅读顺序见 [Normalization 文档](server/src/rag/normalization/README.md)。本阶段只提供可调用的文档标准化接入层，没有 CLI 或目录导入。`Section Split`、`Knowledge Enrichment` 和 `Chunk Build` 已实现，独立 Embedding SDK 和 `indexing` 双索引组合层已实现；pgvector 向量写入已实现，后续补齐原始文档持久化与完整文档级入库编排。
+使用示例、扩展约定和阅读顺序见 [Normalization 文档](server/src/rag/normalization/README.md)。本阶段只提供可调用的文档标准化接入层，没有 CLI 或目录导入。`Section Split`、`Knowledge Enrichment` 和 `Chunk Build` 已实现，独立 Embedding SDK 和 `indexing` 双索引组合层已实现；pgvector 向量写入已实现，入库正文和阶段对象已作为断点保存，原始文件存档与跨任务变更节复用仍待实现。
 
 ## 按标题切分
 
@@ -341,7 +343,7 @@ throw new AppError(
 
 ## 增量影响计算
 
-`planSectionChanges(previous, next)` 比较前后完整 Section 快照，安排新增/修改节的 Chunk 与 enrichment 重建、删除节的贡献撤销，以及仅位置/路径变化的来源刷新。它不执行任务或持久化；完整入库和查询链路仍未实现。详见 [增量影响计算](server/src/rag/ingestion/README.md)。
+`planSectionChanges(previous, next)` 比较前后完整 Section 快照，安排新增/修改节的 Chunk 与 enrichment 重建、删除节的贡献撤销，以及仅位置/路径变化的来源刷新。它不执行任务或持久化；单文档入库、断点恢复和查询链路由各自编排入口实现，跨任务变更节复用仍待实现。详见 [增量影响计算](server/src/rag/ingestion/README.md)。
 
 ## Embedding
 
@@ -369,7 +371,7 @@ pnpm db:stop
 
 `db:stop` 只停止服务，保留数据；需要 Docker Desktop 运行。应用启动不会自动初始化数据库或调用模型，使用 `PgVectorStore.initialize()` 显式创建扩展与表。`VECTOR_DATABASE_URL` 仅供服务端使用，不应暴露给前端。
 
-`indexAndStore({ chunks, wiki }, embeddingClient, store, options)` 构造文本、生成向量并写入完整知识库快照；两类向量的新增、更新和旧记录删除在同一事务内完成，使用预期版本避免并发覆盖。**输入必须包含该知识库全部当前 Chunk 和 Wiki 节点，不能直接把单文档增量当成完整快照传入。** 原文、Section 和 Wiki 完整对象的独立持久化仍待实现；当前保存的是向量、embeddingText、来源引用和版本。
+`indexAndStore({ chunks, wiki }, embeddingClient, store, options)` 构造文本、生成向量并写入完整知识库快照；两类向量的新增、更新和旧记录删除在同一事务内完成，使用预期版本避免并发覆盖。**输入必须包含该知识库全部当前 Chunk 和 Wiki 节点，不能直接把单文档增量当成完整快照传入。** 向量层保存向量、embeddingText、来源引用和版本；应用层另行保存入库任务正文与完整阶段检查点，通用文档/Wiki 浏览接口仍待实现。
 
 接口、查询示例和数据库测试见 [Vector Store 文档](server/src/rag/vector-store/README.md)。实测数据已写入 `knowledge` 数据库，知识库 ID 为 `dual-index-demo`，共 2 条 Chunk、10 条 Wiki 向量；详见 [数据库验证数据](server/test/reports/dual-index/09-database.json)。
 
