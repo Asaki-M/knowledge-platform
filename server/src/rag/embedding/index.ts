@@ -1,4 +1,5 @@
 export { EMBEDDING_ERROR_CODES } from '../../error-codes.js'
+export { resolveEmbeddingDimensions, supportsEmbeddingDimensions } from './capabilities.js'
 export { EmbeddingClient } from './client.js'
 export { GoogleEmbeddingAdapter } from './providers/google/index.js'
 export type { GoogleEmbeddingAdapterOptions } from './providers/google/index.js'

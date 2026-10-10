@@ -74,3 +74,7 @@ console.log(documentVectors.dimensions, googleVectors.dimensions)
 阅读顺序：`types.ts → client.ts → validation.ts → providers/<供应商>/adapter.ts → mapping.ts → normalize-error.ts`。公共 span 为 `embedding.embed`；日志只记录供应商、模型、数量、维度、用量、请求 ID、耗时与错误码。
 
 `server/test/embedding.test.mjs` 使用真实 SDK 访问本地模拟 HTTP 服务，覆盖请求映射、批量顺序、异常响应、取消、超时、错误转换和扩展契约，不需要真实 Key。运行 `pnpm test` 会先构建服务端再执行全部集成测试。
+
+## 模型维度能力
+
+公共入口同时导出 `supportsEmbeddingDimensions(provider, model)` 与 `resolveEmbeddingDimensions(selection, storedDimensions?)`。当前 Google 与 SiliconFlow Qwen3 支持配置维度，其他模型不自动继承知识库维度。入库显式维度优先，未指定时支持的模型继承库内维度；问答先校验所选空间，再为支持的模型沿用库内维度。API 配置、入库、问答与 SiliconFlow 适配器使用同一能力判断，不分别维护模型名前缀规则。解析维度不代替请求校验、适配器限制或库内向量空间检查。

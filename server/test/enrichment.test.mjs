@@ -6,8 +6,11 @@ import { AppError } from '../dist/errors.js'
 import { LlmClient } from '../dist/llm/index.js'
 // eslint-disable-next-line antfu/no-import-dist -- Exercise the public enrichment API.
 import { DEFAULT_KNOWLEDGE_TYPES, extractSectionData, KnowledgeEnricher } from '../dist/rag/enrichment/index.js'
+// eslint-disable-next-line antfu/no-import-dist -- 校验对象入口与模型文本共用语义流程，不经 JSON 隐式删字段。
+import { finalizeEnrichment, parseEnrichment } from '../dist/rag/enrichment/validation.js'
 // eslint-disable-next-line antfu/no-import-dist -- Exercise the compiled public pipeline.
 import { NextraMdxAdapter, NormalizationClient } from '../dist/rag/normalization/index.js'
+
 // eslint-disable-next-line antfu/no-import-dist -- Exercise the compiled public pipeline.
 import { splitSections } from '../dist/rag/sections/index.js'
 
@@ -383,4 +386,14 @@ test('shared Markdown traversal preserves nested reference extraction and reject
     const malformed = { ...section, ast: { type: 'root', children } }
     assert.throws(() => extractSectionData(malformed), { code: 'ENRICHMENT_INVALID_INPUT' })
   }
+})
+
+test('object and text enrichment share validation and deduplication, while unknown undefined fields are rejected', () => {
+  const input = enrichment()
+  const before = structuredClone(input)
+  const object = finalizeEnrichment(input, section.markdown, DEFAULT_KNOWLEDGE_TYPES)
+  assert.deepEqual(object, parseEnrichment(JSON.stringify(input), section.markdown, DEFAULT_KNOWLEDGE_TYPES))
+  assert.deepEqual(input, before)
+  input.entities[0].privateUnknownField = undefined
+  assert.throws(() => finalizeEnrichment(input, section.markdown, DEFAULT_KNOWLEDGE_TYPES), error => error.code === 'ENRICHMENT_INVALID_OUTPUT' && error.validation.reason === 'unexpected-field' && !error.message.includes('privateUnknownField'))
 })

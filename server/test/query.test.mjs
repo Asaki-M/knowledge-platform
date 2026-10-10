@@ -110,3 +110,20 @@ test('search HTTP endpoint rejects malformed/oversized input without model confi
   assert.equal(response.status, 413)
   assert.equal((await app.request('/api/health')).status, 200)
 })
+
+test('query inherits dimensions only for supported embedding models and rejects a changed selection before calling models', async () => {
+  for (const [provider, model, expectedDimensions] of [['google', 'gemini-embedding-2', 2], ['siliconflow', 'Qwen/Qwen3-Embedding-0.6B', 2], ['siliconflow', 'BAAI/bge-m3', undefined]]) {
+    const { state, deps } = fixture(1)
+    Object.assign(state.snapshot, { provider, requestedModel: model, model })
+    const calls = []
+    deps.embedding = new EmbeddingClient([{ provider, async embed(input) {
+      calls.push(input)
+      return { provider, model, embeddings: [[1, 0.5]], dimensions: 2, usage: null }
+    } }])
+    const result = await searchAndAnswer(request, deps, options)
+    assert.equal(result.status, 'answered')
+    assert.equal(calls[0].dimensions, expectedDimensions)
+    await assert.rejects(searchAndAnswer(request, deps, { ...options, embedding: { provider, model, dimensions: 3 } }), { code: 'VECTOR_STORE_INCONSISTENT_SPACE' })
+    assert.equal(calls.length, 1)
+  }
+})

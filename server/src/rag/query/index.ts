@@ -6,6 +6,7 @@ import type { VectorQueryStore } from '../vector-store/index.js'
 import { QUERY_ERROR_CODES as CODES, VECTOR_STORE_ERROR_CODES } from '../../error-codes.js'
 import { AppError } from '../../errors.js'
 import { isNonEmptyString } from '../../utils/type-guards.js'
+import { resolveEmbeddingDimensions } from '../embedding/index.js'
 import { generateAnswer } from '../generation/index.js'
 import { validateRanking } from '../rerank/index.js'
 import { mergeSearchResults } from '../retrieval/index.js'
@@ -51,9 +52,7 @@ export async function searchAndAnswer(request: QueryRequest, dependencies: { sto
   if (choice && (choice.provider !== snapshot.provider || (choice.model !== undefined && choice.model !== snapshot.requestedModel) || (choice.dimensions !== undefined && choice.dimensions !== snapshot.dimensions)))
     throw new AppError(VECTOR_STORE_ERROR_CODES.INCONSISTENT_SPACE, 'Embedding 选择必须与知识库入库时的供应商、模型和维度一致。')
   // 支持自定义维度的供应商沿用库内维度，避免 Google 默认维度与已写入向量不同。
-  const dimensions = snapshot.provider === 'google' || snapshot.requestedModel.startsWith('Qwen/Qwen3-')
-    ? choice?.dimensions ?? options.embeddingDimensions ?? snapshot.dimensions ?? undefined
-    : undefined
+  const dimensions = resolveEmbeddingDimensions({ provider: snapshot.provider, model: snapshot.requestedModel }, choice?.dimensions ?? options.embeddingDimensions ?? snapshot.dimensions)
   const encoded = await embedding.embed({ provider: snapshot.provider, model: snapshot.requestedModel, input: [question], ...(dimensions === undefined ? {} : { dimensions }), signal })
   checkCancelled()
   if (encoded.model !== snapshot.model || encoded.dimensions !== snapshot.dimensions)

@@ -239,3 +239,53 @@ test('pgvector transactions persist, search, replace, roll back and reject concu
   assert.deepEqual(await store.search(searchRequest), [])
   assert.equal((await store.getSnapshot('other-kb')).wikiNodes, 10)
 })
+
+test('single and dual searches reuse parameterized SQL on one repeatable-read connection, including cancellation rollback', async (t) => {
+  for (const mode of ['single', 'dual', 'cancelled']) {
+    const statements = []
+    const controller = new AbortController()
+    const client = {
+      async query(sql, params) {
+        statements.push({ sql, params })
+        if (sql.includes('FROM rag_vector_snapshots'))
+          return { rows: [{ knowledgeBaseId: vectors.knowledgeBaseId, revision: 'v1', provider: vectors.provider, model: vectors.model, dimensions: vectors.dimensions }] }
+        if (sql.includes('FROM rag_vectors')) {
+          if (mode === 'cancelled' && params[1] === 'chunk')
+            controller.abort()
+          return { rows: [{ document: params[1] === 'wiki' ? vectors.wikiNodes[0] : vectors.chunks[0], score: 0.5 }] }
+        }
+        return { rows: [] }
+      },
+      release(discard) { statements.push({ release: discard }) },
+    }
+    const connect = t.mock.method(Pool.prototype, 'connect', async () => client)
+    const store = new PgVectorStore({ connectionString: 'postgresql://stub:stub@127.0.0.1:1/stub' })
+    try {
+      const dual = () => store.searchDual({ ...searchRequest, expectedRevision: 'v1', signal: controller.signal })
+      if (mode === 'cancelled')
+        await assert.rejects(dual(), { code: 'VECTOR_STORE_ABORTED' })
+      else if (mode === 'single')
+        assert.equal((await store.search(searchRequest)).length, 1)
+      else
+        assert.equal((await dual()).chunks.length, 1)
+      const searches = statements.filter(item => item.sql?.includes('FROM rag_vectors'))
+      assert.equal(connect.mock.callCount(), 1)
+      assert.equal(statements[0].sql, 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY')
+      assert.equal(searches.length, mode === 'dual' ? 2 : 1)
+      for (const item of searches) {
+        assert.deepEqual([item.params[0], item.params[2], item.params[3]], [searchRequest.knowledgeBaseId, JSON.stringify(searchRequest.vector), searchRequest.limit])
+        assert.ok(item.sql.includes('kind = $2'))
+      }
+      if (mode === 'dual') {
+        assert.equal(searches[0].sql, searches[1].sql)
+        assert.deepEqual(searches.map(item => item.params[1]), ['chunk', 'wiki'])
+      }
+      assert.equal(statements.at(-2).sql, mode === 'cancelled' ? 'ROLLBACK' : 'COMMIT')
+      assert.deepEqual(statements.at(-1), { release: false })
+    }
+    finally {
+      connect.mock.restore()
+      await store.close()
+    }
+  }
+})

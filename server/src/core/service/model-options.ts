@@ -2,7 +2,7 @@ import process from 'node:process'
 import { EMBEDDING_ERROR_CODES, ENRICHMENT_ERROR_CODES, HTTP_ERROR_CODES, LLM_ERROR_CODES } from '../../error-codes.js'
 import { AppError } from '../../errors.js'
 import { DeepSeekAdapter, LlmClient, OpenAIAdapter } from '../../llm/index.js'
-import { EmbeddingClient, GoogleEmbeddingAdapter, SiliconFlowEmbeddingAdapter } from '../../rag/embedding/index.js'
+import { EmbeddingClient, GoogleEmbeddingAdapter, SiliconFlowEmbeddingAdapter, supportsEmbeddingDimensions } from '../../rag/embedding/index.js'
 import { isNonEmptyString, isRecord } from '../../utils/type-guards.js'
 
 /** 每次调用读取当前配置，工作台选项与请求默认值使用同一来源；不向选项暴露凭据。 */
@@ -79,7 +79,7 @@ export function ingestionEmbeddingOptions(value: unknown) {
   const model = input.model ?? modelConfiguration().embedding[input.provider].model
   if (!isNonEmptyString(model))
     throw new AppError(EMBEDDING_ERROR_CODES.CONFIGURATION_ERROR, '请提供 Embedding model 或配置对应模型环境变量。')
-  if (input.dimensions !== undefined && input.provider === 'siliconflow' && !model.startsWith('Qwen/Qwen3-'))
+  if (input.dimensions !== undefined && !supportsEmbeddingDimensions(input.provider, model))
     throw new AppError(HTTP_ERROR_CODES.INVALID_INPUT, '当前 SiliconFlow 模型不支持自定义维度。')
   return { ...input, model: model.trim() }
 }

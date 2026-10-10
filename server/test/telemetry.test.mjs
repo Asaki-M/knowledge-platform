@@ -19,6 +19,10 @@ test('HTTP logs and spans reach OTLP with propagation, isolated contexts, errors
     const chunks = []
     for await (const chunk of req)
       chunks.push(chunk)
+    if (req.url === '/rerank') {
+      res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ results: [{ index: 0, relevance_score: 1 }] }))
+      return
+    }
     exports.push({ path: req.url, body: JSON.parse(Buffer.concat(chunks).toString()) })
     res.writeHead(200, { 'content-type': 'application/json' }).end('{}')
   })
@@ -40,6 +44,8 @@ test('HTTP logs and spans reach OTLP with propagation, isolated contexts, errors
     const { LlmClient } = await import('./dist/llm/index.js')
     const { EmbeddingClient } = await import('./dist/rag/embedding/index.js')
     const { NormalizationClient, NextraMdxAdapter } = await import('./dist/rag/normalization/index.js')
+    const { SiliconFlowReranker } = await import('./dist/rag/rerank/index.js')
+    const reranker = new SiliconFlowReranker({ apiKey: 'local-test', baseURL: process.env.TEST_RERANK_URL })
     const normalization = new NormalizationClient([new NextraMdxAdapter()])
     const embedding = new EmbeddingClient([{
       provider: 'test',
@@ -50,9 +56,12 @@ test('HTTP logs and spans reach OTLP with propagation, isolated contexts, errors
     const llm = new LlmClient([{
       provider: 'test',
       async generate(request) {
+        if (request.model === 'failing-model')
+          throw new Error('private-provider-error')
         return { id: 'test', provider: 'test', model: request.model, text: 'private-answer', finishReason: 'stop', usage: null }
       },
     }])
+    app.get('/test/model-failure', async () => llm.generate({ provider: 'test', model: 'failing-model', messages: [{ role: 'user', content: 'private-prompt' }] }))
     app.get('/test/failure', () => { throw new Error('test-only-failure') })
     app.get('/test/work/:id', async (c) => {
       await new Promise(resolve => setTimeout(resolve, Number(c.req.param('id'))))
@@ -60,6 +69,7 @@ test('HTTP logs and spans reach OTLP with propagation, isolated contexts, errors
       await llm.generate({ provider: 'test', model: 'test-model', messages: [{ role: 'user', content: 'private-prompt' }] })
       await normalization.normalize({ adapter: 'nextra-mdx', source: { id: 'private-source' }, content: '# private-document' })
       await embedding.embed({ provider: 'test', model: 'test-embedding-model', input: ['private-embedding-text'] })
+      await reranker.rerank({ model: 'test-rerank-model', query: 'private-rerank-query', documents: ['private-rerank-text'], topN: 1 })
       return c.text('ok')
     })
     await import('./dist/index.js')
@@ -72,6 +82,7 @@ test('HTTP logs and spans reach OTLP with propagation, isolated contexts, errors
       ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('OTEL_'))),
       HOST: '127.0.0.1',
       PORT: String(port),
+      TEST_RERANK_URL: `http://127.0.0.1:${collector.address().port}`,
       OTEL_SERVICE_NAME: 'knowledge-test',
       OTEL_TRACES_EXPORTER: 'otlp',
       OTEL_LOGS_EXPORTER: 'otlp',
@@ -128,6 +139,11 @@ test('HTTP logs and spans reach OTLP with propagation, isolated contexts, errors
   }))
   assert.notEqual(work[0].traceId, work[1].traceId)
 
+  const modelFailure = await fetch(`${base}/test/model-failure`)
+  assert.equal(modelFailure.status, 502)
+  const modelFailureTrace = modelFailure.headers.get('x-trace-id')
+  assert.equal((await modelFailure.json()).error.code, 'PROVIDER_ERROR')
+
   child.kill('SIGTERM')
   const [exitCode, signal] = await exited
   assert.equal(exitCode, 0, output)
@@ -148,17 +164,19 @@ test('HTTP logs and spans reach OTLP with propagation, isolated contexts, errors
   const llmSpans = spans.filter(span => span.name === 'llm.generate')
   const normalizationSpans = spans.filter(span => span.name === 'normalization.normalize')
   const embeddingSpans = spans.filter(span => span.name === 'embedding.embed')
+  const rerankSpans = spans.filter(span => span.name === 'rerank.rerank')
+  assert.equal(rerankSpans.length, 2)
   assert.equal(embeddingSpans.length, 2)
   assert.equal(normalizationSpans.length, 2)
-  const httpSpans = spans.filter(span => !['llm.generate', 'normalization.normalize', 'embedding.embed'].includes(span.name))
-  assert.equal(llmSpans.length, 2)
-  assert.equal(httpSpans.length, 5)
+  const httpSpans = spans.filter(span => !['llm.generate', 'normalization.normalize', 'embedding.embed', 'rerank.rerank'].includes(span.name))
+  assert.equal(llmSpans.length, 3)
+  assert.equal(httpSpans.length, 6)
   const healthSpan = spans.find(span => span.traceId === upstreamTrace)
   assert.equal(healthSpan.parentSpanId, upstreamSpan)
   assert.equal(healthSpan.name, 'GET /api/health')
   assert.equal(attributes(healthSpan)['request.id'], healthRequestId)
   const completed = logs.filter(log => log.body.stringValue === 'http.request.completed')
-  assert.equal(completed.length, 5)
+  assert.equal(completed.length, 6)
   for (const span of httpSpans) {
     const log = completed.find(item => item.spanId === span.spanId)
     assert.equal(log.traceId, span.traceId)
@@ -198,6 +216,24 @@ test('HTTP logs and spans reach OTLP with propagation, isolated contexts, errors
     assert.equal(attributes(embeddingLog)['embedding.dimensions'], 1)
     assert.equal(attributes(embeddingLog)['embedding.input_tokens'], undefined)
   }
+  for (const item of work) {
+    const span = rerankSpans.find(span => span.traceId === item.traceId)
+    const parent = httpSpans.find(span => span.traceId === item.traceId)
+    assert.equal(span.parentSpanId, parent.spanId)
+    const record = logs.find(log => log.spanId === span.spanId)
+    assert.equal(record.body.stringValue, 'rerank.completed')
+    assert.ok(attributes(record)['rerank.duration_ms'] >= 0)
+  }
+  const failedModelSpan = llmSpans.find(span => span.traceId === modelFailureTrace)
+  assert.equal(failedModelSpan.status.code, 2)
+  assert.equal(attributes(failedModelSpan)['llm.error.code'], 'PROVIDER_ERROR')
+  const failedModelLog = logs.find(log => log.spanId === failedModelSpan.spanId)
+  assert.equal(failedModelLog.body.stringValue, 'llm.generate.failed')
+  assert.equal(failedModelLog.severityText, 'ERROR')
+  assert.equal(failedModelLog.traceId, modelFailureTrace)
+  assert.ok(!JSON.stringify([spans, logs]).includes('private-provider-error'))
+  assert.ok(!JSON.stringify([spans, logs]).includes('private-rerank-query'))
+  assert.ok(!JSON.stringify([spans, logs]).includes('private-rerank-text'))
   // 子进程的 process.command_args 资源属性包含上面的测试脚本；这里只检查业务 span 和日志。
   assert.ok(!JSON.stringify([spans, logs]).includes('private-embedding-text'))
   assert.ok(!JSON.stringify([spans, logs]).includes('0.123456789'))

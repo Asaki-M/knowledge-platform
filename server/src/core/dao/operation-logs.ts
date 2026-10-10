@@ -1,8 +1,8 @@
+import type { Pool, QueryResultRow } from 'pg'
 import process from 'node:process'
-import { Pool } from 'pg'
 import { OPERATION_LOG_ERROR_CODES as CODES } from '../../error-codes.js'
 import { AppError } from '../../errors.js'
-import { log } from '../../telemetry/logger.js'
+import { createPostgresPool, queryRows, withPostgresTransaction } from '../../utils/postgres.js'
 
 export type OperationType = 'ingestion' | 'query'
 export type OperationStatus = 'running' | 'succeeded' | 'failed' | 'cancelled'
@@ -59,32 +59,16 @@ export class OperationLogDao {
   private readonly pool: Pool
 
   constructor(connectionString = process.env.VECTOR_DATABASE_URL) {
-    try {
-      if (!connectionString || !['postgres:', 'postgresql:'].includes(new URL(connectionString).protocol))
-        throw new Error('Invalid URL')
-    }
-    catch {
-      throw new AppError(CODES.CONFIGURATION_ERROR, 'Operation logs require a PostgreSQL database URL')
-    }
-    this.pool = new Pool({ connectionString, max: 1, connectionTimeoutMillis: 1000, statement_timeout: 2000, application_name: 'knowledge-operation-logs' })
-    this.pool.on('error', () => log.error('operation-log.connection.failed', { 'error.code': CODES.DATABASE_ERROR }))
+    this.pool = createPostgresPool({ connectionString, max: 1, connectionTimeoutMillis: 1000, statement_timeout: 2000, application_name: 'knowledge-operation-logs' }, { configuration: new AppError(CODES.CONFIGURATION_ERROR, 'Operation logs require a PostgreSQL database URL'), databaseCode: CODES.DATABASE_ERROR, event: 'operation-log.connection.failed' })
   }
 
-  private async query<T>(sql: string, values: unknown[] = []): Promise<T[]> {
-    try {
-      return (await this.pool.query(sql, values)).rows as T[]
-    }
-    catch {
-      throw new AppError(CODES.DATABASE_ERROR, 'Operation log database operation failed')
-    }
+  private query<T extends QueryResultRow>(sql: string, values: unknown[] = []): Promise<T[]> {
+    return queryRows<T>(this.pool, sql, values, new AppError(CODES.DATABASE_ERROR, 'Operation log database operation failed'))
   }
 
   /** 首次实际操作或查询时建表；事务锁避免并发首次请求的 DDL 竞态。 */
   async initialize(): Promise<void> {
-    let client
-    try {
-      client = await this.pool.connect()
-      await client.query('BEGIN')
+    await withPostgresTransaction(this.pool, async (client) => {
       await client.query('SELECT pg_advisory_xact_lock(731952682)')
       await client.query(`CREATE TABLE IF NOT EXISTS operation_logs (
         id bigserial PRIMARY KEY,
@@ -99,16 +83,7 @@ export class OperationLogDao {
       CREATE INDEX IF NOT EXISTS operation_logs_scope_id_idx ON operation_logs (knowledge_base_id, id DESC);
       CREATE INDEX IF NOT EXISTS operation_logs_request_idx ON operation_logs (request_id);
       CREATE INDEX IF NOT EXISTS operation_logs_started_idx ON operation_logs (started_at);`)
-      await client.query('COMMIT')
-    }
-    catch {
-      if (client)
-        await client.query('ROLLBACK').catch(() => {})
-      throw new AppError(CODES.DATABASE_ERROR, 'Could not initialize operation logs')
-    }
-    finally {
-      client?.release()
-    }
+    }, new AppError(CODES.DATABASE_ERROR, 'Could not initialize operation logs'))
   }
 
   async start(input: Pick<OperationLog, 'type' | 'requestId' | 'traceId' | 'startedAt'>): Promise<string> {

@@ -3,9 +3,9 @@ import { isDeepStrictEqual } from 'node:util'
 import { WIKI_ERROR_CODES as CODES } from '../../error-codes.js'
 import { AppError } from '../../errors.js'
 import { isNonEmptyString } from '../../utils/type-guards.js'
-import { deduplicateEnrichment, deduplicateExtracted } from '../enrichment/deduplication.js'
+import { deduplicateExtracted } from '../enrichment/deduplication.js'
 import { extractSectionData } from '../enrichment/extraction.js'
-import { parseEnrichment } from '../enrichment/validation.js'
+import { finalizeEnrichment } from '../enrichment/validation.js'
 import { assertSection } from '../sections/index.js'
 
 /** 提取结果必须绑定当前原文版本；规则投影与逐字证据也再次复查。 */
@@ -21,8 +21,7 @@ export function buildContribution(input: WikiBuildInput): WikiSectionContributio
       throw new Error('Invalid contribution')
     }
     const dictionary = { [enriched.enrichment.knowledgeType]: '已校验分类' }
-    const knowledge = deduplicateEnrichment(parseEnrichment(JSON.stringify(enriched.enrichment), section.markdown, dictionary))
-    parseEnrichment(JSON.stringify(knowledge), section.markdown, dictionary)
+    const knowledge = finalizeEnrichment(enriched.enrichment, section.markdown, dictionary)
     return structuredClone({
       documentId: section.documentId,
       sectionId: section.id,

@@ -1,5 +1,5 @@
 import type { WikiCitation } from '../wiki/types.js'
-import type { IndexBuildInput, IndexBuildResult, IndexSource } from './types.js'
+import type { IndexBuildInput, IndexBuildResult, IndexDocument, IndexSource } from './types.js'
 import { INDEXING_ERROR_CODES as CODES } from '../../error-codes.js'
 import { AppError } from '../../errors.js'
 import { isNonEmptyString } from '../../utils/type-guards.js'
@@ -101,16 +101,30 @@ export function validateDocuments(result: IndexBuildResult): void {
   try {
     if (!result || result.schemaVersion !== 1 || result.templateVersion !== 1 || !isNonEmptyString(result.knowledgeBaseId)
       || !Array.isArray(result.chunks) || !Array.isArray(result.wikiNodes)
-      || !Number.isSafeInteger(result.maxTokens) || result.maxTokens <= 0
-      || !unique([...result.chunks, ...result.wikiNodes].map(item => item.id))) {
+      || !Number.isSafeInteger(result.maxTokens) || result.maxTokens <= 0) {
       throw invalid()
     }
-    for (const [kind, documents] of [['chunk', result.chunks], ['wiki', result.wikiNodes]] as const) {
-      for (const item of documents) {
-        if (item.kind !== kind || item.knowledgeBaseId !== result.knowledgeBaseId || !isNonEmptyString(item.sourceId)
+    validateIndexRecords(result.chunks, result.wikiNodes, result.knowledgeBaseId, result.maxTokens)
+  }
+  catch {
+    throw invalid()
+  }
+}
+
+/** 索引产物与持久化边界共用记录校验，无需伪造构建结果的外层字段。 */
+export function validateIndexRecords(chunks: readonly IndexDocument[], wikiNodes: readonly IndexDocument[], knowledgeBaseId: string, maxTokens = Number.MAX_SAFE_INTEGER): void {
+  try {
+    if (!isNonEmptyString(knowledgeBaseId) || !Array.isArray(chunks) || !Array.isArray(wikiNodes)
+      || !Number.isSafeInteger(maxTokens) || maxTokens <= 0 || !unique([...chunks, ...wikiNodes].map(item => item.id))) {
+      throw invalid()
+    }
+    for (const [kind, documents] of [['chunk', chunks], ['wiki', wikiNodes]] as const) {
+      const records: readonly IndexDocument[] = documents
+      for (const item of records) {
+        if (item.kind !== kind || item.knowledgeBaseId !== knowledgeBaseId || !isNonEmptyString(item.sourceId)
           || !isNonEmptyString(item.sourceRevision) || typeof item.title !== 'string' || !isNonEmptyString(item.embeddingText)
-          || item.id !== indexId(result.knowledgeBaseId, kind, item.sourceId) || item.textRevision !== textRevision(item.embeddingText)
-          || !Number.isSafeInteger(item.tokenCount) || item.tokenCount < 0 || item.tokenCount > result.maxTokens
+          || item.id !== indexId(knowledgeBaseId, kind, item.sourceId) || item.textRevision !== textRevision(item.embeddingText)
+          || !Number.isSafeInteger(item.tokenCount) || item.tokenCount < 0 || item.tokenCount > maxTokens
           || !Array.isArray(item.sources) || !item.sources.length || !item.sources.every(validSource)
           || !Array.isArray(item.wikiNodes) || item.wikiNodes.some(node => !isNonEmptyString(node.id) || !isNonEmptyString(node.revision))
           || !['ready', 'pending', 'unavailable'].includes(item.knowledgeStatus)) {

@@ -190,3 +190,23 @@ test('a crash-like failure after vector commit recovers the receipt without extr
   assert.equal(fixture.calls.writes, 1)
   assert.equal(fixture.calls.attempts, 2)
 })
+
+test('vector cleanup failure preserves committed success and original model failure, and releases the task lock', async (t) => {
+  const fixture = setup(t)
+  t.mock.method(PgVectorStore.prototype, 'close', async () => {
+    throw new Error('private cleanup failure')
+  })
+  const succeeded = body(1)
+  const response = await post(succeeded)
+  assert.equal(response.status, 200)
+  assert.equal((await response.json()).status, 'stored')
+  assert.equal(fixture.jobs.get(succeeded.ingestionId).status, 'succeeded')
+  assert.equal(fixture.locks.size, 0)
+  fixture.failLlm(() => new AppError('CONNECTION_ERROR', 'Local original failure'))
+  const failed = body(1)
+  const failure = await post(failed)
+  assert.equal(failure.status, 502)
+  assert.equal((await failure.json()).error.code, 'CONNECTION_ERROR')
+  assert.equal(fixture.jobs.get(failed.ingestionId).status, 'failed')
+  assert.equal(fixture.locks.size, 0)
+})

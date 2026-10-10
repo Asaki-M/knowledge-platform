@@ -1,11 +1,11 @@
-import type { PoolClient } from 'pg'
+import type { Pool, PoolClient } from 'pg'
 import type { DualIndexEmbeddingResult } from '../indexing/types.js'
 import type { DualVectorSearchRequest, DualVectorSearchResult, SnapshotWriteOptions, VectorSearchHit, VectorSearchRequest, VectorSnapshotInfo, VectorSnapshotStore } from './types.js'
 import process from 'node:process'
-import { Pool } from 'pg'
 import { VECTOR_STORE_ERROR_CODES as CODES } from '../../error-codes.js'
 import { AppError } from '../../errors.js'
 import { log } from '../../telemetry/logger.js'
+import { createPostgresPool, withPostgresTransaction } from '../../utils/postgres.js'
 import { isNonEmptyString } from '../../utils/type-guards.js'
 import { contentHash } from '../content-hash.js'
 import { schemaSql } from './schema.js'
@@ -31,45 +31,11 @@ export class PgVectorStore implements VectorSnapshotStore {
     const timeout = options.statementTimeoutMs ?? 30000
     if (!isNonEmptyString(connectionString) || !Number.isSafeInteger(timeout) || timeout <= 0 || timeout > 2147483647)
       throw new AppError(CODES.CONFIGURATION_ERROR, 'Vector database URL and positive statement timeout are required')
-    try {
-      const url = new URL(connectionString)
-      if (!['postgres:', 'postgresql:'].includes(url.protocol))
-        throw new Error('Invalid database protocol')
-    }
-    catch {
-      throw new AppError(CODES.CONFIGURATION_ERROR, 'A PostgreSQL database URL is required')
-    }
-    this.pool = new Pool({ connectionString, max: 5, connectionTimeoutMillis: 5000, statement_timeout: timeout, application_name: 'knowledge-vector-store' })
-    // 空闲连接异常也可能由 Pool 主动上报，不能泄露连接串或导致未处理事件。
-    this.pool.on('error', () => log.error('vector-store.connection.failed', { 'error.code': CODES.DATABASE_ERROR }))
+    this.pool = createPostgresPool({ connectionString, max: 5, connectionTimeoutMillis: 5000, statement_timeout: timeout, application_name: 'knowledge-vector-store' }, { configuration: new AppError(CODES.CONFIGURATION_ERROR, 'A PostgreSQL database URL is required'), databaseCode: CODES.DATABASE_ERROR, event: 'vector-store.connection.failed' })
   }
 
-  private async transaction<T>(operation: (client: PoolClient) => Promise<T>, readOnly = false): Promise<T> {
-    let client: PoolClient | undefined
-    let discard = false
-    try {
-      client = await this.pool.connect()
-      await client.query(readOnly ? 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY' : 'BEGIN')
-      const result = await operation(client)
-      await client.query('COMMIT')
-      return result
-    }
-    catch (error) {
-      if (client) {
-        try {
-          await client.query('ROLLBACK')
-        }
-        catch {
-          discard = true
-        }
-      }
-      if (error instanceof AppError)
-        throw error
-      throw new AppError(CODES.DATABASE_ERROR, 'Vector database operation failed')
-    }
-    finally {
-      client?.release(discard)
-    }
+  private transaction<T>(operation: (client: PoolClient) => Promise<T>, readOnly = false): Promise<T> {
+    return withPostgresTransaction(this.pool, operation, new AppError(CODES.DATABASE_ERROR, 'Vector database operation failed'), readOnly)
   }
 
   /** 显式、幂等的初始化；不放在模块导入或 HTTP 启动路径。 */
@@ -92,14 +58,15 @@ export class PgVectorStore implements VectorSnapshotStore {
 
   /** 仅替换单篇文档的独立节点；跨文档共享节点必须走完整 Wiki 重建流程。 */
   async replaceDocument(input: DualIndexEmbeddingResult, documentId: string, options: SnapshotWriteOptions): Promise<VectorSnapshotInfo> {
-    validateSnapshot(input, options)
-    if (!isNonEmptyString(documentId) || !input.chunks.length || [...input.chunks, ...input.wikiNodes].some(record => !record.sources.length || record.sources.some(source => source.documentId !== documentId)))
-      throw new AppError(CODES.INVALID_INPUT, 'Document indexes must contain chunks and belong to exactly one document')
+    if (!isNonEmptyString(documentId))
+      throw new AppError(CODES.INVALID_INPUT, 'Document ID is required')
     return this.writeSnapshot(input, options, documentId)
   }
 
   private async writeSnapshot(input: DualIndexEmbeddingResult, options: SnapshotWriteOptions, documentId?: string): Promise<VectorSnapshotInfo> {
     validateSnapshot(input, options)
+    if (documentId !== undefined && (!input.chunks.length || [...input.chunks, ...input.wikiNodes].some(record => record.sources.some(source => source.documentId !== documentId))))
+      throw new AppError(CODES.INVALID_INPUT, 'Document indexes must contain chunks and belong to exactly one document')
     const snapshot = structuredClone(input)
     const { expectedRevision, signal } = options
     const checkCancelled = () => {
@@ -202,10 +169,7 @@ export class PgVectorStore implements VectorSnapshotStore {
       if (info.provider !== provider || info.model !== model || info.dimensions !== vector.length)
         throw new AppError(CODES.INCONSISTENT_SPACE, 'Query vector does not match the stored vector space')
       // 元数据检查与查询使用同一只读快照，避免并发模型切换造成检查后错配。
-      const rows = await client.query<VectorSearchHit>(`SELECT metadata AS document, 1 - (embedding <=> $3::vector) AS score
-        FROM rag_vectors WHERE knowledge_base_id = $1 AND kind = $2
-        ORDER BY embedding <=> $3::vector, id LIMIT $4`, [knowledgeBaseId, kind, JSON.stringify(vector), limit])
-      return rows.rows
+      return this.searchRecords(client, knowledgeBaseId, kind, JSON.stringify(vector), limit)
     }, true)
   }
 
@@ -232,15 +196,20 @@ export class PgVectorStore implements VectorSnapshotStore {
         throw new AppError(CODES.INCONSISTENT_SPACE, 'Query vector does not match the stored vector space')
       const search = async (kind: 'chunk' | 'wiki') => {
         checkCancelled()
-        return (await client.query<VectorSearchHit>(`SELECT metadata AS document, 1 - (embedding <=> $3::vector) AS score
-          FROM rag_vectors WHERE knowledge_base_id = $1 AND kind = $2
-          ORDER BY embedding <=> $3::vector, id LIMIT $4`, [knowledgeBaseId, kind, vector, limit])).rows
+        return this.searchRecords(client, knowledgeBaseId, kind, vector, limit)
       }
       const chunks = await search('chunk')
       const wikiNodes = await search('wiki')
       checkCancelled()
       return { snapshotRevision: info.revision, chunks, wikiNodes }
     }, true)
+  }
+
+  /** 两路复用同一 SQL 与调用方连接，不能在这里另开事务。 */
+  private async searchRecords(client: PoolClient, knowledgeBaseId: string, kind: 'chunk' | 'wiki', vector: string, limit: number): Promise<VectorSearchHit[]> {
+    return (await client.query<VectorSearchHit>(`SELECT metadata AS document, 1 - (embedding <=> $3::vector) AS score
+      FROM rag_vectors WHERE knowledge_base_id = $1 AND kind = $2
+      ORDER BY embedding <=> $3::vector, id LIMIT $4`, [knowledgeBaseId, kind, vector, limit])).rows
   }
 
   async close(): Promise<void> {

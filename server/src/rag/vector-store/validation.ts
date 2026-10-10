@@ -4,8 +4,7 @@ import { VECTOR_STORE_ERROR_CODES as CODES } from '../../error-codes.js'
 import { AppError } from '../../errors.js'
 import { isNonEmptyString } from '../../utils/type-guards.js'
 import { contentHash } from '../content-hash.js'
-import { indexId, textRevision } from '../indexing/text.js'
-import { validateDocuments } from '../indexing/validation.js'
+import { validateIndexRecords } from '../indexing/validation.js'
 
 export function assertVector(vector: readonly number[], dimensions: number): void {
   // pgvector 使用 float32；零向量无法计算余弦距离，不能作为有效搜索记录。
@@ -31,12 +30,10 @@ export function validateSnapshot(input: DualIndexEmbeddingResult, options: Snaps
     const records = [...input.chunks, ...input.wikiNodes]
     if (records.length ? !isNonEmptyString(input.model) || input.dimensions === null : input.model !== null || input.dimensions !== null)
       throw new Error('Invalid vector space')
-    validateDocuments({ schemaVersion: 1, templateVersion: 1, knowledgeBaseId: input.knowledgeBaseId, tokenizer: 'custom', maxTokens: Number.MAX_SAFE_INTEGER, chunks: input.chunks, wikiNodes: input.wikiNodes })
+    validateIndexRecords(input.chunks, input.wikiNodes, input.knowledgeBaseId)
     for (const record of records) {
       assertVector(record.vector, input.dimensions!)
-      if (record.id !== indexId(input.knowledgeBaseId, record.kind, record.sourceId)
-        || record.textRevision !== textRevision(record.embeddingText)
-        || record.embeddingRevision !== contentHash([record.textRevision, input.provider, input.requestedModel, input.model, input.dimensions])) {
+      if (record.embeddingRevision !== contentHash([record.textRevision, input.provider, input.requestedModel, input.model, input.dimensions])) {
         throw new Error('Invalid fingerprint')
       }
     }

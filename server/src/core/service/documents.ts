@@ -7,6 +7,7 @@ import { AppError } from '../../errors.js'
 import { contentHash } from '../../rag/content-hash.js'
 import { ingestDocument } from '../../rag/ingestion/index.js'
 import { PgVectorStore } from '../../rag/vector-store/index.js'
+import { closePostgresResources } from '../../utils/postgres.js'
 import { isNonEmptyString, isRecord } from '../../utils/type-guards.js'
 import { DocumentIngestionDao } from '../dao/document-ingestions.js'
 import { errorResponse } from '../error-response.js'
@@ -121,8 +122,7 @@ export async function ingest(body: unknown, signal?: AbortSignal, operation?: Op
     if (heartbeat)
       clearInterval(heartbeat)
     await polling
-    await store?.close()
-    await dao.close()
+    await closePostgresResources([store, dao])
   }
 }
 
@@ -137,7 +137,7 @@ export async function ingestionTask(id: string) {
     const active = job.status === 'running' && await dao.isActive(id)
     return { ingestionId: id, status: job.status === 'running' && !active ? 'interrupted' : job.status, requestId: job.requestId, error: job.error, result: job.result, stages: await dao.stages(id), knowledgeBaseId: job.input.request.knowledgeBaseId, documentId: job.input.request.documentId }
   }
-  finally { await dao.close() }
+  finally { await closePostgresResources([dao]) }
 }
 
 export async function interruptIngestion(id: string) {
@@ -150,5 +150,5 @@ export async function interruptIngestion(id: string) {
     await dao.cancel(id)
     return { ingestionId: id, status: 'interrupt-requested' }
   }
-  finally { await dao.close() }
+  finally { await closePostgresResources([dao]) }
 }

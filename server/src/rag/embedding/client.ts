@@ -1,12 +1,9 @@
 import type { EmbeddingAdapter, EmbeddingResponse, EmbedRequest } from './types.js'
-import { SpanStatusCode, trace } from '@opentelemetry/api'
 import { EMBEDDING_ERROR_CODES as CODES } from '../../error-codes.js'
 import { AppError } from '../../errors.js'
-import { log } from '../../telemetry/logger.js'
+import { traceOperation } from '../../telemetry/operation.js'
 import { isNonEmptyString } from '../../utils/type-guards.js'
 import { validateRequest, validateResponse } from './validation.js'
-
-const tracer = trace.getTracer('knowledge-server.embedding')
 
 /** 独立文本向量化入口；注册不触发网络请求，不自动重试或切换供应商。 */
 export class EmbeddingClient {
@@ -36,50 +33,27 @@ export class EmbeddingClient {
     if (input.signal?.aborted)
       throw cancelled()
 
-    return tracer.startActiveSpan('embedding.embed', async (span) => {
-      const startedAt = performance.now()
-      span.setAttributes({ 'embedding.provider': provider, 'embedding.request.model': input.model, 'embedding.input_count': input.input.length })
-      try {
-        const response = await adapter.embed(input)
-        if (input.signal?.aborted)
-          throw cancelled()
-        validateResponse(response, snapshot)
-        // 不记录输入文本、向量、服务地址或鉴权信息。
-        const attributes = {
-          'embedding.provider': provider,
-          'embedding.response.model': response.model,
-          'embedding.dimensions': response.dimensions,
-          'embedding.input_count': response.embeddings.length,
-          ...(response.usage === null
-            ? {}
-            : {
-                'embedding.input_tokens': response.usage.inputTokens,
-                'embedding.total_tokens': response.usage.totalTokens,
-              }),
-          ...(response.requestId === undefined ? {} : { 'embedding.request_id': response.requestId }),
-          'embedding.duration_ms': performance.now() - startedAt,
-        }
-        span.setAttributes(attributes)
-        log.info('embedding.completed', attributes)
-        return response
-      }
-      catch (error) {
-        const normalized = input.signal?.aborted
-          ? cancelled()
-          : error instanceof AppError ? error : new AppError(CODES.PROVIDER_ERROR, 'Embedding provider request failed', { provider })
-        span.setStatus({ code: SpanStatusCode.ERROR, message: normalized.code })
-        span.setAttribute('embedding.error.code', normalized.code)
-        log.error('embedding.failed', {
-          'embedding.provider': provider,
-          'embedding.error.code': normalized.code,
-          'embedding.request_id': normalized.requestId,
-          'embedding.duration_ms': performance.now() - startedAt,
-        })
-        throw normalized
-      }
-      finally {
-        span.end()
-      }
+    return traceOperation({
+      namespace: 'embedding',
+      name: 'embedding.embed',
+      event: 'embedding',
+      attributes: { 'embedding.provider': provider, 'embedding.request.model': input.model, 'embedding.input_count': input.input.length },
+      normalizeError: error => input.signal?.aborted ? cancelled() : error instanceof AppError ? error : new AppError(CODES.PROVIDER_ERROR, 'Embedding provider request failed', { provider }),
+      successAttributes: response => ({
+        'embedding.provider': provider,
+        'embedding.response.model': response.model,
+        'embedding.dimensions': response.dimensions,
+        'embedding.input_count': response.embeddings.length,
+        ...(response.usage === null ? {} : { 'embedding.input_tokens': response.usage.inputTokens, 'embedding.total_tokens': response.usage.totalTokens }),
+        ...(response.requestId === undefined ? {} : { 'embedding.request_id': response.requestId }),
+      }),
+      failureAttributes: error => ({ 'embedding.provider': provider, 'embedding.request_id': error.requestId }),
+    }, async () => {
+      const response = await adapter.embed(input)
+      if (input.signal?.aborted)
+        throw cancelled()
+      validateResponse(response, snapshot)
+      return response
     })
   }
 }

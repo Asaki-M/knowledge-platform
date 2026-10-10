@@ -3,6 +3,7 @@ import type { ValidationReason } from '../../errors.js'
 import type { KnowledgeEnrichment } from './types.js'
 import { ENRICHMENT_ERROR_CODES } from '../../error-codes.js'
 import { AppError } from '../../errors.js'
+import { deduplicateEnrichment } from './deduplication.js'
 import { createEnrichmentSchema } from './schema.js'
 
 function invalid(path: string, reason: ValidationReason): never {
@@ -53,10 +54,17 @@ export function parseEnrichment(output: string, markdown: string, knowledgeTypes
   catch {
     invalid('JSON', 'invalid-json')
   }
+  return finalizeEnrichment(parsed, markdown, knowledgeTypes)
+}
+
+/** 对象入口直接检查字段和证据，不经 JSON 往返隐式丢弃未知字段。 */
+export function validateEnrichment(parsed: unknown, markdown: string, knowledgeTypes: Readonly<Record<string, string>>): KnowledgeEnrichment {
   const result = createEnrichmentSchema(knowledgeTypes).safeParse(parsed)
   if (!result.success)
     invalidSchema(result.error.issues[0]!, parsed)
   const value = result.data
+  if (JSON.stringify(value).length > 200000)
+    invalid('JSON', 'text-too-long')
   const evidence = (quotes: string[], path: string) => {
     const unmatched = quotes.findIndex(quote => !markdown.includes(quote))
     if (unmatched !== -1)
@@ -88,4 +96,10 @@ export function parseEnrichment(output: string, markdown: string, knowledgeTypes
     evidence(fact.evidence, `${path}.evidence`)
   }
   return value
+}
+
+/** 先校验再合并，合并后复查证据数量和引用，提取与 Wiki 共用同一流程。 */
+export function finalizeEnrichment(input: unknown, markdown: string, knowledgeTypes: Readonly<Record<string, string>>): KnowledgeEnrichment {
+  const validated = validateEnrichment(input, markdown, knowledgeTypes)
+  return validateEnrichment(deduplicateEnrichment(validated), markdown, knowledgeTypes)
 }

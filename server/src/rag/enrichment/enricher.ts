@@ -5,7 +5,7 @@ import { ENRICHMENT_ERROR_CODES as CODES, LLM_ERROR_CODES } from '../../error-co
 import { AppError } from '../../errors.js'
 import { isNonEmptyString, isRecord } from '../../utils/type-guards.js'
 import { assertSection } from '../sections/index.js'
-import { deduplicateEnrichment, deduplicateExtracted } from './deduplication.js'
+import { deduplicateExtracted } from './deduplication.js'
 import { extractSectionData } from './extraction.js'
 import { DEFAULT_KNOWLEDGE_TYPES } from './knowledge-types.js'
 import { buildMessages } from './prompt.js'
@@ -77,10 +77,7 @@ export class KnowledgeEnricher {
     if (response.finishReason !== 'stop')
       throw new AppError(CODES.INCOMPLETE_RESPONSE, 'Knowledge enrichment did not complete', errorOptions)
     try {
-      const validated = parseEnrichment(response.text, markdown, this.knowledgeTypes)
-      const enrichment = deduplicateEnrichment(validated)
-      // 合并证据后再次验证数量上限和引用，不静默截断或放宽原始证据要求。
-      parseEnrichment(JSON.stringify(enrichment), markdown, this.knowledgeTypes)
+      const enrichment = parseEnrichment(response.text, markdown, this.knowledgeTypes)
       return {
         schemaVersion: 3,
         sectionId,

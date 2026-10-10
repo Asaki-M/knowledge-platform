@@ -1,8 +1,7 @@
 import process from 'node:process'
-import { Pool } from 'pg'
 import { WORKSPACE_ERROR_CODES as CODES } from '../../error-codes.js'
 import { AppError } from '../../errors.js'
-import { log } from '../../telemetry/logger.js'
+import { closePostgresResources, createPostgresPool } from '../../utils/postgres.js'
 
 export interface KnowledgeBaseOption {
   id: string
@@ -13,15 +12,7 @@ export interface LogScope { knowledgeBaseId: string, documentId: string | null }
 
 /** 只读现有索引元数据；选项请求不建表、不取正文和向量。 */
 export async function readWorkspaceCatalog(connectionString = process.env.VECTOR_DATABASE_URL) {
-  try {
-    if (!connectionString || !['postgres:', 'postgresql:'].includes(new URL(connectionString).protocol))
-      throw new Error('Invalid URL')
-  }
-  catch {
-    throw new AppError(CODES.CONFIGURATION_ERROR, 'Workspace requires a PostgreSQL database URL')
-  }
-  const pool = new Pool({ connectionString, max: 1, connectionTimeoutMillis: 1000, statement_timeout: 5000, application_name: 'knowledge-workspace' })
-  pool.on('error', () => log.error('workspace.connection.failed', { 'error.code': CODES.DATABASE_ERROR }))
+  const pool = createPostgresPool({ connectionString, max: 1, connectionTimeoutMillis: 1000, statement_timeout: 5000, application_name: 'knowledge-workspace' }, { configuration: new AppError(CODES.CONFIGURATION_ERROR, 'Workspace requires a PostgreSQL database URL'), databaseCode: CODES.DATABASE_ERROR, event: 'workspace.connection.failed' })
   try {
     const tables = (await pool.query<{ vectors: string | null, snapshots: string | null, logs: string | null }>(`SELECT to_regclass('rag_vectors')::text AS vectors, to_regclass('rag_vector_snapshots')::text AS snapshots, to_regclass('operation_logs')::text AS logs`)).rows[0]!
     // 首次尚未入库时允许没有表；连接失败与查询错误不能冒充空知识库。
@@ -47,6 +38,6 @@ export async function readWorkspaceCatalog(connectionString = process.env.VECTOR
     throw new AppError(CODES.DATABASE_ERROR, 'Could not read workspace options')
   }
   finally {
-    await pool.end()
+    await closePostgresResources([{ close: () => pool.end() }])
   }
 }

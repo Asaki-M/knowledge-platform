@@ -5,6 +5,7 @@ import { AppError } from '../../errors.js'
 import { searchAndAnswer, validateQueryRequest } from '../../rag/query/index.js'
 import { SiliconFlowReranker } from '../../rag/rerank/index.js'
 import { PgVectorStore } from '../../rag/vector-store/index.js'
+import { closePostgresResources } from '../../utils/postgres.js'
 import { isRecord } from '../../utils/type-guards.js'
 import { createEmbeddingClient, createLlmClient, embeddingSelection, llmOptions } from './model-options.js'
 import { summarizeQuery } from './operation-logs.js'
@@ -35,6 +36,6 @@ export async function search(body: unknown, signal?: AbortSignal, operation?: Op
     return result
   }
   finally {
-    await store.close()
+    await closePostgresResources([store])
   }
 }

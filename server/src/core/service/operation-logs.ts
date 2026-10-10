@@ -3,12 +3,13 @@ import type { QueryResult } from '../../rag/query/index.js'
 import type { OperationLog, OperationLogFilters, OperationStatus, OperationSummary, OperationType } from '../dao/operation-logs.js'
 import { isSpanContextValid, trace } from '@opentelemetry/api'
 import { HTTPException } from 'hono/http-exception'
-import { ENRICHMENT_ERROR_CODES, HTTP_ERROR_CODES } from '../../error-codes.js'
+import { HTTP_ERROR_CODES } from '../../error-codes.js'
 import { AppError } from '../../errors.js'
 import { log } from '../../telemetry/logger.js'
+import { closePostgresResources } from '../../utils/postgres.js'
 import { isRecord } from '../../utils/type-guards.js'
 import { OperationLogDao } from '../dao/operation-logs.js'
-import { enrichmentValidationMessage } from '../error-response.js'
+import { describeAppError, isCancelledError } from '../error-presentation.js'
 
 function safeIdentifier(value: unknown, max = 256): string | null {
   return typeof value === 'string' && value.trim().length > 0 && value.length <= max ? value.trim() : null
@@ -17,24 +18,8 @@ function safeIdentifier(value: unknown, max = 256): string | null {
 /** 不持久化异常 message / stack，避免供应商或解析器错误带入正文与凭据。 */
 function failureSummary(error: unknown, httpStatus: number): NonNullable<OperationLog['error']> {
   const code = error instanceof AppError ? error.code : error instanceof HTTPException ? HTTP_ERROR_CODES.HTTP_ERROR : HTTP_ERROR_CODES.INTERNAL_SERVER_ERROR
-  const reasons: [boolean, string][] = [
-    [code === ENRICHMENT_ERROR_CODES.OUTPUT_TRUNCATED, '知识提取达到生成长度限制，结果不完整，本次文档未写入。'],
-    [code === ENRICHMENT_ERROR_CODES.CONTENT_FILTERED, '知识提取被模型服务的内容过滤中止，本次文档未写入。'],
-    [code === ENRICHMENT_ERROR_CODES.INCOMPLETE_RESPONSE, '知识提取未正常结束，需查看模型结束原因；历史记录可能包含截断或过滤。'],
-    [code === ENRICHMENT_ERROR_CODES.REFUSED, '模型拒绝了本次知识提取，本次文档未写入。'],
-    [code.includes('ABORTED'), '操作已取消。'],
-    [code.includes('CONFIGURATION'), '服务配置缺失或无效。'],
-    [code.includes('AUTHENTICATION'), '模型服务鉴权失败。'],
-    [code.includes('RATE_LIMIT'), '模型服务限流或配额不足。'],
-    [code.includes('TIMEOUT'), '模型调用超时。'],
-    [code.includes('INCONSISTENT_SPACE'), 'Embedding 与知识库向量空间不一致。'],
-    [code.includes('CONFLICT'), '知识库版本或文档共享节点发生冲突。'],
-    [code.includes('DATABASE'), '数据库操作失败。'],
-    [code.includes('PARSE'), '文档语法无法解析。'],
-    [httpStatus === 413, '请求体超过大小限制。'],
-    [httpStatus === 400, '请求参数或内容无效。'],
-  ]
-  const message = (error instanceof AppError ? enrichmentValidationMessage(error) : undefined) ?? reasons.find(([matches]) => matches)?.[1] ?? '操作未完成，请根据错误码和请求 ID 排查。'
+  const message = (error instanceof AppError ? describeAppError(error).logMessage : undefined)
+    ?? (httpStatus === 413 ? '请求体超过大小限制。' : httpStatus === 400 ? '请求参数或内容无效。' : '操作未完成，请根据错误码和请求 ID 排查。')
   return { code, message, retryable: error instanceof AppError && error.retryable }
 }
 
@@ -82,7 +67,7 @@ export class OperationTracker {
 
   async finish(httpStatus: number, error?: unknown): Promise<void> {
     const failure = httpStatus >= 400 || error !== undefined
-    const cancelled = error instanceof AppError && error.code.includes('ABORTED')
+    const cancelled = isCancelledError(error)
     const status = failure ? cancelled ? 'cancelled' : 'failed' : 'succeeded'
     const input = { status: status as OperationStatus, finishedAt: new Date().toISOString(), durationMs: Math.round(performance.now() - this.started), httpStatus, summary: this.summary, error: failure ? failureSummary(error, httpStatus) : null }
     if (this.dao && this.id)
@@ -170,7 +155,7 @@ export async function listOperationLogs(query: Record<string, string>) {
     return await dao.list(filters)
   }
   finally {
-    await dao.close()
+    await closePostgresResources([dao])
   }
 }
 
@@ -185,6 +170,6 @@ export async function getOperationLog(id: string) {
     return item
   }
   finally {
-    await dao.close()
+    await closePostgresResources([dao])
   }
 }

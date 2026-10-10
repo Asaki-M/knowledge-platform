@@ -44,3 +44,5 @@
 options.checkpoint 注入 IngestionCheckpointStore（异步 load/save），各阶段结果、初次知识库版本、逐节 enrichment 和 Embedding 批次分别保存。命中仍报告完成事件并标记 reused；单节失败保留此前成功结果。options.writeKey 传给向量库事务回执，覆盖提交后断线窗口。expectedRevision 在恢复时不刷新，防止覆盖并发更新。
 
 HTTP 层保存输入/配置指纹与版本并持有 PostgreSQL 任务会话锁，RAG 不依赖 HTTP、DAO 或具体数据库。只保存校验成功的结果，不接受截断、拒答或非法证据，不自动重跑模型。服务重启后可按任务 ID 显式继续，未保存的在途调用无法复用。
+
+阶段展示投影集中在同模块的 `previews.ts`；`ingestDocument` 保留阶段顺序、检查点、取消检查与写入编排，`stages.ts` 继续统一事件和预览截取。预览字段、数量限制与恢复行为保持一致。

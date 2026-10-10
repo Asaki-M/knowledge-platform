@@ -1,11 +1,8 @@
 import type { NormalizationAdapter, NormalizedDocument, NormalizeRequest } from './types.js'
-import { SpanStatusCode, trace } from '@opentelemetry/api'
 import { NORMALIZATION_ERROR_CODES as CODES } from '../../error-codes.js'
 import { AppError } from '../../errors.js'
-import { log } from '../../telemetry/logger.js'
+import { traceOperation } from '../../telemetry/operation.js'
 import { isNonEmptyString } from '../../utils/type-guards.js'
-
-const tracer = trace.getTracer('knowledge-server.normalization')
 
 /** 与 LlmClient 一样负责注册、分发和追踪，不包含特定文档格式的规则。 */
 export class NormalizationClient {
@@ -33,33 +30,19 @@ export class NormalizationClient {
     if (input.signal?.aborted)
       throw new AppError(CODES.ABORTED, 'Normalization was cancelled')
 
-    return tracer.startActiveSpan('normalization.normalize', async (span) => {
-      const start = performance.now()
-      span.setAttribute('normalization.adapter', name)
-      try {
-        const result = await adapter.normalize(input)
-        if (input.signal?.aborted)
-          throw new AppError(CODES.ABORTED, 'Normalization was cancelled')
-        const attributes = {
-          'normalization.adapter': name,
-          'normalization.warnings': result.warnings.length,
-          'normalization.duration_ms': performance.now() - start,
-        }
-        span.setAttributes(attributes)
-        log.info('normalization.completed', attributes)
-        return result
-      }
-      catch (error) {
-        const normalized = error instanceof AppError
-          ? error
-          : new AppError(CODES.TRANSFORM_ERROR, 'Document normalization failed')
-        span.setStatus({ code: SpanStatusCode.ERROR, message: normalized.code })
-        log.error('normalization.failed', { 'normalization.adapter': name, 'normalization.error.code': normalized.code })
-        throw normalized
-      }
-      finally {
-        span.end()
-      }
+    return traceOperation({
+      namespace: 'normalization',
+      name: 'normalization.normalize',
+      event: 'normalization',
+      attributes: { 'normalization.adapter': name },
+      normalizeError: error => error instanceof AppError ? error : new AppError(CODES.TRANSFORM_ERROR, 'Document normalization failed'),
+      successAttributes: result => ({ 'normalization.adapter': name, 'normalization.warnings': result.warnings.length }),
+      failureAttributes: () => ({ 'normalization.adapter': name }),
+    }, async () => {
+      const result = await adapter.normalize(input)
+      if (input.signal?.aborted)
+        throw new AppError(CODES.ABORTED, 'Normalization was cancelled')
+      return result
     })
   }
 }

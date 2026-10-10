@@ -136,3 +136,7 @@ interface KnowledgeEnrichment {
 同一契约经 `z.toJSONSchema` 投影为 `LlmRequest.structuredOutput`，请求对象各层都包含 `additionalProperties: false` 和全部必填字段。长度与正则规则只在本地执行，以适配供应商公共 Schema 子集；证据逐字匹配、ID 唯一和节点引用也继续本地检查。DeepSeek 入库使用 Responses JSON Schema，OpenAI 使用 Responses strict JSON Schema，问答协议不变。上游不支持时明确失败，不降级、不自动重试。
 
 Zod 错误只转换成白名单路径和固定规则原因，不把原始 issue/message/input 写入日志。概念误带契约已知的 `type` 时显示 `concepts[0].type`；任意未知字段只显示所属对象路径。常规验证使用本地模拟服务，不调用真实模型。
+
+## 共享校验流程
+
+`validation.ts` 将模型文本的 JSON 解析与对象校验分开：文本入口保留字符上限和 JSON 错误分类，对象入口直接执行严格字段、节点引用与逐字证据检查。`KnowledgeEnricher` 和 Wiki 贡献构建共用“校验 → 去重 → 复查”，合并后的证据数量与引用仍需满足原约束。已有对象不经 JSON 往返转换，未知字段（包括值为 `undefined` 的未知字段）不能被序列化悄悄删除；序列化长度预算继续校验。

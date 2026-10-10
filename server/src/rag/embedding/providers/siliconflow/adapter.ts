@@ -4,6 +4,7 @@ import OpenAI from 'openai'
 import { EMBEDDING_ERROR_CODES as CODES } from '../../../../error-codes.js'
 import { AppError } from '../../../../errors.js'
 import { isNonEmptyString } from '../../../../utils/type-guards.js'
+import { supportsEmbeddingDimensions } from '../../capabilities.js'
 import { toEmbeddingResponse } from './mapping.js'
 import { normalizeError } from './normalize-error.js'
 
@@ -38,7 +39,7 @@ export class SiliconFlowEmbeddingAdapter implements EmbeddingAdapter {
     // 使用保守的同步批量上限；不隐式分批，避免部分成功后返回不完整结果。
     if (request.input.length > 32)
       throw new AppError(CODES.INVALID_REQUEST, 'SiliconFlow supports at most 32 texts per call', { provider: this.provider })
-    if (request.dimensions !== undefined && !request.model.startsWith('Qwen/Qwen3-'))
+    if (request.dimensions !== undefined && !supportsEmbeddingDimensions(this.provider, request.model))
       throw new AppError(CODES.INVALID_REQUEST, 'This SiliconFlow model does not support custom dimensions', { provider: this.provider })
     try {
       const { data, response } = await this.client.embeddings.create({

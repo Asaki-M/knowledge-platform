@@ -1,11 +1,8 @@
 import type { LlmAdapter, LlmGenerateRequest, LlmResponse } from './types.js'
-import { SpanStatusCode, trace } from '@opentelemetry/api'
 import { LLM_ERROR_CODES } from '../error-codes.js'
 import { AppError } from '../errors.js'
-import { log } from '../telemetry/logger.js'
+import { traceOperation } from '../telemetry/operation.js'
 import { isNonEmptyString, isRecord } from '../utils/type-guards.js'
-
-const tracer = trace.getTracer('knowledge-server.llm')
 
 /** 只校验通用输入约束；模型是否支持某个参数仍由具体适配器或上游判断。 */
 function validateRequest(request: LlmGenerateRequest) {
@@ -74,45 +71,21 @@ export class LlmClient {
     if (input.signal?.aborted)
       throw new AppError(LLM_ERROR_CODES.ABORTED, 'LLM request was cancelled', { provider })
 
-    // 沿用当前异步上下文；在 HTTP 请求内调用时，会成为请求 span 的子节点。
-    return tracer.startActiveSpan('llm.generate', async (span) => {
-      const startedAt = performance.now()
-      span.setAttributes({ 'llm.provider': provider, 'llm.request.model': input.model })
-      try {
-        const response = await adapter.generate(input)
-        // 仅记录调用元数据，不把输入消息、输出文本或凭据放进日志与 span。
-        const attributes = {
-          'llm.provider': provider,
-          'llm.response.model': response.model,
-          'llm.finish_reason': response.finishReason,
-          'llm.request_id': response.requestId,
-          'llm.input_tokens': response.usage?.inputTokens,
-          'llm.output_tokens': response.usage?.outputTokens,
-          'llm.duration_ms': performance.now() - startedAt,
-        }
-        span.setAttributes(attributes)
-        log.info('llm.generate.completed', attributes)
-        return response
-      }
-      catch (error) {
-        // 保留适配器已归一化的错误；未知异常用通用错误兜底，避免泄露 SDK 原始内容。
-        const normalized = error instanceof AppError
-          ? error
-          : new AppError(LLM_ERROR_CODES.PROVIDER_ERROR, 'LLM provider request failed', { provider })
-        span.setStatus({ code: SpanStatusCode.ERROR, message: normalized.code })
-        span.setAttribute('llm.error.code', normalized.code)
-        log.error('llm.generate.failed', {
-          'llm.provider': provider,
-          'llm.error.code': normalized.code,
-          'llm.request_id': normalized.requestId,
-          'llm.duration_ms': performance.now() - startedAt,
-        })
-        throw normalized
-      }
-      finally {
-        // 成功、失败和取消都必须结束 span，避免产生未闭合的调用记录。
-        span.end()
-      }
-    })
+    return traceOperation({
+      namespace: 'llm',
+      name: 'llm.generate',
+      event: 'llm.generate',
+      attributes: { 'llm.provider': provider, 'llm.request.model': input.model },
+      normalizeError: error => error instanceof AppError ? error : new AppError(LLM_ERROR_CODES.PROVIDER_ERROR, 'LLM provider request failed', { provider }),
+      successAttributes: response => ({
+        'llm.provider': provider,
+        'llm.response.model': response.model,
+        'llm.finish_reason': response.finishReason,
+        'llm.request_id': response.requestId,
+        'llm.input_tokens': response.usage?.inputTokens,
+        'llm.output_tokens': response.usage?.outputTokens,
+      }),
+      failureAttributes: error => ({ 'llm.provider': provider, 'llm.request_id': error.requestId }),
+    }, () => adapter.generate(input))
   }
 }

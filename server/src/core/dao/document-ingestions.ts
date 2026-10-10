@@ -1,12 +1,11 @@
-import type { PoolClient } from 'pg'
+import type { Pool, PoolClient, QueryResultRow } from 'pg'
 import type { EnrichmentOptions } from '../../rag/enrichment/index.js'
 import type { DualIndexEmbeddingOptions } from '../../rag/indexing/index.js'
 import type { IngestDocumentRequest, IngestDocumentResult, IngestionCheckpointStore, IngestionStageEvent } from '../../rag/ingestion/index.js'
 import process from 'node:process'
-import { Pool } from 'pg'
 import { INGESTION_ERROR_CODES as CODES } from '../../error-codes.js'
 import { AppError } from '../../errors.js'
-import { log } from '../../telemetry/logger.js'
+import { createPostgresPool, queryRows, withPostgresTransaction } from '../../utils/postgres.js'
 
 export interface IngestionJobInput {
   request: Omit<IngestDocumentRequest, 'signal'>
@@ -33,28 +32,15 @@ export class DocumentIngestionDao {
   private client?: PoolClient
 
   constructor(connectionString = process.env.VECTOR_DATABASE_URL) {
-    try {
-      if (!connectionString || !['postgres:', 'postgresql:'].includes(new URL(connectionString).protocol))
-        throw new Error('Invalid database URL')
-    }
-    catch { throw new AppError(CODES.CHECKPOINT_CONFIGURATION_ERROR, 'Ingestion checkpoints require PostgreSQL') }
-    this.pool = new Pool({ connectionString, max: 2, connectionTimeoutMillis: 3000, statement_timeout: 10000, application_name: 'knowledge-ingestion-checkpoints' })
-    this.pool.on('error', () => log.error('ingestion-checkpoint.connection.failed', { 'error.code': CODES.CHECKPOINT_DATABASE_ERROR }))
+    this.pool = createPostgresPool({ connectionString, max: 2, connectionTimeoutMillis: 3000, statement_timeout: 10000, application_name: 'knowledge-ingestion-checkpoints' }, { configuration: new AppError(CODES.CHECKPOINT_CONFIGURATION_ERROR, 'Ingestion checkpoints require PostgreSQL'), databaseCode: CODES.CHECKPOINT_DATABASE_ERROR, event: 'ingestion-checkpoint.connection.failed' })
   }
 
-  private async query<T>(sql: string, values: unknown[] = []): Promise<T[]> {
-    try {
-      return (await (this.client ?? this.pool).query(sql, values)).rows as T[]
-    }
-    catch { throw new AppError(CODES.CHECKPOINT_DATABASE_ERROR, 'Ingestion checkpoint database operation failed') }
+  private query<T extends QueryResultRow>(sql: string, values: unknown[] = []): Promise<T[]> {
+    return queryRows<T>(this.client ?? this.pool, sql, values, new AppError(CODES.CHECKPOINT_DATABASE_ERROR, 'Ingestion checkpoint database operation failed'))
   }
 
   async initialize(): Promise<void> {
-    const client = await this.pool.connect().catch(() => {
-      throw new AppError(CODES.CHECKPOINT_DATABASE_ERROR, 'Could not connect to ingestion checkpoints')
-    })
-    try {
-      await client.query('BEGIN')
+    await withPostgresTransaction(this.pool, async (client) => {
       await client.query('SELECT pg_advisory_xact_lock(731952684)')
       await client.query(`CREATE TABLE IF NOT EXISTS document_ingestions (
         id uuid PRIMARY KEY, fingerprint text NOT NULL, version integer NOT NULL, input jsonb NOT NULL,
@@ -66,13 +52,7 @@ export class DocumentIngestionDao {
         ingestion_id uuid NOT NULL REFERENCES document_ingestions(id) ON DELETE CASCADE,
         key text NOT NULL, value jsonb NOT NULL, PRIMARY KEY (ingestion_id, key)
       );`)
-      await client.query('COMMIT')
-    }
-    catch {
-      await client.query('ROLLBACK').catch(() => {})
-      throw new AppError(CODES.CHECKPOINT_DATABASE_ERROR, 'Could not initialize ingestion checkpoints')
-    }
-    finally { client.release() }
+    }, new AppError(CODES.CHECKPOINT_DATABASE_ERROR, 'Could not initialize ingestion checkpoints'))
   }
 
   /** 持有会话锁直到本次执行结束；进程退出自动释放，避免租约到期导致重复模型调用。 */
@@ -133,20 +113,10 @@ export class DocumentIngestionDao {
 
   /** 查询时探测会话锁；崩溃遗留 running 展示为中断，不伪造已完成或自动恢复。 */
   async isActive(id: string): Promise<boolean> {
-    const client = await this.pool.connect().catch(() => {
-      throw new AppError(CODES.CHECKPOINT_DATABASE_ERROR, 'Could not inspect ingestion task')
-    })
-    try {
-      await client.query('BEGIN')
+    return withPostgresTransaction(this.pool, async (client) => {
       const result = await client.query<{ available: boolean }>('SELECT pg_try_advisory_xact_lock(hashtextextended($1, $2)) AS available', [id, lockSeed])
-      await client.query('COMMIT')
       return !result.rows[0]!.available
-    }
-    catch {
-      await client.query('ROLLBACK').catch(() => {})
-      throw new AppError(CODES.CHECKPOINT_DATABASE_ERROR, 'Could not inspect ingestion task')
-    }
-    finally { client.release() }
+    }, new AppError(CODES.CHECKPOINT_DATABASE_ERROR, 'Could not inspect ingestion task'))
   }
 
   async close(): Promise<void> {
