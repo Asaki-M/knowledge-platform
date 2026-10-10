@@ -1,0 +1,117 @@
+server/src/rag/enrichment/README.md
+  s_9e9a42ff9ba71f::t_8623cf0364c296 139-142
+server/src/core/error-presentation.ts
+  s_9e9a42ff9ba71f::t_13d62f37e6c306 49
+  s_9e9a42ff9ba71f::t_136f8f3e3e1344 1-3,5-18,20-29,31-48,50-90
+  s_9e9a42ff9ba71f::t_7b055a04c065ce 4,30
+  s_9e9a42ff9ba71f::t_edf42bb2066ddf 19
+server/test/error-response.test.mjs
+  s_9e9a42ff9ba71f::t_e003b81827e60f 1-53
+server/src/llm/client.ts
+  s_9e9a42ff9ba71f::t_2c8b1e61096373 4,74-89
+server/src/rag/ingestion/README.md
+  s_9e9a42ff9ba71f::t_8623cf0364c296 47-48
+server/src/rag/normalization/client.ts
+  s_9e9a42ff9ba71f::t_2c8b1e61096373 4,33-45
+server/src/rag/query/index.ts
+  s_9e9a42ff9ba71f::t_65ecb767c1675d 9
+  s_9e9a42ff9ba71f::t_67f2dd4f4a6144 55
+server/src/rag/indexing/README.md
+  s_9e9a42ff9ba71f::t_8623cf0364c296 108-109
+server/src/rag/indexing/validation.ts
+  s_9e9a42ff9ba71f::t_13d62f37e6c306 122-123
+  s_9e9a42ff9ba71f::t_38648d6f3d0608 2,104,107-121,124,126-127
+server/src/core/dao/operation-logs.ts
+  s_9e9a42ff9ba71f::t_67f2dd4f4a6144 1,5,62,65-66,71,86
+server/src/rag/ingestion/ingest-document.ts
+  s_9e9a42ff9ba71f::t_65ecb767c1675d 12,80
+  s_9e9a42ff9ba71f::t_ee49dbb75e4bde 18-19,53,59-60,76,78-79,81,83
+server/test/telemetry.test.mjs
+  s_9e9a42ff9ba71f::t_7b055a04c065ce 22-25,47-48,59-60,64,72,85,142-146,167-168,171-173,179,219-236
+server/src/rag/ingestion/previews.ts
+  s_9e9a42ff9ba71f::t_ee49dbb75e4bde 1-75
+server/src/rag/wiki/contributions.ts
+  s_9e9a42ff9ba71f::t_ee49dbb75e4bde 6,8,24
+server/src/telemetry/operation.ts
+  s_9e9a42ff9ba71f::t_14f85d6e685142 1-44
+server/src/rag/embedding/client.ts
+  s_9e9a42ff9ba71f::t_2c8b1e61096373 4,36-56
+server/src/rag/embedding/providers/siliconflow/adapter.ts
+  s_9e9a42ff9ba71f::t_65ecb767c1675d 7,42
+server/src/core/dao/workspace-options.ts
+  s_9e9a42ff9ba71f::t_67f2dd4f4a6144 4,15,41
+server/src/rag/embedding/capabilities.ts
+  s_9e9a42ff9ba71f::t_f40c2353c88b5d 1-9
+server/src/core/dao/document-ingestions.ts
+  s_9e9a42ff9ba71f::t_67f2dd4f4a6144 8,35,38-39,43,55,116,119
+  s_9e9a42ff9ba71f::t_c36899d426d349 1
+server/src/rag/rerank/providers/siliconflow/adapter.ts
+  s_9e9a42ff9ba71f::t_2c8b1e61096373 6,28-52
+server/src/rag/enrichment/validation.ts
+  s_9e9a42ff9ba71f::t_ee49dbb75e4bde 6,57-61,66-67,100-105
+server/test/ingestion-resume.test.mjs
+  s_9e9a42ff9ba71f::t_3be6478a78a52a 196-198
+  s_9e9a42ff9ba71f::t_9981d135fb14b9 193-195,199-212
+server/src/core/service/operation-logs.ts
+  s_9e9a42ff9ba71f::t_136f8f3e3e1344 6,9,12,21-22,70
+  s_9e9a42ff9ba71f::t_67f2dd4f4a6144 158,173
+server/src/core/error-response.ts
+  s_9e9a42ff9ba71f::t_136f8f3e3e1344 3,5,13-14
+server/src/rag/vector-store/pgvector.ts
+  s_9e9a42ff9ba71f::t_67f2dd4f4a6144 1,8,34,37-38
+  s_9e9a42ff9ba71f::t_200a19fbb79d57 61-62,68-69,172,199,208-214
+server/src/rag/enrichment/enricher.ts
+  s_9e9a42ff9ba71f::t_ee49dbb75e4bde 8,80
+server/test/query.test.mjs
+  s_9e9a42ff9ba71f::t_9981d135fb14b9 113-129
+server/src/core/README.md
+  s_9e9a42ff9ba71f::t_8623cf0364c296 175-180
+server/src/rag/embedding/README.md
+  s_9e9a42ff9ba71f::t_8623cf0364c296 77-80
+server/src/utils/postgres.ts
+  s_9e9a42ff9ba71f::t_f40c2353c88b5d 1-39,43-55
+  s_9e9a42ff9ba71f::t_13d62f37e6c306 40-42
+server/src/core/service/documents.ts
+  s_9e9a42ff9ba71f::t_67f2dd4f4a6144 125,140,153
+  s_9e9a42ff9ba71f::t_d86d29b28c891a 10
+server/test/postgres.test.mjs
+  s_9e9a42ff9ba71f::t_3be6478a78a52a 45-47,61-66
+  s_9e9a42ff9ba71f::t_e003b81827e60f 1-44,48-60,67-84
+server/test/enrichment.test.mjs
+  s_9e9a42ff9ba71f::t_3c46e39440506f 9-10,13
+  s_9e9a42ff9ba71f::t_7b055a04c065ce 390-398
+  s_9e9a42ff9ba71f::t_f17fcc84adc121 399
+server/test/vector-store.test.mjs
+  s_9e9a42ff9ba71f::t_8623cf0364c296 255
+  s_9e9a42ff9ba71f::t_7b055a04c065ce 242-254,256-291
+server/src/core/service/model-options.ts
+  s_9e9a42ff9ba71f::t_65ecb767c1675d 5,82
+server/src/core/service/search.ts
+  s_9e9a42ff9ba71f::t_67f2dd4f4a6144 39
+  s_9e9a42ff9ba71f::t_7ac60d6987ba9b 8
+server/src/rag/embedding/index.ts
+  s_9e9a42ff9ba71f::t_b6bc10455a1a9d 2
+server/src/rag/vector-store/validation.ts
+  s_9e9a42ff9ba71f::t_c1d3df24485154 7,33,36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "db0464096beb79f3baba9d9fa5faeb9d13df495a",
+  "prompts": {},
+  "humans": {
+    "h_8d050896203f0f": {
+      "author": "qinghuan <1041220793@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_9e9a42ff9ba71f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a123c2-8ba6-7523-b947-ba2797fc65b8",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "qinghuan <1041220793@qq.com>"
+    }
+  }
+}
