@@ -1,0 +1,28 @@
+vercel.json
+  s_9e9a42ff9ba71f::t_42431b73ea05bd 5-6
+server/public/robots.txt
+  s_9e9a42ff9ba71f::t_42431b73ea05bd 1-2
+server/src/core/mcp.md
+  s_9e9a42ff9ba71f::t_42431b73ea05bd 47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "46fd0828912faaddb6c07f722aef9d9f9690102f",
+  "prompts": {},
+  "humans": {
+    "h_8d050896203f0f": {
+      "author": "qinghuan <1041220793@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_9e9a42ff9ba71f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a123c2-8ba6-7523-b947-ba2797fc65b8",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "qinghuan <1041220793@qq.com>"
+    }
+  }
+}
