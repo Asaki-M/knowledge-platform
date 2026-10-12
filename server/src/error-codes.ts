@@ -251,12 +251,16 @@ export const OPERATION_LOG_ERROR_CODES = {
 } as const
 export type OperationLogErrorCode = typeof OPERATION_LOG_ERROR_CODES[keyof typeof OPERATION_LOG_ERROR_CODES]
 
-/** 工作台选项查询错误。 */
+/** 工作台选项与知识库元数据操作错误。 */
 export const WORKSPACE_ERROR_CODES = {
   /** 工作台数据库配置缺失或无效。 */
   CONFIGURATION_ERROR: 'WORKSPACE_CONFIGURATION_ERROR',
-  /** 读取知识库及筛选范围失败。 */
+  /** 读取目录、筛选范围或保存知识库元数据失败。 */
   DATABASE_ERROR: 'WORKSPACE_DATABASE_ERROR',
+  /** 新建知识库时名称已存在。 */
+  CONFLICT: 'WORKSPACE_CONFLICT',
+  /** 要编辑的知识库不存在。 */
+  NOT_FOUND: 'WORKSPACE_NOT_FOUND',
 } as const
 export type WorkspaceErrorCode = typeof WORKSPACE_ERROR_CODES[keyof typeof WORKSPACE_ERROR_CODES]
 

@@ -58,7 +58,7 @@ test('workspace catalog distinguishes fresh database, stored knowledge bases and
   let fail = false
   let reads = 0
   let closes = 0
-  const kb = { id: 'existing-kb', embedding: { provider: 'siliconflow', model: 'BAAI/bge-m3', dimensions: 1024 }, documents: [{ id: 'doc-1', label: 'guide.mdx' }] }
+  const kb = { id: 'existing-kb', description: '', embedding: { provider: 'siliconflow', model: 'BAAI/bge-m3', dimensions: 1024 }, documents: [{ id: 'doc-1', label: 'guide.mdx' }] }
   t.mock.method(Pool.prototype, 'query', async (sql) => {
     reads++
     assert.match(sql, /^SELECT/)
@@ -108,8 +108,39 @@ test('MCP knowledge base listing reuses catalog metadata without reading histori
       return { rows: [{ snapshots: 'rag_vector_snapshots', vectors: 'rag_vectors', logs: 'operation_logs' }] }
     assert.ok(sql.includes('FROM rag_vector_snapshots'))
     assert.ok(!sql.includes('FROM operation_logs'))
-    return { rows: [{ id: 'kb', embedding: { provider: 'stub', model: 'private-model' }, documents: [{ id: 'doc', label: 'private-path' }] }] }
+    return { rows: [{ id: 'kb', description: '', embedding: { provider: 'stub', model: 'private-model' }, documents: [{ id: 'doc', label: 'private-path' }] }] }
   })
   t.mock.method(Pool.prototype, 'end', async () => {})
-  assert.deepEqual(await mcpServices.listKnowledgeBases(), { knowledgeBases: [{ id: 'kb', documentCount: 1 }] })
+  assert.deepEqual(await mcpServices.listKnowledgeBases(), { knowledgeBases: [{ id: 'kb', description: '', documentCount: 1 }] })
+})
+
+test('catalog merges persisted descriptions with legacy snapshots and lists empty bases without fixing a vector model', async (t) => {
+  env(t, { VECTOR_DATABASE_URL: 'postgresql://unused:unused@127.0.0.1:1/test' })
+  let indexed = true
+  t.mock.method(Pool.prototype, 'query', async (sql) => {
+    assert.match(sql, /^SELECT/)
+    if (sql.includes('to_regclass'))
+      return { rows: [{ snapshots: indexed ? 'rag_vector_snapshots' : null, vectors: indexed ? 'rag_vectors' : null, knowledgeBases: 'knowledge_bases', logs: null }] }
+    if (sql.includes('FROM rag_vector_snapshots')) {
+      return { rows: [
+        { id: 'legacy', description: '', embedding: { provider: 'stub', model: 'vector', dimensions: 2 }, documents: [{ id: 'doc', label: 'guide.md' }] },
+        { id: 'described', description: '', embedding: { provider: 'stub', model: 'vector', dimensions: 2 }, documents: [{ id: 'doc-2', label: 'notes.md' }] },
+      ] }
+    }
+    assert.ok(sql.includes('FROM knowledge_bases'))
+    return { rows: [{ id: 'described', description: '前端实践与排查' }, { id: 'empty', description: '待整理的资料' }] }
+  })
+  t.mock.method(Pool.prototype, 'end', async () => {})
+  assert.deepEqual(await mcpServices.listKnowledgeBases(), { knowledgeBases: [
+    { id: 'legacy', description: '', documentCount: 1 },
+    { id: 'described', description: '前端实践与排查', documentCount: 1 },
+    { id: 'empty', description: '待整理的资料', documentCount: 0 },
+  ] })
+  const options = await (await app.request('/api/workspace/options')).json()
+  assert.equal(options.knowledgeBases[1].embedding.model, 'vector')
+  assert.deepEqual(options.knowledgeBases[2], { id: 'empty', description: '待整理的资料', embedding: null, documents: [] })
+  indexed = false
+  const fresh = await (await app.request('/api/workspace/options')).json()
+  assert.equal(fresh.knowledgeBases.length, 2)
+  assert.ok(fresh.knowledgeBases.every(kb => kb.embedding === null && kb.documents.length === 0))
 })

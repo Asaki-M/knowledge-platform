@@ -35,6 +35,8 @@ register([NORMALIZATION_ERROR_CODES.PARSE_ERROR], { category: 'parse', status: 4
 register([HTTP_ERROR_CODES.INVALID_INPUT, INGESTION_ERROR_CODES.INVALID_DOCUMENT, QUERY_ERROR_CODES.INVALID_INPUT, QUERY_ERROR_CODES.CONTEXT_TOO_LARGE], { category: 'invalid', status: 400, message: '请求参数或内容无效。', exposeMessage: true })
 
 // 特定操作的 HTTP 提示不进入摘要日志，日志仅保存安全的基础说明。
+presentations.set(WORKSPACE_ERROR_CODES.CONFLICT, { category: 'conflict', status: 409, httpMessage: '已存在同名知识库，请换一个名称。' })
+presentations.set(WORKSPACE_ERROR_CODES.NOT_FOUND, { category: 'other', status: 404, httpMessage: '知识库不存在，请刷新列表后重试。' })
 presentations.set(INGESTION_ERROR_CODES.TASK_NOT_FOUND, { category: 'other', status: 404, httpMessage: '没有找到这个入库任务，请重新提交文档。' })
 presentations.set(INGESTION_ERROR_CODES.TASK_CONFLICT, { ...presentations.get(INGESTION_ERROR_CODES.TASK_CONFLICT)!, httpMessage: '任务仍在执行或正文、配置已变化。请等待中断完成后继续；修改内容需要新建任务。' })
 presentations.set(INGESTION_ERROR_CODES.CHECKPOINT_DATABASE_ERROR, { ...presentations.get(INGESTION_ERROR_CODES.CHECKPOINT_DATABASE_ERROR)!, httpMessage: '入库检查点保存或读取失败，已停止处理。请恢复数据库后继续重试。' })

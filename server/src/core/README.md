@@ -154,14 +154,21 @@ curl 'http://127.0.0.1:3000/api/logs/123'
 `GET /api/workspace/options` 为前端下拉选择提供真实选项：
 
 - `models.llm` / `models.embedding`：`{ provider, model }[]`，仅返回配置了凭据和有效模型名的供应商。模型可用性仍以实际调用结果为准，不返回 Key 或 Base URL，也不调用模型探测。DeepSeek 未指定模型时沿用 `deepseek-flash`。
-- `knowledgeBases`：`{ id, embedding: { provider, model, dimensions }, documents: [{ id, label }] }[]`。从现有向量快照与来源引用读取；`model` 是原入库请求的模型 ID，文档标签优先使用来源文件名/路径。列表用于选择更新目标，不提供原文回查。
+- `knowledgeBases`：`{ id, description, embedding: { provider, model, dimensions } | null, documents: [{ id, label }] }[]`。合并知识库元数据、现有向量快照与来源引用；旧库没有描述时为 `""`，新建未入库的库 `embedding` 为 `null`、`documents` 为空；`model` 是原入库请求的模型 ID，文档标签优先使用来源文件名/路径。列表用于选择更新目标，不提供原文回查。
 - `logScopes`：历史操作记录中的 `{ knowledgeBaseId, documentId }[]`，包含失败操作的范围，避免把未成功入库的文档误当成可更新文档。
 
-API 只读现有表，不初始化数据库、不读取正文或向量。首次没有表返回空目录，数据库配置或读取失败分别返回 `WORKSPACE_CONFIGURATION_ERROR` / `WORKSPACE_DATABASE_ERROR`，不冒充空库。目录查询归 `core/dao/workspace-options.ts`，配置白名单和实际请求的默认模型统一归 `core/service/model-options.ts`，`core/service/workspace-options.ts` 只组合目录与模型选项。
+选项 API 只读现有表，不初始化数据库、不读取正文或向量。首次没有表返回空目录，数据库配置或读取失败分别返回 `WORKSPACE_CONFIGURATION_ERROR` / `WORKSPACE_DATABASE_ERROR`，不冒充空库。目录查询归 `core/dao/workspace-options.ts`，配置白名单和实际请求的默认模型统一归 `core/service/model-options.ts`，`core/service/workspace-options.ts` 只组合目录与模型选项。
 
-前端通过 Popover 填写知识库名称（1–64 字符、去首尾空格、拒绝同名），名称沿用为知识库字符串标识；新文档生成 UUID，首次入库成功才持久化；同名文件默认新增，更新需从已有文档列表显式选择。已有知识库锁定原 Embedding 模型，维度由入库编排沿用；新库使用模型默认维度。失败保留正文与文档标识，成功后清空编辑器并重新读取目录。日志使用快捷时间范围，在详情中可一键按 requestId 筛选。
+前端通过 Popover 填写知识库名称（1–64 字符、去首尾空格、拒绝同名）和可选内容描述（最多 1000 字符），名称沿用为知识库字符串标识。创建后立即保存到 PostgreSQL，刷新可恢复；选择库后可通过铅笔按钮编辑或清空描述，名称不可修改。新文档生成 UUID，首次入库成功才持久化；同名文件默认新增，更新需从已有文档列表显式选择。已有向量快照的知识库锁定原 Embedding 模型，维度由入库编排沿用；新库使用模型默认维度。失败保留正文与文档标识，成功后清空编辑器并重新读取目录。日志使用快捷时间范围，在详情中可一键按 requestId 筛选。
 
-`server/test/workspace-options.test.mjs` 使用本地数据库 stub 验证配置白名单、首次空库、现有目录、历史失败范围及读取错误，不调用真实模型。
+知识库元数据接口（仅本地工作台服务提供，Vercel 的 MCP 入口不公开写接口）：
+
+- `POST /api/workspace/knowledge-bases`：`{ name, description? }`，成功返回 201 和 `{ id, description }`；描述默认空字符串，去首尾空格，同名元数据或历史快照返回 409。
+- `PATCH /api/workspace/knowledge-bases/:id`：`{ description }`，成功返回 `{ id, description }`，允许清空；ID 需 URL 编码。旧快照第一次编辑会补充元数据，不存在的库返回 404。不支持通过编辑描述改名。
+
+两接口使用严格字段校验，请求体上限 16 KiB，不调用模型。`core/service/knowledge-bases.ts` 校验输入，`core/dao/knowledge-bases.ts` 在实际写操作中惰性创建 `knowledge_bases` 表，参数化 SQL 与同连接事务保存名称和描述。描述修改不重建或改写向量快照，不改变已有 Embedding 模型。
+
+`server/test/workspace-options.test.mjs` 使用本地数据库 stub 验证配置白名单、首次空库、目录合并、历史失败范围及读取错误；`knowledge-bases.test.mjs` 覆盖创建、旧库补充描述、空库编辑、清空、同名冲突、输入校验、事务回滚及脱敏，不调用真实模型。
 
 ## 入库中断与恢复
 

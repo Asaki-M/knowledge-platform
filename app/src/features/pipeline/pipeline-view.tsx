@@ -251,7 +251,7 @@ export function PipelineView() {
                     （自动识别）
                   </p>
                   <ModelFields value={llm} onChange={setLlm} />
-                  {knowledgeBase
+                  {knowledgeBase?.embedding
                     ? (
                         <p className="field-hint">
                           向量模型沿用知识库：

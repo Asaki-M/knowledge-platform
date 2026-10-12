@@ -675,13 +675,41 @@ summary:focus-visible {
   display: flex;
   align-items: flex-end;
   gap: 12px;
+  flex-wrap: wrap;
 }
 .knowledge-picker > .field {
   flex: 1;
-  min-width: 0;
+  min-width: 160px;
 }
 .knowledge-picker > button {
   flex-shrink: 0;
+}
+.knowledge-description {
+  margin-top: -8px;
+  white-space: pre-wrap;
+}
+.knowledge-base-editor {
+  max-height: var(--radix-popover-content-available-height);
+  overflow-y: auto;
+}
+.knowledge-description-editor {
+  width: 100%;
+  min-height: 110px;
+  resize: vertical;
+  padding: 10px;
+  border: 1px solid #e1e5dc;
+  border-radius: 6px;
+  background: #fdfefa;
+  color: #3f4b38;
+  font-size: 15px;
+  line-height: 1.6;
+}
+.knowledge-description-editor:focus-visible {
+  outline: 2px solid #597d5033;
+  border-color: #597d50;
+}
+.knowledge-description-editor::placeholder {
+  color: #66725e;
 }
 .workspace-options-error {
   margin-bottom: 24px;

@@ -50,7 +50,7 @@ function fixture() {
   const services = {
     async listKnowledgeBases() {
       calls.push('list')
-      return { knowledgeBases: [{ id: 'kb', documentCount: 1 }] }
+      return { knowledgeBases: [{ id: 'kb', description: '双路检索原理与实践', documentCount: 1 }] }
     },
     async search(request) {
       calls.push(request)
@@ -122,7 +122,7 @@ test('public MCP authenticates discovery and exposes only two read-only tools th
     assert.ok(tool.outputSchema)
   }
   const listed = await client.callTool({ name: 'list_knowledge_bases', arguments: {} })
-  assert.deepEqual(listed.structuredContent, { knowledgeBases: [{ id: 'kb', documentCount: 1 }] })
+  assert.deepEqual(listed.structuredContent, { knowledgeBases: [{ id: 'kb', description: '双路检索原理与实践', documentCount: 1 }] })
   const evidence = await client.callTool({ name: 'search_knowledge', arguments: { knowledgeBaseId: ' kb ', question: '如何检索？' } })
   assert.equal(evidence.structuredContent.status, 'found')
   assert.deepEqual(evidence.structuredContent.sources, f.result.sources)

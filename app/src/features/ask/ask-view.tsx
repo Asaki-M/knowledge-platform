@@ -19,7 +19,7 @@ export function AskView() {
   const { result, pending } = operation
 
   const model = selectedModel(llm, options?.models.llm ?? [])
-  const ready = !!model && !optionsPending && !optionsError && !!options?.knowledgeBases.some(kb => kb.id === knowledgeBaseId)
+  const ready = !!model && !optionsPending && !optionsError && !!options?.knowledgeBases.some(kb => kb.id === knowledgeBaseId && kb.documents.length > 0)
 
   function submit() {
     if (!question.trim() || !knowledgeBaseId.trim() || pending || !ready || !model)
@@ -55,7 +55,7 @@ export function AskView() {
           >
             <fieldset disabled={pending} className="form-fields">
               <KnowledgeBaseField />
-              {options && !options.knowledgeBases.some(kb => kb.id === knowledgeBaseId) && (
+              {options && !options.knowledgeBases.some(kb => kb.id === knowledgeBaseId && kb.documents.length > 0) && (
                 <div className="setup-hint">
                   <p className="field-hint">还没有可提问的知识库，请先导入文档。</p>
                   <Button type="button" variant="outline" size="sm" onClick={() => setSection('pipeline')}>

@@ -1,12 +1,12 @@
-import type { ApiError } from '@/utils/api'
 import { create } from 'zustand'
-import { errorMessage, requestJson } from '@/utils/api'
+import { ApiError, errorMessage, requestJson } from '@/utils/api'
 
 export type Section = 'logs' | 'ask' | 'pipeline'
 export interface ModelChoice { provider: string, model: string }
 export interface KnowledgeBaseOption {
   id: string
-  embedding: ModelChoice & { dimensions: number | null }
+  description: string
+  embedding: (ModelChoice & { dimensions: number | null }) | null
   documents: { id: string, label: string }[]
 }
 interface WorkspaceOptions {
@@ -17,13 +17,14 @@ interface WorkspaceOptions {
 interface WorkspaceState {
   section: Section
   knowledgeBaseId: string
-  drafts: string[]
   question: string
   options: WorkspaceOptions | null
   optionsPending: boolean
   optionsError: ApiError | null
+  knowledgeBaseSaving: boolean
   refreshOptions: () => Promise<void>
-  createKnowledgeBase: (name: string) => string | null
+  createKnowledgeBase: (name: string, description: string) => Promise<ApiError | null>
+  updateKnowledgeBaseDescription: (id: string, description: string) => Promise<ApiError | null>
   setSection: (section: Section) => void
   setKnowledgeBaseId: (id: string) => void
   setQuestion: (question: string) => void
@@ -32,33 +33,53 @@ interface WorkspaceState {
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   section: 'ask',
   knowledgeBaseId: '',
-  drafts: [],
   question: '',
   options: null,
   optionsPending: false,
   optionsError: null,
+  knowledgeBaseSaving: false,
   async refreshOptions() {
-    if (get().optionsPending)
+    if (get().optionsPending || get().knowledgeBaseSaving)
       return
     set({ optionsPending: true, optionsError: null })
     try {
       const { data } = await requestJson<WorkspaceOptions>('/api/workspace/options')
-      set(state => ({ options: data, drafts: state.drafts.filter(id => !data.knowledgeBases.some(kb => kb.id === id)), knowledgeBaseId: state.knowledgeBaseId || data.knowledgeBases[0]?.id || '' }))
+      set(state => ({ options: data, knowledgeBaseId: state.knowledgeBaseId || data.knowledgeBases[0]?.id || '' }))
     }
     catch (error) {
       set({ optionsError: errorMessage(error) })
     }
     finally { set({ optionsPending: false }) }
   },
-  createKnowledgeBase(name) {
+  async createKnowledgeBase(name, description) {
     const id = name.trim()
     if (!id || id.length > 64)
-      return '请输入 1–64 个字符的知识库名称。'
-    if (get().drafts.includes(id) || get().options?.knowledgeBases.some(kb => kb.id === id))
-      return '已存在同名知识库，请换一个名称。'
-    // 沿用服务端字符串标识契约，名称即知识库标识；首次入库后可从目录恢复。
-    set(state => ({ knowledgeBaseId: id, drafts: [...state.drafts, id] }))
-    return null
+      return new ApiError('请输入 1–64 个字符的知识库名称。')
+    if (get().options?.knowledgeBases.some(kb => kb.id === id))
+      return new ApiError('已存在同名知识库，请换一个名称。')
+    if (get().knowledgeBaseSaving || get().optionsPending)
+      return new ApiError('正在更新知识库，请稍后再试。')
+    set({ knowledgeBaseSaving: true })
+    try {
+      const { data } = await requestJson<{ id: string, description: string }>('/api/workspace/knowledge-bases', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: id, description }) })
+      // 创建成功即持久化；空库没有向量空间，首次入库仍可自由选择模型。
+      set(state => ({ knowledgeBaseId: data.id, options: state.options ? { ...state.options, knowledgeBases: [...state.options.knowledgeBases, { ...data, embedding: null, documents: [] }] } : null }))
+      return null
+    }
+    catch (error) { return errorMessage(error) }
+    finally { set({ knowledgeBaseSaving: false }) }
+  },
+  async updateKnowledgeBaseDescription(id, description) {
+    if (get().knowledgeBaseSaving || get().optionsPending)
+      return new ApiError('正在更新知识库，请稍后再试。')
+    set({ knowledgeBaseSaving: true })
+    try {
+      const { data } = await requestJson<{ id: string, description: string }>(`/api/workspace/knowledge-bases/${encodeURIComponent(id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ description }) })
+      set(state => ({ options: state.options ? { ...state.options, knowledgeBases: state.options.knowledgeBases.map(kb => kb.id === data.id ? { ...kb, description: data.description } : kb) } : null }))
+      return null
+    }
+    catch (error) { return errorMessage(error) }
+    finally { set({ knowledgeBaseSaving: false }) }
   },
   setSection: section => set({ section }),
   setKnowledgeBaseId: knowledgeBaseId => set({ knowledgeBaseId }),

@@ -95,7 +95,7 @@ pnpm dev
 
 - `core/router` 负责 HTTP 路径与请求转发，在 `router/index.ts` 注册。
 - `core/service` 负责 API 输入处理、业务校验、调用能力模块和组织响应。
-- `core/dao` 负责操作日志、工作台选项和入库检查点；通用文档与 Wiki 查询尚未实现，按需新增模块，不预建空目录。
+- `core/dao` 负责操作日志、知识库元数据、工作台选项和入库检查点；通用文档与 Wiki 查询尚未实现，按需新增模块，不预建空目录。
 - `rag` 负责入库和问答能力；Embedding、Rerank 接入各自归所属模块，向量存储也归 RAG 所有。
 - `llm` 负责通用大模型调用，可被 Wiki 化、答案生成等能力复用。
 - `telemetry` 负责 SDK 与通用日志，HTTP 追踪放在 `core/middleware/tracing.ts`。
@@ -113,7 +113,7 @@ HTTP → core/router → core/service → core/dao
 
 - 桌面工作台包含知识问答、RAG 过程和操作日志三个页面，分别接入 `/api/search`、`/api/documents/ingest` 和 `/api/logs`。
 - Zustand 保存页面切换、知识库 ID 和问题草稿；切换页面保留请求及结果，普通草稿刷新后清空；浏览器仅保存最近入库任务 ID，不将正文和回答写入浏览器存储。
-- `GET /api/workspace/options` 提供现有知识库、文档、日志筛选范围和已配置模型。知识库可选择或通过 Popover 填写名称创建，新增文档使用 UUID；更新已有文档需明确选择目标。来源自动取文件名，已有知识库沿用向量模型与维度，名称仅在新建时填写，入库与问答仅问题和正文需要手填，日志页另提供可选的请求 ID 查询。选项读取不会调用模型或创建数据表。
+- `GET /api/workspace/options` 提供现有知识库、文档、日志筛选范围和已配置模型。知识库可选择或通过 Popover 填写名称和可选内容描述创建，名称与描述立即保存到 Neon；选择库后可编辑或清空描述。新增文档使用 UUID；更新已有文档需明确选择目标。来源自动取文件名，已入库知识库沿用向量模型与维度，空库首次入库时选择模型，名称仅在新建时填写，描述仅在创建或编辑时填写，日志页另提供可选的请求 ID 查询。选项读取不会调用模型或创建数据表。
 - 前端进入工作台时读取健康检查一次，后续仅手动刷新，显示连接、检查中、离线状态。
 - `GET /api/health` 返回 `status`、`service`、`timestamp`；未知路由返回 JSON 404；错误响应带请求 ID。
 - RAG 过程页支持粘贴或读取本地 Markdown / MDX 文件为 JSON 正文，选择模型后入库，实时展示 Normalize 到入库的 8 个阶段、逐节提取进度及各阶段产物预览。相同知识库与文档 ID 完整更新原文档。
@@ -377,7 +377,7 @@ throw new AppError(
 
 ### ChatGPT MCP
 
-已提供只读 `/mcp`：查询知识库列表和检索最多 5 条完整证据，由 ChatGPT 组织答案。检索复用现有双路向量搜索与 Rerank，不调用后端回答模型。公网接入使用个人 OAuth 授权码 + PKCE，授权记录保存在 Neon；新增 Vercel 入口只开放 MCP / OAuth，本地工作台继续负责入库。部署环境变量、静态客户端凭据和 ChatGPT 连接步骤见 [MCP 部署说明](server/src/core/mcp.md)。当前已实现代码与本地模拟验证，尚未完成用户账号的 Vercel 部署或 ChatGPT 连接。
+已提供只读 `/mcp`：查询知识库 ID、内容描述与文档数量，按范围选择库并检索最多 5 条完整证据，由 ChatGPT 组织答案。检索复用现有双路向量搜索与 Rerank，不调用后端回答模型。公网接入使用个人 OAuth 授权码 + PKCE，授权记录保存在 Neon；新增 Vercel 入口只开放 MCP / OAuth，本地工作台继续负责入库。部署环境变量、静态客户端凭据和 ChatGPT 连接步骤见 [MCP 部署说明](server/src/core/mcp.md)。当前已实现代码与本地模拟验证，尚未完成用户账号的 Vercel 部署或 ChatGPT 连接。
 
 ### HTTP 问答
 
