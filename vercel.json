@@ -2,8 +2,8 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "regions": ["sin1"],
-  "buildCommand": "pnpm --filter @knowledge/server build && mkdir -p server/dist/public",
-  "outputDirectory": "server/dist/public",
+  "buildCommand": "pnpm --filter @knowledge/server build",
+  "outputDirectory": "server/public",
   "functions": {
     "api/mcp.ts": {
       "maxDuration": 300,

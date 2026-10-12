@@ -44,7 +44,7 @@ MCP 每次请求都校验 Bearer token；缺少或无效令牌返回 401 和 `WW
 ## 部署到 Vercel
 
 1. 在 Vercel 导入此仓库，**Root Directory 选仓库根目录，Framework Preset 选 Other**。工作区仍为 `@knowledge/server`，无需将 `server/` 改名。
-2. 根目录 `vercel.json` 已指定服务端构建、300 秒函数时限及新加坡 `sin1` 区域，匹配当前 Neon 区域。构建后生成空的 `server/dist/public`，并将其指定为静态输出目录，避免 Other 预设默认公开仓库根目录。Build Command / Output Directory 由配置文件控制，页面保持默认即可。`api/mcp.ts` 仅转发已编译的 `server/dist/vercel.js`，不监听端口、不发布前端工作台。数据库与模型凭据只放在 Vercel 服务端环境变量中。
+2. 根目录 `vercel.json` 已指定服务端构建、300 秒函数时限及新加坡 `sin1` 区域，匹配当前 Neon 区域。静态输出目录为 `server/public`，仅含 `robots.txt`，满足 Vercel 的非空输出要求，也避免 Other 预设默认公开仓库根目录。Build Command / Output Directory 由配置文件控制；若页面已手动覆盖，分别改为 `pnpm --filter @knowledge/server build` / `server/public`。`api/mcp.ts` 仅转发已编译的 `server/dist/vercel.js`，不监听端口、不发布前端工作台。数据库与模型凭据只放在 Vercel 服务端环境变量中。
 3. 配置 Production 环境变量：`VECTOR_DATABASE_URL`、上表 MCP 配置、实际知识库所用 Embedding 的 `GOOGLE_*` 或 `EMBEDDING_*`，以及 SiliconFlow Rerank 的 `RERANK_*`（可沿用 `EMBEDDING_*`）。添加 `ENABLE_EXPERIMENTAL_COREPACK=1`，让 Vercel 使用根目录 `packageManager` 指定的 pnpm 版本。只读 MCP 不需要 `DEEPSEEK_*` / `OPENAI_*`。配置 `OTEL_TRACES_EXPORTER=none` 和 `OTEL_LOGS_EXPORTER=none` 可关闭控制台导出；需要 Collector 时再显式配置 OTLP。
 4. 首次部署获得固定项目域名后，将它设置为 `MCP_PUBLIC_URL` 并重新部署。该配置必须与 ChatGPT 填写的 MCP 地址属于同一域名。正式域名的 Vercel Deployment Protection 需允许 ChatGPT 访问；应用自身仍通过 OAuth 保护资料。
 5. 打开 `https://项目域名/.well-known/oauth-authorization-server` 验证发现文档。随后完成 ChatGPT 授权并查看工具列表；首次实际授权会初始化授权记录表。
