@@ -26,9 +26,13 @@ export function createMcpAuthRouter(config: () => McpAuthConfig = mcpAuthConfig,
   const router = new Hono()
   const securityHeaders = createMiddleware(async (c, next) => {
     c.header('Cache-Control', 'no-store')
-    c.header('Referrer-Policy', 'no-referrer')
+    // 同站表单保留 Origin 以供 CSRF 校验，跨站回调仍不发送 Referer。
+    c.header('Referrer-Policy', c.req.path === '/oauth/authorize' ? 'same-origin' : 'no-referrer')
     c.header('X-Content-Type-Options', 'nosniff')
-    c.header('Content-Security-Policy', 'default-src \'none\'; style-src \'unsafe-inline\'; form-action \'self\'; frame-ancestors \'none\'; base-uri \'none\'')
+    // 浏览器也会检查表单提交后的跳转目标；仅放行预配置 OAuth 回调的来源。
+    const callbackOrigins = c.req.path === '/oauth/authorize' ? [...new Set(config().redirects.map(uri => new URL(uri).origin))] : []
+    const formSources = ['\'self\'', ...callbackOrigins].join(' ')
+    c.header('Content-Security-Policy', `default-src 'none'; style-src 'unsafe-inline'; form-action ${formSources}; frame-ancestors 'none'; base-uri 'none'`)
     await next()
   })
   router.use('/oauth/*', bodyLimit({ maxSize: 32768 }), securityHeaders)

@@ -36,7 +36,7 @@ OAuth 发现地址：
 
 - `/.well-known/oauth-protected-resource/mcp`（同时支持不带 `/mcp` 的发现地址）
 - `/.well-known/oauth-authorization-server`
-- `/oauth/authorize`：浏览器授权页面，校验提交来源，不缓存页面或传递 Referer
+- `/oauth/authorize`：浏览器授权页面，校验提交来源，不缓存页面；使用 `same-origin` 保留同站表单的 Origin，跨域跳转不发送 Referer。CSP 的 `form-action` 仅允许本站和已配置回调的来源，保证授权后能返回 ChatGPT
 - `/oauth/token`：支持 `client_secret_post` 和 `client_secret_basic`
 
 MCP 每次请求都校验 Bearer token；缺少或无效令牌返回 401 和 `WWW-Authenticate` 发现地址。工具列表也需要授权。Host / Origin 校验避免其他域名调用；不接收任意回调地址，不获取客户端提供的远程 URL。协议请求体上限 32 KiB；GET / DELETE 返回 405，不持有常驻连接。[OpenAI Docs 的 OAuth 要求](https://developers.openai.com/plugins/build/auth)
