@@ -1,0 +1,71 @@
+server/src/core/README.md
+  s_9e9a42ff9ba71f::t_d3d01b40ea6045 157,160,162,164-171
+app/src/features/workspace/knowledge-base-field.tsx
+  s_9e9a42ff9ba71f::t_4b715a51849029 1-2,10-22,24-32,35
+  s_9e9a42ff9ba71f::t_01d24ebc8de564 23
+  s_9e9a42ff9ba71f::t_1f94cd50dce642 56
+  s_9e9a42ff9ba71f::t_06a75ac90cbe5a 40-55,57-69,71-115
+app/src/styles.css
+  s_9e9a42ff9ba71f::t_4b715a51849029 678,682,687-690,695-713
+  s_9e9a42ff9ba71f::t_1f94cd50dce642 691-694
+server/src/error-codes.ts
+  s_9e9a42ff9ba71f::t_803a72a55f5bb0 254,258,260-263
+server/test/knowledge-bases.test.mjs
+  s_9e9a42ff9ba71f::t_0109871ec96f00 23-25,47-52
+  s_9e9a42ff9ba71f::t_3aa3cb92f879a2 1-22,26-46,53-119
+server/src/core/dao/knowledge-bases.ts
+  s_9e9a42ff9ba71f::t_803a72a55f5bb0 1-29,31-60
+  s_9e9a42ff9ba71f::t_06a75ac90cbe5a 30
+server/src/core/dao/workspace-options.ts
+  s_9e9a42ff9ba71f::t_803a72a55f5bb0 1,9-10,20,23,34-44
+app/src/features/workspace/store.ts
+  s_9e9a42ff9ba71f::t_4b715a51849029 8-9,24,26-27,40,42,47,54,58,60,62-73,75-82
+  s_9e9a42ff9ba71f::t_01d24ebc8de564 2,57,59,61,74
+app/src/features/ask/ask-view.tsx
+  s_9e9a42ff9ba71f::t_4b715a51849029 22,58
+server/test/workspace-options.test.mjs
+  s_9e9a42ff9ba71f::t_3aa3cb92f879a2 116-145
+  s_9e9a42ff9ba71f::t_aaf5b83962abc8 61,111,114
+  s_9e9a42ff9ba71f::t_89fa917d0bdd65 115
+app/src/features/pipeline/pipeline-view.tsx
+  s_9e9a42ff9ba71f::t_4b715a51849029 254
+server/src/core/service/knowledge-bases.ts
+  s_9e9a42ff9ba71f::t_803a72a55f5bb0 1-22
+AGENTS.md
+  s_9e9a42ff9ba71f::t_d3d01b40ea6045 239-240,251-256
+server/src/core/mcp.md
+  s_9e9a42ff9ba71f::t_d3d01b40ea6045 9,12
+  s_9e9a42ff9ba71f::t_8ecd7a76cf78e5 13
+README.md
+  s_9e9a42ff9ba71f::t_d3d01b40ea6045 98,116,380
+server/src/core/router/workspace.ts
+  s_9e9a42ff9ba71f::t_7cdbcbb693a7ad 10-12,16-18
+  s_9e9a42ff9ba71f::t_803a72a55f5bb0 2-4,7-9,13-15,19-20
+server/test/mcp.test.mjs
+  s_9e9a42ff9ba71f::t_aaf5b83962abc8 53,125
+server/src/core/service/mcp.ts
+  s_9e9a42ff9ba71f::t_803a72a55f5bb0 45,52,65,83,85
+server/src/core/error-presentation.ts
+  s_9e9a42ff9ba71f::t_803a72a55f5bb0 38-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ae6d326852ae258416aef1a102e71e41f4fd2ab1",
+  "prompts": {},
+  "humans": {
+    "h_8d050896203f0f": {
+      "author": "qinghuan <1041220793@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_9e9a42ff9ba71f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a123c2-8ba6-7523-b947-ba2797fc65b8",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "qinghuan <1041220793@qq.com>"
+    }
+  }
+}
