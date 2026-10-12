@@ -1,0 +1,32 @@
+server/src/core/mcp.md
+  s_9e9a42ff9ba71f::t_db3e6d3832d217 39
+server/test/mcp.test.mjs
+  s_9e9a42ff9ba71f::t_db3e6d3832d217 182,190
+  s_9e9a42ff9ba71f::t_7dd436e6535506 183,197-199
+  s_9e9a42ff9ba71f::t_4787e1906a600a 184
+server/src/core/router/mcp-auth.ts
+  s_9e9a42ff9ba71f::t_4787e1906a600a 34
+  s_9e9a42ff9ba71f::t_7dd436e6535506 32-33,35
+  s_9e9a42ff9ba71f::t_db3e6d3832d217 29-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c7c7981f9fec9293d0ac473a21340c113bfac4ee",
+  "prompts": {},
+  "humans": {
+    "h_8d050896203f0f": {
+      "author": "qinghuan <1041220793@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_9e9a42ff9ba71f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a123c2-8ba6-7523-b947-ba2797fc65b8",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "qinghuan <1041220793@qq.com>"
+    }
+  }
+}
