@@ -1,0 +1,34 @@
+server/src/core/mcp.md
+  s_9e9a42ff9ba71f::t_323ea9ba709f54 47
+api/mcp.mjs
+  s_9e9a42ff9ba71f::t_323ea9ba709f54 1
+AGENTS.md
+  s_9e9a42ff9ba71f::t_323ea9ba709f54 214
+server/test/mcp.test.mjs
+  s_9e9a42ff9ba71f::t_323ea9ba709f54 302
+vercel.json
+  s_9e9a42ff9ba71f::t_323ea9ba709f54 8
+README.md
+  s_9e9a42ff9ba71f::t_323ea9ba709f54 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "79ae3df4221427456e757706054a47cfe45491ab",
+  "prompts": {},
+  "humans": {
+    "h_8d050896203f0f": {
+      "author": "qinghuan <1041220793@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_9e9a42ff9ba71f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a123c2-8ba6-7523-b947-ba2797fc65b8",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "qinghuan <1041220793@qq.com>"
+    }
+  }
+}
