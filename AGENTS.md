@@ -211,7 +211,7 @@ server/src/
 
 ## 入库与模型选择接口
 
-- 只读 MCP 位于 `/mcp`，工具为 `list_knowledge_bases` / `search_knowledge`；HTTP 传输和 OAuth 属于 `core/router`，工具与授权编排属于 `core/service`，授权码/刷新令牌摘要由 `core/dao/mcp-auth.ts` 保存在 Neon。检索复用 `rag/query.searchEvidence`，由 ChatGPT 组织答案，不调用后端回答 LLM。Vercel 的根目录 `api/mcp.ts` 仅转发服务端编译产物，独立公网应用只开放 MCP/OAuth，不发布入库和操作日志接口。部署说明见 `server/src/core/mcp.md`。
+- 只读 MCP 位于 `/mcp`，工具为 `list_knowledge_bases` / `search_knowledge`；HTTP 传输和 OAuth 属于 `core/router`，工具与授权编排属于 `core/service`，授权码/刷新令牌摘要由 `core/dao/mcp-auth.ts` 保存在 Neon。检索复用 `rag/query.searchEvidence`，由 ChatGPT 组织答案，不调用后端回答 LLM。Vercel 的根目录 `api/mcp.mjs` 使用原生 ESM，仅转发服务端编译产物，避免平台将 TypeScript 入口编译为 CommonJS 后 require() ESM。独立公网应用只开放 MCP/OAuth，不发布入库和操作日志接口。部署说明见 `server/src/core/mcp.md`。
 - MCP 使用个人 OAuth 授权码 + PKCE S256 和静态客户端凭据，校验回调、resource、issuer、scope、过期与签名。`MCP_TOKEN_SECRET` 与客户端密钥、个人访问密码必须各自独立；全部只保存在服务端私有配置。授权码与刷新令牌在数据库事务中一次性消费，不依赖进程内状态。新增模型验证继续使用 stub，不访问真实 Neon 或模型服务。
 
 - `POST /api/documents/ingest` 输入 JSON 文档正文，执行 Normalize 到双索引入库；`POST /api/search` 提供问答。接口契约见 `server/src/core/README.md`。

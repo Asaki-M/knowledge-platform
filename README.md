@@ -21,7 +21,7 @@ pnpm dev
 
 ```text
 .
-├── api/mcp.ts                      # Vercel 平台入口，仅转发服务端 MCP/OAuth
+├── api/mcp.mjs                     # Vercel 原生 ESM 入口，仅转发服务端 MCP/OAuth
 ├── app/                            # React + Vite + Tailwind CSS + Zustand
 │   ├── components.json             # shadcn/ui 配置
 │   └── src/

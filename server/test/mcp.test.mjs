@@ -299,7 +299,7 @@ test('Vercel Node entry restores only allowed rewritten routes without opening w
     t.after(() => previous === undefined ? delete process.env[key] : process.env[key] = previous)
   }
 
-  const { default: handler } = await import('../dist/vercel.js')
+  const { default: handler } = await import('../../api/mcp.mjs')
   const server = createServer(handler)
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
   t.after(async () => {

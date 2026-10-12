@@ -5,7 +5,7 @@
   "buildCommand": "pnpm --filter @knowledge/server build",
   "outputDirectory": "server/public",
   "functions": {
-    "api/mcp.ts": {
+    "api/mcp.mjs": {
       "maxDuration": 300,
       "includeFiles": "server/dist/**"
     }
