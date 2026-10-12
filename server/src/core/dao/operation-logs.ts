@@ -54,7 +54,7 @@ const columns = `id::text, type, status, request_id AS "requestId", trace_id AS 
   to_char(finished_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "finishedAt",
   duration_ms AS "durationMs", http_status AS "httpStatus", summary, error`
 
-/** API 操作记录与 RAG 向量表独立；复用本地 PostgreSQL 配置，不依赖 pgvector 扩展。 */
+/** API 操作记录与 RAG 向量表独立；复用 VECTOR_DATABASE_URL，不依赖 pgvector 扩展。 */
 export class OperationLogDao {
   private readonly pool: Pool
 

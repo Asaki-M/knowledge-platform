@@ -15,12 +15,13 @@ pnpm dev
 - 健康检查：http://127.0.0.1:3000/api/health
 - `pnpm dev:app` / `pnpm dev:server`：单独启动前端或后端。
 
-默认配置可以直接运行。需要自定义时，将 `app/.env.example`、`server/.env.example` 分别复制为同目录的 `.env`。后端修改端口后，同步修改前端的 `API_PROXY_TARGET`。前端开发服务器与预览服务器将 `/api` 代理到 Hono，无需额外 CORS 配置。
+基础服务和健康检查可以直接运行；知识库操作需在 `server/.env` 配置 Neon 的 `VECTOR_DATABASE_URL`，见下文。首次配置时，将 `app/.env.example`、`server/.env.example` 分别复制为同目录的 `.env`，已有配置只修改所需变量。后端修改端口后，同步修改前端的 `API_PROXY_TARGET`。前端开发服务器与预览服务器将 `/api` 代理到 Hono，无需额外 CORS 配置。
 
 ## 目录
 
 ```text
 .
+├── api/mcp.ts                      # Vercel 平台入口，仅转发服务端 MCP/OAuth
 ├── app/                            # React + Vite + Tailwind CSS + Zustand
 │   ├── components.json             # shadcn/ui 配置
 │   └── src/
@@ -121,7 +122,7 @@ HTTP → core/router → core/service → core/dao
 - 入库任务优先展示真实阶段与章节进度，中断 / 继续重试位于进度旁；新文档表单在处理期间折叠，展开后创建新任务，与继续原任务明确区分。
 - 入库支持 NDJSON 实时阶段、中断、继续重试与刷新恢复最近任务。完整阶段、已完成章节和向量批次保存在 PostgreSQL，服务重启后仍可按任务 ID 恢复。原始文件存档、跨任务变更节复用和 Wiki 浏览页未实现。
 
-已提供通用文本生成接口和 OpenAI / DeepSeek 适配器。已实现可扩展的 Normalization 接口和 Nextra MDX 适配器。已实现 H1–H3 分节、来源版本、结构化知识提取、跨节语义聚合、独立 Chunk Build 和增量影响计算。已接入 SiliconFlow 与 Google 的文本 Embedding，推荐模型见下文。已实现 Chunk 原文加本节 Wiki 信息的 embeddingText、Wiki 节点 embeddingText 和双索引向量生成。已接入本地 PostgreSQL / pgvector，原子写入双索引向量、文本与来源元数据。已提供 `POST /api/search`：Chunk / Wiki 双路各取 Top 30，合并去重后使用 SiliconFlow Rerank 取 Top 5，交给 DeepSeek 生成带引用的答案。Wiki 页面接入、原始文件存档、Graph Expand 与自动文档级增量入库仍待实现。
+已提供通用文本生成接口和 OpenAI / DeepSeek 适配器。已实现可扩展的 Normalization 接口和 Nextra MDX 适配器。已实现 H1–H3 分节、来源版本、结构化知识提取、跨节语义聚合、独立 Chunk Build 和增量影响计算。已接入 SiliconFlow 与 Google 的文本 Embedding，推荐模型见下文。已实现 Chunk 原文加本节 Wiki 信息的 embeddingText、Wiki 节点 embeddingText 和双索引向量生成。已接入 PostgreSQL / pgvector，原子写入双索引向量、文本与来源元数据。已提供 `POST /api/search`：Chunk / Wiki 双路各取 Top 30，合并去重后使用 SiliconFlow Rerank 取 Top 5，交给 DeepSeek 生成带引用的答案。Wiki 页面接入、原始文件存档、Graph Expand 与自动文档级增量入库仍待实现。
 
 计划中的链路：
 
@@ -360,27 +361,29 @@ throw new AppError(
 
 使用 DeepSeek 做知识提取的组合示例见 [Indexing 文档](server/src/rag/indexing/README.md)。短文真实测试的各阶段数据、实际 embeddingText、向量和内存相似度检查见 [双索引报告](server/test/reports/dual-index/report.md)。`rag/ingestion.indexAndStore` 已连接 pgvector 事务写入；已提供单文档新增 / 更新接口，按变更节复用模型结果仍待实现；问答接口见 [双路检索与回答](server/src/rag/query/README.md)。
 
-## 本地向量数据库
+## Neon 向量数据库
 
-本地使用 PostgreSQL 17 + pgvector 0.8.6，配置在根目录 `compose.yaml`，仅监听 `127.0.0.1:5432`，持久化到 Docker 卷 `knowledge-platform_vector-data`。在 `server/.env` 中设置 `VECTOR_DB_PASSWORD` 和对应的 `VECTOR_DATABASE_URL`（见 `.env.example`）；当前开发机已完成配置。
+数据库使用 Neon PostgreSQL / pgvector。在 Neon 创建项目时开启 Postgres database，推荐 PostgreSQL 17；区域尽量与后端部署区域一致。当前功能只需要数据库，其他 Neon 服务可保持关闭。
 
-```sh
-pnpm db:up
-pnpm db:status
-pnpm db:stop
-```
+在 Neon 连接面板关闭 `Connection pooling`，复制直连连接串，填入私有 `server/.env` 的 `VECTOR_DATABASE_URL`，完整保留 SSL 参数。密码包含在连接串中，无需另设数据库密码变量。入库任务通过 PostgreSQL 会话锁防止并发重试，不能使用带 `-pooler` 的事务池地址。服务端继续使用 `pg`，无需替换为 Neon 专用 SDK。
 
-`db:stop` 只停止服务，保留数据；需要 Docker Desktop 运行。应用启动不会自动初始化数据库或调用模型，使用 `PgVectorStore.initialize()` 显式创建扩展与表。`VECTOR_DATABASE_URL` 仅供服务端使用，不应暴露给前端。
+应用启动和健康检查不会连接或初始化数据库，也不会调用模型。单文档入库接口会显式调用 `PgVectorStore.initialize()` 创建 `vector` 扩展和表，日志与入库检查点表在相关操作时初始化；单独使用向量库时由调用方显式初始化。`VECTOR_DATABASE_URL` 仅供服务端使用，部署时配置到后端环境变量，不应暴露给前端。
 
 `indexAndStore({ chunks, wiki }, embeddingClient, store, options)` 构造文本、生成向量并写入完整知识库快照；两类向量的新增、更新和旧记录删除在同一事务内完成，使用预期版本避免并发覆盖。**输入必须包含该知识库全部当前 Chunk 和 Wiki 节点，不能直接把单文档增量当成完整快照传入。** 向量层保存向量、embeddingText、来源引用和版本；应用层另行保存入库任务正文与完整阶段检查点，通用文档/Wiki 浏览接口仍待实现。
 
-接口、查询示例和数据库测试见 [Vector Store 文档](server/src/rag/vector-store/README.md)。实测数据已写入 `knowledge` 数据库，知识库 ID 为 `dual-index-demo`，共 2 条 Chunk、10 条 Wiki 向量；详见 [数据库验证数据](server/test/reports/dual-index/09-database.json)。
+接口、查询示例和数据库测试见 [Vector Store 文档](server/src/rag/vector-store/README.md)。新建 Neon 数据库不会自动包含原本的本地数据，已有知识库需单独迁移。历史本地实测使用 `knowledge` 数据库，知识库 ID 为 `dual-index-demo`，共 2 条 Chunk、10 条 Wiki 向量；详见 [数据库验证数据](server/test/reports/dual-index/09-database.json)。
 
 ## 双路检索与回答
 
+### ChatGPT MCP
+
+已提供只读 `/mcp`：查询知识库列表和检索最多 5 条完整证据，由 ChatGPT 组织答案。检索复用现有双路向量搜索与 Rerank，不调用后端回答模型。公网接入使用个人 OAuth 授权码 + PKCE，授权记录保存在 Neon；新增 Vercel 入口只开放 MCP / OAuth，本地工作台继续负责入库。部署环境变量、静态客户端凭据和 ChatGPT 连接步骤见 [MCP 部署说明](server/src/core/mcp.md)。当前已实现代码与本地模拟验证，尚未完成用户账号的 Vercel 部署或 ChatGPT 连接。
+
+### HTTP 问答
+
 `POST /api/search` 接收知识库 ID 和问题，两路分别检索 Chunk embeddingText 与 Wiki 节点向量，各取最多 30 条，按 ID / 完全相同的文本去重，使用 `BAAI/bge-reranker-v2-m3` 重排取前 5 条，再交给所选 DeepSeek / OpenAI 汇总回答。返回答案、引用来源、各阶段数量、向量分数、重排分数及模型用量。
 
-启动数据库和服务后，可直接查询已有示例知识库：
+完成数据库配置、文档入库并启动服务后，可查询对应知识库（将示例 ID 替换为实际知识库 ID）：
 
 ```bash
 curl http://127.0.0.1:3000/api/search \

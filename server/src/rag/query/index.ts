@@ -17,27 +17,34 @@ export interface QueryRequest {
   signal?: AbortSignal
 }
 
-export interface QueryResult {
-  status: 'answered' | 'no_results'
-  answer: string
+export interface EvidenceResult {
+  status: 'found' | 'no_results'
   sources: AnswerSource[]
   snapshotRevision: string | null
   counts: { chunks: number, wikiNodes: number, merged: number, duplicates: number, selected: number }
   embedding: Omit<EmbeddingResponse, 'embeddings'> | null
   rerank: RerankResponse | null
+}
+
+export interface QueryResult extends Omit<EvidenceResult, 'status'> {
+  status: 'answered' | 'no_results'
+  answer: string
   generation: Omit<LlmResponse, 'text'> | null
 }
+
+export interface EvidenceDependencies { store: VectorQueryStore, embedding: EmbeddingClient, reranker: Reranker }
+export interface EvidenceOptions { rerankModel: string, embeddingDimensions?: number, embedding?: { provider: string, model?: string, dimensions?: number } }
 
 export function validateQueryRequest(request: QueryRequest): void {
   if (!isNonEmptyString(request.knowledgeBaseId) || request.knowledgeBaseId.length > 256 || !isNonEmptyString(request.question) || request.question.length > 4000)
     throw new AppError(CODES.INVALID_INPUT, 'knowledgeBaseId and a question of at most 4000 characters are required')
 }
 
-/** 双路各取 30，合并后由独立重排模型选 5 条，再交给 LLM；失败不降级成伪答案。 */
-export async function searchAndAnswer(request: QueryRequest, dependencies: { store: VectorQueryStore, embedding: EmbeddingClient, reranker: Reranker, llm: LlmClient }, options: { rerankModel: string, generation: AnswerGenerationOptions, embeddingDimensions?: number, embedding?: { provider: string, model?: string, dimensions?: number } }): Promise<QueryResult> {
+/** 独立返回双路检索与重排后的完整证据，供 MCP 等调用方自行组织答案。 */
+export async function searchEvidence(request: QueryRequest, dependencies: EvidenceDependencies, options: EvidenceOptions): Promise<EvidenceResult> {
   validateQueryRequest(request)
   const { knowledgeBaseId, question, signal } = request
-  const { store, embedding, reranker, llm } = dependencies
+  const { store, embedding, reranker } = dependencies
   const checkCancelled = () => {
     if (signal?.aborted)
       throw new AppError(CODES.ABORTED, 'Query was cancelled')
@@ -45,7 +52,7 @@ export async function searchAndAnswer(request: QueryRequest, dependencies: { sto
   checkCancelled()
   const snapshot = await store.getSnapshot(knowledgeBaseId)
   checkCancelled()
-  const result: QueryResult = { status: 'no_results', answer: '当前知识库没有可检索的资料。', sources: [], snapshotRevision: snapshot?.revision ?? null, counts: { chunks: 0, wikiNodes: 0, merged: 0, duplicates: 0, selected: 0 }, embedding: null, rerank: null, generation: null }
+  const result: EvidenceResult = { status: 'no_results', sources: [], snapshotRevision: snapshot?.revision ?? null, counts: { chunks: 0, wikiNodes: 0, merged: 0, duplicates: 0, selected: 0 }, embedding: null, rerank: null }
   if (!snapshot || snapshot.chunks + snapshot.wikiNodes === 0)
     return result
   const choice = options.embedding
@@ -74,7 +81,17 @@ export async function searchAndAnswer(request: QueryRequest, dependencies: { sto
   result.rerank = { ...ranking, results: selected }
   result.sources = selected.map((item, index) => ({ ...candidates[item.index]!, label: `S${index + 1}`, rerankScore: item.score }))
   result.counts.selected = result.sources.length
-  const { text, ...generationInfo } = await generateAnswer(question, result.sources, llm, options.generation, signal)
-  checkCancelled()
+  return { ...result, status: 'found' }
+}
+
+/** HTTP 问答复用同一证据链路，再交给 LLM；失败不降级成伪答案。 */
+export async function searchAndAnswer(request: QueryRequest, dependencies: EvidenceDependencies & { llm: LlmClient }, options: EvidenceOptions & { generation: AnswerGenerationOptions }): Promise<QueryResult> {
+  const evidence = await searchEvidence(request, dependencies, options)
+  const result: QueryResult = { ...evidence, status: 'no_results', answer: '当前知识库没有可检索的资料。', generation: null }
+  if (evidence.status === 'no_results')
+    return result
+  const { text, ...generationInfo } = await generateAnswer(request.question, result.sources, dependencies.llm, options.generation, request.signal)
+  if (request.signal?.aborted)
+    throw new AppError(CODES.ABORTED, 'Query was cancelled')
   return { ...result, status: 'answered', answer: text, generation: generationInfo }
 }

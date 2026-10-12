@@ -169,7 +169,7 @@ server/src/
 
 ## 向量库约定
 
-- 本地数据库使用根目录 `compose.yaml` 的 PostgreSQL / pgvector，只监听回环地址，数据保存在命名卷；凭据放 `server/.env` 的 `VECTOR_DB_PASSWORD` / `VECTOR_DATABASE_URL`，不要打印或提交。
+- 数据库使用 Neon PostgreSQL / pgvector；在私有 `server/.env` 中配置 `VECTOR_DATABASE_URL`，复制控制台直连连接串并保留 SSL 参数，不要打印或提交。入库断点依赖会话锁，不能使用带 `-pooler` 的事务池地址；不再维护本地 Docker 数据库配置。
 - `rag/vector-store` 导出 `PgVectorStore`，显式 `initialize()` 建扩展与表；模块导入、构造与 HTTP 启动不自动连接或迁移。
 - `replaceSnapshot` 接受完整知识库双索引快照与 `expectedRevision`，同一事务完成 upsert、旧记录删除和版本更新；空快照清空当前知识库向量，不影响其他知识库。不把单份文档增量误作完整知识库快照。
 - SQL 参数化，事务复用同一个连接；取消或 SQL 失败回滚，错误不透出连接串、SQL 参数或正文。向量写入前校验模型、维度、非零有限 float32 数值和文本指纹。
@@ -210,6 +210,9 @@ server/src/
 - 常规测试使用本地 SDK 模拟服务与内存 stub；真实数据库集成测试使用独立临时库。前端问答页面已接入，支持模型选择、引用与检索证据展示；Graph Expand 与原文回查尚未实现。
 
 ## 入库与模型选择接口
+
+- 只读 MCP 位于 `/mcp`，工具为 `list_knowledge_bases` / `search_knowledge`；HTTP 传输和 OAuth 属于 `core/router`，工具与授权编排属于 `core/service`，授权码/刷新令牌摘要由 `core/dao/mcp-auth.ts` 保存在 Neon。检索复用 `rag/query.searchEvidence`，由 ChatGPT 组织答案，不调用后端回答 LLM。Vercel 的根目录 `api/mcp.ts` 仅转发服务端编译产物，独立公网应用只开放 MCP/OAuth，不发布入库和操作日志接口。部署说明见 `server/src/core/mcp.md`。
+- MCP 使用个人 OAuth 授权码 + PKCE S256 和静态客户端凭据，校验回调、resource、issuer、scope、过期与签名。`MCP_TOKEN_SECRET` 与客户端密钥、个人访问密码必须各自独立；全部只保存在服务端私有配置。授权码与刷新令牌在数据库事务中一次性消费，不依赖进程内状态。新增模型验证继续使用 stub，不访问真实 Neon 或模型服务。
 
 - `POST /api/documents/ingest` 输入 JSON 文档正文，执行 Normalize 到双索引入库；`POST /api/search` 提供问答。接口契约见 `server/src/core/README.md`。
 - 两接口共享 `core/service/model-options.ts`：LLM 支持 deepseek / ds、openai；Embedding 支持 gemini / google、siliconflow。模型 ID 可由请求显式指定或由调用层读取环境变量，凭据 / Base URL 仅使用服务端配置。

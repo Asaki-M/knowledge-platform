@@ -178,3 +178,7 @@ API 只读现有表，不初始化数据库、不读取正文或向量。首次�
 PostgreSQL 的连接串校验、连接池错误监听、参数化查询和事务收尾共用 `server/src/utils/postgres.ts`；各 DAO 与向量库仍决定凭据来源、连接数量、超时、SQL 和领域错误码。事务复用同一连接，回滚失败时丢弃连接；任务会话锁继续由入库 DAO 单独持有。API 结束时尝试关闭全部数据库资源，关闭失败仅记录脱敏遥测，不覆盖原业务错误或已提交结果。初始化仍由各操作显式触发，启动与健康检查不连接数据库。
 
 HTTP 错误响应与操作日志共用 `core/error-presentation.ts` 中的分类和安全文案，按错误码常量字段分类。HTTP 保留状态码与操作提示，日志仅保存固定摘要；知识校验位置仍使用字段与规则白名单。模型、向量化、标准化和重排调用共用 `telemetry/operation.ts` 管理计时、span 状态和收尾，具体能力继续负责取消优先级、输入输出校验、错误归一化及元数据白名单。
+
+## MCP 公网接入
+
+`/mcp` 提供只读 `list_knowledge_bases` 与 `search_knowledge`，通过个人 OAuth + PKCE 鉴权。工具编排归 `core/service/mcp.ts`，OAuth 归 `core/service/mcp-auth.ts`，授权摘要存储归 `core/dao/mcp-auth.ts`；工具查询复用独立的 `rag/query.searchEvidence`，不让 RAG 反向依赖 MCP。Vercel 使用独立 `core/mcp-app.ts`，只挂载 MCP 和 OAuth，部署步骤见 [MCP 文档](mcp.md)。

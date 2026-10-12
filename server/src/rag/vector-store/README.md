@@ -2,17 +2,13 @@
 
 本模块将已有 `DualIndexEmbeddingResult` 持久化为两类逻辑索引：`chunk` 与 `wiki`。`rag_vector_snapshots` 保存知识库当前模型空间、版本和数量；`rag_vectors` 保存向量、完整 embeddingText、来源与文本版本。模型用量保留在调用结果中，不写入记录元数据。
 
-## 本地服务
+## Neon 配置
 
-根目录 `compose.yaml` 固定使用 `pgvector/pgvector:0.8.6-pg17`。本机端口 `127.0.0.1:5432`，数据库和用户名均为 `knowledge`。密码与连接串在私有 `server/.env`；`.env.example` 只提供变量和安全示例。Docker 数据卷 `knowledge-platform_vector-data` 保存数据。
+在 Neon 创建 PostgreSQL 项目，推荐 PostgreSQL 17，区域尽量与后端部署区域一致。只需开启 Postgres database，现有代码通过 `pg` 连接，不依赖 Neon 的 Functions、Object storage、AI gateway 或 Auth。
 
-```sh
-pnpm db:up
-pnpm db:status
-pnpm db:stop
-```
+在 Neon 连接面板关闭 `Connection pooling`，复制直连连接串并完整保留 SSL 参数，填入私有 `server/.env` 的 `VECTOR_DATABASE_URL`；部署时配置到服务端环境变量。入库断点依赖 PostgreSQL 会话锁，不能使用带 `-pooler` 的事务池地址。连接串包含密码，不打印或提交，不暴露给前端。`.env.example` 只提供变量说明。
 
-Docker Desktop 需运行。停止服务保留数据；不要使用删除卷的命令来处理普通启动问题。应用的健康检查不依赖数据库，初始化必须由调用方显式执行，构造客户端不会联网。新增数据库使用 `initialize()` 幂等创建扩展和表，当前没有自动升级已有表的迁移系统。
+应用的健康检查不依赖数据库，初始化必须由调用方显式执行，构造客户端不会联网。新增数据库使用 `initialize()` 幂等创建 `vector` 扩展和表，单文档入库接口已显式调用此方法；当前没有自动升级已有表的迁移系统。新建 Neon 数据库不会自动迁移旧数据库的数据。
 
 ## 写入现有流程
 
@@ -74,23 +70,14 @@ export async function writeKnowledgeBase(input: IndexBuildInput) {
 
 普通 `pnpm test` 执行离线校验与入库组合测试；真实数据库测试默认跳过。显式设置 `VECTOR_STORE_TEST_DATABASE_URL` 后运行 `server/test/vector-store.test.mjs`，测试会创建随机命名的独立数据库，结束后删除它，需要连接用户有创建数据库权限。不要将此变量指向生产服务。
 
-在仓库根目录复用本地私有配置运行，不把凭据写入命令参数或终端输出：
+将 `VECTOR_STORE_TEST_DATABASE_URL` 单独设置为独立测试项目的连接串后，在仓库根目录运行。不要从知识库使用的 `VECTOR_DATABASE_URL` 自动推导测试连接；未设置测试变量时，真实数据库测试跳过。
 
 ```sh
 pnpm --filter @knowledge/server build
-node --env-file=server/.env --input-type=module <<'EOF'
-import { spawnSync } from 'node:child_process'
-import process from 'node:process'
-
-const result = spawnSync(process.execPath, ['--test', 'server/test/vector-store.test.mjs'], {
-  env: { ...process.env, VECTOR_STORE_TEST_DATABASE_URL: process.env.VECTOR_DATABASE_URL },
-  stdio: 'inherit',
-})
-process.exitCode = result.status ?? 1
-EOF
+node --test server/test/vector-store.test.mjs
 ```
 
-测试覆盖实际写入、重复写入、余弦查询、跨知识库隔离、删除旧记录、第二批写入失败回滚、并发冲突、关闭后重连读取及空快照。真实短文向量的本地数据库结果见 [数据库实测数据](../../../test/reports/dual-index/09-database.json)。
+测试覆盖实际写入、重复写入、余弦查询、跨知识库隔离、删除旧记录、第二批写入失败回滚、并发冲突、关闭后重连读取及空快照。历史真实短文向量的本地数据库结果见 [数据库实测数据](../../../test/reports/dual-index/09-database.json)，不代表新建 Neon 项目已包含这些记录。
 
 ## 双路检索
 
@@ -98,7 +85,7 @@ EOF
 
 ## 按文档替换
 
-`replaceDocument(vectors, documentId, { expectedRevision, signal })` 使用与完整快照相同的事务锁、版本检查和批量写入，仅删除当前文档不再存在的旧记录，保留其他文档。返回整个知识库的版本与数量。禁止混用向量空间，也拒绝覆盖已有跨文档共享节点。新文档必须包含至少一个 Chunk，不能通过空输入删除文档。版本根据数据库实际内容计算，完全相同的记录重复写入保持同一版本。当前通过扫描本知识库记录重算版本，适用于本地起步规模。
+`replaceDocument(vectors, documentId, { expectedRevision, signal })` 使用与完整快照相同的事务锁、版本检查和批量写入，仅删除当前文档不再存在的旧记录，保留其他文档。返回整个知识库的版本与数量。禁止混用向量空间，也拒绝覆盖已有跨文档共享节点。新文档必须包含至少一个 Chunk，不能通过空输入删除文档。版本根据数据库实际内容计算，完全相同的记录重复写入保持同一版本。当前通过扫描本知识库记录重算版本，适用于小规模知识库。
 
 ## 可恢复写入回执
 

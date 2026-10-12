@@ -11,8 +11,9 @@ export interface KnowledgeBaseOption {
 export interface LogScope { knowledgeBaseId: string, documentId: string | null }
 
 /** 只读现有索引元数据；选项请求不建表、不取正文和向量。 */
-export async function readWorkspaceCatalog(connectionString = process.env.VECTOR_DATABASE_URL) {
-  const pool = createPostgresPool({ connectionString, max: 1, connectionTimeoutMillis: 1000, statement_timeout: 5000, application_name: 'knowledge-workspace' }, { configuration: new AppError(CODES.CONFIGURATION_ERROR, 'Workspace requires a PostgreSQL database URL'), databaseCode: CODES.DATABASE_ERROR, event: 'workspace.connection.failed' })
+export async function readWorkspaceCatalog(connectionString = process.env.VECTOR_DATABASE_URL, options: { includeLogScopes?: boolean } = {}) {
+  // Neon 休眠后首次连接需要唤醒，目录读取与向量库使用相同的五秒连接预算。
+  const pool = createPostgresPool({ connectionString, max: 1, connectionTimeoutMillis: 5000, statement_timeout: 5000, application_name: 'knowledge-workspace' }, { configuration: new AppError(CODES.CONFIGURATION_ERROR, 'Workspace requires a PostgreSQL database URL'), databaseCode: CODES.DATABASE_ERROR, event: 'workspace.connection.failed' })
   try {
     const tables = (await pool.query<{ vectors: string | null, snapshots: string | null, logs: string | null }>(`SELECT to_regclass('rag_vectors')::text AS vectors, to_regclass('rag_vector_snapshots')::text AS snapshots, to_regclass('operation_logs')::text AS logs`)).rows[0]!
     // 首次尚未入库时允许没有表；连接失败与查询错误不能冒充空知识库。
@@ -28,7 +29,7 @@ export async function readWorkspaceCatalog(connectionString = process.env.VECTOR
           ) d), '[]'::jsonb) AS documents
         FROM rag_vector_snapshots s ORDER BY s.updated_at DESC, s.knowledge_base_id`)).rows
       : []
-    const logScopes = tables.logs
+    const logScopes = tables.logs && options.includeLogScopes !== false
       ? (await pool.query<LogScope>(`SELECT DISTINCT knowledge_base_id AS "knowledgeBaseId", document_id AS "documentId"
           FROM operation_logs WHERE knowledge_base_id IS NOT NULL ORDER BY knowledge_base_id, document_id`)).rows
       : []

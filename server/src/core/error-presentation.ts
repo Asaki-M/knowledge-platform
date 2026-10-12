@@ -1,7 +1,7 @@
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
 import type { AppErrorCode } from '../error-codes.js'
 import type { ValidationReason } from '../errors.js'
-import { EMBEDDING_ERROR_CODES, ENRICHMENT_ERROR_CODES, HTTP_ERROR_CODES, INDEXING_ERROR_CODES, INGESTION_ERROR_CODES, LLM_ERROR_CODES, NORMALIZATION_ERROR_CODES, OPERATION_LOG_ERROR_CODES, QUERY_ERROR_CODES, RERANK_ERROR_CODES, VECTOR_STORE_ERROR_CODES, WORKSPACE_ERROR_CODES } from '../error-codes.js'
+import { EMBEDDING_ERROR_CODES, ENRICHMENT_ERROR_CODES, HTTP_ERROR_CODES, INDEXING_ERROR_CODES, INGESTION_ERROR_CODES, LLM_ERROR_CODES, MCP_AUTH_ERROR_CODES, NORMALIZATION_ERROR_CODES, OPERATION_LOG_ERROR_CODES, QUERY_ERROR_CODES, RERANK_ERROR_CODES, VECTOR_STORE_ERROR_CODES, WORKSPACE_ERROR_CODES } from '../error-codes.js'
 import { AppError } from '../errors.js'
 
 type ErrorCategory = 'cancelled' | 'configuration' | 'authentication' | 'rate-limit' | 'timeout' | 'vector-space' | 'conflict' | 'database' | 'parse' | 'invalid' | 'other'
@@ -15,7 +15,7 @@ interface ErrorPresentation {
 }
 
 const presentations = new Map<AppErrorCode, ErrorPresentation>()
-const groups = [LLM_ERROR_CODES, EMBEDDING_ERROR_CODES, NORMALIZATION_ERROR_CODES, ENRICHMENT_ERROR_CODES, INGESTION_ERROR_CODES, VECTOR_STORE_ERROR_CODES, RERANK_ERROR_CODES, QUERY_ERROR_CODES, OPERATION_LOG_ERROR_CODES, WORKSPACE_ERROR_CODES]
+const groups = [LLM_ERROR_CODES, EMBEDDING_ERROR_CODES, NORMALIZATION_ERROR_CODES, ENRICHMENT_ERROR_CODES, INGESTION_ERROR_CODES, VECTOR_STORE_ERROR_CODES, RERANK_ERROR_CODES, QUERY_ERROR_CODES, OPERATION_LOG_ERROR_CODES, WORKSPACE_ERROR_CODES, MCP_AUTH_ERROR_CODES]
 function register(codes: readonly AppErrorCode[], presentation: ErrorPresentation) {
   for (const code of codes)
     presentations.set(code, presentation)

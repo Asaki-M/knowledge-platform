@@ -3,12 +3,14 @@ import { requestId } from 'hono/request-id'
 import { HTTP_ERROR_CODES } from '../error-codes.js'
 import { errorResponse } from './error-response.js'
 import { tracingMiddleware } from './middleware/tracing.js'
-import { apiRouter } from './router/index.js'
+import { apiRouter, mcpAuthRouter, mcpRouter } from './router/index.js'
 
 export const app = new Hono()
 
 app.use('*', requestId())
 app.use('*', tracingMiddleware)
+app.route('/', mcpAuthRouter)
+app.route('/mcp', mcpRouter)
 app.route('/api', apiRouter)
 app.notFound(c =>
   c.json(

@@ -2,6 +2,8 @@
 
 `searchAndAnswer(request, dependencies, options)` 不依赖 HTTP，组合现有 Embedding、向量库、独立 Rerank 与 LLM。HTTP 服务通过 `POST /api/search` 调用相同流程。
 
+`searchEvidence(request, { store, embedding, reranker }, options)` 独立返回双路检索与重排后的完整证据，状态为 `found` / `no_results`，不调用 LLM。`searchAndAnswer` 复用此入口后再生成答案。只读 MCP 使用检索证据入口，由 ChatGPT 组织回答，接入与部署见 [MCP 文档](../../core/mcp.md)。
+
 ```text
 问题 → 沿用知识库模型生成一个查询向量
      → Chunk embeddingText Top 30 ┐
@@ -34,7 +36,7 @@
 
 问题 Embedding 默认沿用数据库快照的供应商和模型；Google / Qwen3 同时沿用库内维度。HTTP 可传 `llm: { provider, model? }` 选择 DeepSeek / OpenAI，以及 `embedding: { provider, model?, dimensions? }` 选择 Gemini / SiliconFlow；显式选择必须与入库空间一致，否则返回 409。完整契约见 [接口文档](../../core/README.md)。
 
-输入无效或上下文过大返回 400，快照或向量空间冲突返回 409，配置缺失返回 503，其余能力失败返回 502；响应保留统一错误码及 requestId，不透出上游错误正文或凭据。HTTP 请求体上限 32 KiB。当前供本地开发使用，尚无前端问答接入、Graph Expand、来源全文回查或生产鉴权。
+输入无效或上下文过大返回 400，快照或向量空间冲突返回 409，配置缺失返回 503，其余能力失败返回 502；响应保留统一错误码及 requestId，不透出上游错误正文或凭据。HTTP 请求体上限 32 KiB，前端问答已接入。HTTP 工作台继续供本地使用，尚无 HTTP 生产鉴权；MCP 公网入口独立使用 OAuth。Graph Expand 和来源全文回查仍待实现。
 
 ## 验证
 

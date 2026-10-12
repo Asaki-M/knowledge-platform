@@ -70,7 +70,7 @@ export const SECTION_SPLIT_ERROR_CODES = {
 export type SectionSplitErrorCode = typeof SECTION_SPLIT_ERROR_CODES[keyof typeof SECTION_SPLIT_ERROR_CODES]
 
 /** 所有业务异常共用的错误码类型，具体字符串与中文含义仍在上面的分组中维护。 */
-export type AppErrorCode = WorkspaceErrorCode | HttpErrorCode | LlmErrorCode | NormalizationErrorCode | SectionSplitErrorCode | EnrichmentErrorCode | ChunkBuildErrorCode | EmbeddingErrorCode | WikiErrorCode | IngestionErrorCode | IndexingErrorCode | VectorStoreErrorCode | RerankErrorCode | QueryErrorCode | OperationLogErrorCode
+export type AppErrorCode = McpAuthErrorCode | WorkspaceErrorCode | HttpErrorCode | LlmErrorCode | NormalizationErrorCode | SectionSplitErrorCode | EnrichmentErrorCode | ChunkBuildErrorCode | EmbeddingErrorCode | WikiErrorCode | IngestionErrorCode | IndexingErrorCode | VectorStoreErrorCode | RerankErrorCode | QueryErrorCode | OperationLogErrorCode
 
 /** 知识补充阶段的错误；上游网络、鉴权和取消错误继续沿用 LLM 错误码。 */
 export const ENRICHMENT_ERROR_CODES = {
@@ -259,3 +259,20 @@ export const WORKSPACE_ERROR_CODES = {
   DATABASE_ERROR: 'WORKSPACE_DATABASE_ERROR',
 } as const
 export type WorkspaceErrorCode = typeof WORKSPACE_ERROR_CODES[keyof typeof WORKSPACE_ERROR_CODES]
+
+/** 个人 MCP 的 OAuth 配置、授权和持久化错误。 */
+export const MCP_AUTH_ERROR_CODES = {
+  /** 公网地址或鉴权密钥缺失，不开放匿名访问。 */
+  CONFIGURATION_ERROR: 'MCP_AUTH_CONFIGURATION_ERROR',
+  /** OAuth 参数、回调地址、资源或 PKCE 方法无效。 */
+  INVALID_REQUEST: 'MCP_AUTH_INVALID_REQUEST',
+  /** 客户端 ID 或客户端密钥无效。 */
+  INVALID_CLIENT: 'MCP_AUTH_INVALID_CLIENT',
+  /** 授权码、刷新令牌过期、已使用或 PKCE 校验失败。 */
+  INVALID_GRANT: 'MCP_AUTH_INVALID_GRANT',
+  /** 个人访问密码错误。 */
+  ACCESS_DENIED: 'MCP_AUTH_ACCESS_DENIED',
+  /** 授权记录保存或消费失败，不透出数据库异常。 */
+  DATABASE_ERROR: 'MCP_AUTH_DATABASE_ERROR',
+} as const
+export type McpAuthErrorCode = typeof MCP_AUTH_ERROR_CODES[keyof typeof MCP_AUTH_ERROR_CODES]

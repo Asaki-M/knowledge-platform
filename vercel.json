@@ -1,0 +1,18 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "regions": ["sin1"],
+  "buildCommand": "pnpm --filter @knowledge/server build && mkdir -p server/dist/public",
+  "outputDirectory": "server/dist/public",
+  "functions": {
+    "api/mcp.ts": {
+      "maxDuration": 300,
+      "includeFiles": "server/dist/**"
+    }
+  },
+  "rewrites": [
+    { "source": "/mcp", "destination": "/api/mcp?__mcp_route=/mcp" },
+    { "source": "/.well-known/:path*", "destination": "/api/mcp?__mcp_route=/.well-known/:path*" },
+    { "source": "/oauth/:path*", "destination": "/api/mcp?__mcp_route=/oauth/:path*" }
+  ]
+}

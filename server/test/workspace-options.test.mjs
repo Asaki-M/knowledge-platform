@@ -4,6 +4,8 @@ import { test } from 'node:test'
 import { Pool } from 'pg'
 // eslint-disable-next-line antfu/no-import-dist -- 验证真实 HTTP 入口，数据库边界使用本地 stub。
 import { app } from '../dist/core/app.js'
+// eslint-disable-next-line antfu/no-import-dist -- 验证 MCP 复用目录读取时不查询操作日志。
+import { mcpServices } from '../dist/core/service/mcp.js'
 // eslint-disable-next-line antfu/no-import-dist -- 验证配置白名单。
 import { configuredModels, ingestionEmbeddingOptions, llmOptions } from '../dist/core/service/model-options.js'
 
@@ -97,4 +99,17 @@ test('missing database config fails options explicitly while health remains avai
   assert.equal(response.status, 503)
   assert.equal((await response.json()).error.code, 'WORKSPACE_CONFIGURATION_ERROR')
   assert.equal((await app.request('/api/health')).status, 200)
+})
+
+test('MCP knowledge base listing reuses catalog metadata without reading historical logs', async (t) => {
+  env(t, { VECTOR_DATABASE_URL: 'postgresql://unused:unused@127.0.0.1:1/test' })
+  t.mock.method(Pool.prototype, 'query', async (sql) => {
+    if (sql.includes('to_regclass'))
+      return { rows: [{ snapshots: 'rag_vector_snapshots', vectors: 'rag_vectors', logs: 'operation_logs' }] }
+    assert.ok(sql.includes('FROM rag_vector_snapshots'))
+    assert.ok(!sql.includes('FROM operation_logs'))
+    return { rows: [{ id: 'kb', embedding: { provider: 'stub', model: 'private-model' }, documents: [{ id: 'doc', label: 'private-path' }] }] }
+  })
+  t.mock.method(Pool.prototype, 'end', async () => {})
+  assert.deepEqual(await mcpServices.listKnowledgeBases(), { knowledgeBases: [{ id: 'kb', documentCount: 1 }] })
 })

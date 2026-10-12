@@ -7,7 +7,7 @@ import { LlmClient } from '../dist/llm/index.js'
 // eslint-disable-next-line antfu/no-import-dist -- 验证模型客户端的真实公共契约。
 import { EmbeddingClient } from '../dist/rag/embedding/index.js'
 // eslint-disable-next-line antfu/no-import-dist -- 验证构建后的公共问答入口。
-import { searchAndAnswer } from '../dist/rag/query/index.js'
+import { searchAndAnswer, searchEvidence } from '../dist/rag/query/index.js'
 
 const request = { knowledgeBaseId: 'kb', question: '如何查询？' }
 const options = { rerankModel: 'rerank', generation: { provider: 'stub', model: 'answer' } }
@@ -63,6 +63,24 @@ test('identical text preserves both provenance records; fewer than 5 remain vali
   const result = await searchAndAnswer(request, deps, options)
   assert.equal(result.sources.length, 1)
   assert.deepEqual(result.sources[0].matches.map(match => match.kind), ['chunk', 'wiki'])
+})
+
+test('evidence-only search preserves top five and provenance without calling an answer model', async () => {
+  const { deps, calls } = fixture()
+  deps.llm.generate = () => {
+    throw new Error('Evidence retrieval must not generate an answer')
+  }
+  const result = await searchEvidence(request, deps, options)
+  assert.equal(result.status, 'found')
+  assert.equal(result.sources.length, 5)
+  assert.equal(result.sources[0].id, 'wiki-29')
+  assert.equal(result.answer, undefined)
+  assert.equal(result.generation, undefined)
+  assert.deepEqual(result.counts, { chunks: 30, wikiNodes: 30, merged: 59, duplicates: 1, selected: 5 })
+  assert.ok(!calls.some(call => Array.isArray(call) && call[0] === 'generate'))
+  const empty = fixture(0)
+  assert.equal((await searchEvidence(request, empty.deps, options)).status, 'no_results')
+  assert.deepEqual(empty.calls, ['snapshot'])
 })
 
 test('empty or missing snapshot avoids all model calls', async () => {
