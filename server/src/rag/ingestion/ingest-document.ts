@@ -26,11 +26,36 @@ export interface IngestDocumentRequest {
   signal?: AbortSignal
 }
 
+/** HTTP 与独立入库入口共用文档限制，校验仍在各自边界执行。 */
+export const ingestionLimits = {
+  identifierCharacters: 256,
+  contentCharacters: 200000,
+  sourcePathCharacters: 2048,
+  sections: 100,
+} as const
+
+export interface IngestDocumentDependencies {
+  llm: LlmClient
+  embedding: EmbeddingClient
+  store: DocumentVectorStore
+}
+
+export interface IngestDocumentOptions {
+  llm: EnrichmentOptions
+  embedding: Omit<DualIndexEmbeddingOptions, 'signal'>
+  onStage?: IngestionObserver
+  checkpoint?: IngestionCheckpointStore
+  writeKey?: string
+}
+
 /** 单篇文档完整重建；所有外部模型调用成功后才原子替换该文档的双索引。 */
-export async function ingestDocument(request: IngestDocumentRequest, dependencies: { llm: LlmClient, embedding: EmbeddingClient, store: DocumentVectorStore }, options: { llm: EnrichmentOptions, embedding: Omit<DualIndexEmbeddingOptions, 'signal'>, onStage?: IngestionObserver, checkpoint?: IngestionCheckpointStore, writeKey?: string }) {
+export async function ingestDocument(request: IngestDocumentRequest, dependencies: IngestDocumentDependencies, options: IngestDocumentOptions) {
   const { knowledgeBaseId, documentId, content, sourcePath, signal } = request
-  if (![knowledgeBaseId, documentId, content].every(isNonEmptyString) || knowledgeBaseId.length > 256 || documentId.length > 256 || content.length > 200000
-    || (sourcePath !== undefined && (!isNonEmptyString(sourcePath) || sourcePath.length > 2048))) {
+  if (![knowledgeBaseId, documentId, content].every(isNonEmptyString)
+    || knowledgeBaseId.length > ingestionLimits.identifierCharacters
+    || documentId.length > ingestionLimits.identifierCharacters
+    || content.length > ingestionLimits.contentCharacters
+    || (sourcePath !== undefined && (!isNonEmptyString(sourcePath) || sourcePath.length > ingestionLimits.sourcePathCharacters))) {
     throw new AppError(CODES.INVALID_DOCUMENT, '文档 ID、知识库 ID 或正文无效；正文最多 200000 字符。')
   }
   const checkCancelled = () => {
@@ -50,10 +75,16 @@ export async function ingestDocument(request: IngestDocumentRequest, dependencie
   }
   checkCancelled()
   const stages = createStageReporter(options.onStage, checkpoint)
-  const document = await stages.run('normalize', () => new NormalizationClient([new NextraMdxAdapter()]).normalize({ adapter: 'nextra-mdx', source: { id: documentId, ...(sourcePath === undefined ? {} : { path: sourcePath }) }, content, signal }), value => normalizePreview(value, documentId))
+  const normalizer = new NormalizationClient([new NextraMdxAdapter()])
+  const document = await stages.run('normalize', () => normalizer.normalize({
+    adapter: 'nextra-mdx',
+    source: { id: documentId, ...(sourcePath === undefined ? {} : { path: sourcePath }) },
+    content,
+    signal,
+  }), value => normalizePreview(value, documentId))
   const sections = await stages.run('sections', () => {
     const result = splitSections(document)
-    if (!result.length || !document.text.trim() || result.length > 100)
+    if (!result.length || !document.text.trim() || result.length > ingestionLimits.sections)
       throw new AppError(CODES.INVALID_DOCUMENT, '文档需要可检索文本，且最多包含 100 个章节。')
     return result
   }, sectionsPreview)
@@ -78,17 +109,38 @@ export async function ingestDocument(request: IngestDocumentRequest, dependencie
   const wiki = await stages.run('wiki', () => buildWiki(inputs, { knowledgeBaseId, canonicalNodes: [], mappings: [] }), wikiPreview)
   const documents = await stages.run('indexing', () => buildIndexDocuments({ chunks, wiki }), indexingPreview)
   const dimensions = resolveEmbeddingDimensions(options.embedding, previous?.dimensions)
-  const vectors = await stages.run('embedding', () => embedDualIndex(documents, dependencies.embedding, { ...options.embedding, ...(dimensions === undefined ? {} : { dimensions }), signal, checkpoint }), embeddingPreview)
+  const vectors = await stages.run('embedding', () => embedDualIndex(documents, dependencies.embedding, {
+    ...options.embedding,
+    ...(dimensions === undefined ? {} : { dimensions }),
+    signal,
+    checkpoint,
+  }), embeddingPreview)
   checkCancelled()
-  const stored = await stages.run('storage', () => dependencies.store.replaceDocument(vectors, documentId, { expectedRevision: previous?.revision ?? null, signal, writeKey: options.writeKey }), value => storagePreview(value, vectors.chunks.length + vectors.wikiNodes.length))
+  const stored = await stages.run('storage', () => dependencies.store.replaceDocument(vectors, documentId, {
+    expectedRevision: previous?.revision ?? null,
+    signal,
+    writeKey: options.writeKey,
+  }), value => storagePreview(value, vectors.chunks.length + vectors.wikiNodes.length))
   return {
     status: 'stored' as const,
     knowledgeBaseId,
     documentId,
     normalization: { title: document.title, warnings: document.warnings, characters: document.text.length },
-    counts: { sections: sections.length, chunks: chunks.length, wikiNodes: wiki.nodes.length, wikiEdges: wiki.edges.length, vectors: vectors.chunks.length + vectors.wikiNodes.length },
+    counts: {
+      sections: sections.length,
+      chunks: chunks.length,
+      wikiNodes: wiki.nodes.length,
+      wikiEdges: wiki.edges.length,
+      vectors: vectors.chunks.length + vectors.wikiNodes.length,
+    },
     enrichment: inputs.map(input => ({ sectionId: input.section.id, ...input.enrichedSection.generation })),
-    embedding: { provider: vectors.provider, requestedModel: vectors.requestedModel, model: vectors.model, dimensions: vectors.dimensions, usage: vectors.usage },
+    embedding: {
+      provider: vectors.provider,
+      requestedModel: vectors.requestedModel,
+      model: vectors.model,
+      dimensions: vectors.dimensions,
+      usage: vectors.usage,
+    },
     stored,
   }
 }

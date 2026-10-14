@@ -29,6 +29,8 @@
 
 `ingestDocument(request, dependencies, options)` 接收知识库 ID、稳定文档 ID 和完整 MDX / Markdown 正文，组合 Normalize → Section → Chunk / Knowledge Enrichment → Wiki → 双索引 Embedding，最后调用 `replaceDocument` 原子写入。HTTP 入口是 `POST /api/documents/ingest`，可按请求选择 DeepSeek / OpenAI 与 Gemini / SiliconFlow，见 [接口文档](../../core/README.md)。
 
+公共入口导出 `IngestDocumentRequest`、`IngestDocumentDependencies`、`IngestDocumentOptions` 和 `IngestDocumentResult`。依赖显式包含 `llm`、`embedding`、`store`；选项包含模型配置、阶段观察者、检查点与写入回执键。`ingestionLimits` 统一文档标识、正文、来源路径和章节数量限制，HTTP 与独立 RAG 入口仍分别执行校验。
+
 读取当前知识库版本后才开始模型调用；写入检查同一版本，冲突不覆盖。节点保持各文档 / 章节独立身份；重传同文档 ID 会完整重建该文档并删除它的旧索引，保留其他文档。涉及既有跨文档共享节点时失败，要求通过完整快照重建。不同文档不能混用 Embedding 空间。
 
 返回标准化警告、各阶段数量、逐节 LLM 与 Embedding 用量、整个知识库的写入版本和数量。原始文件不存档；传入 checkpoint 时保存完整中间产物，用于同任务恢复，不做跨任务变更节复用。

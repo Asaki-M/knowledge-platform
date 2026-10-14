@@ -32,7 +32,17 @@ export class DocumentIngestionDao {
   private client?: PoolClient
 
   constructor(connectionString = process.env.VECTOR_DATABASE_URL) {
-    this.pool = createPostgresPool({ connectionString, max: 2, connectionTimeoutMillis: 3000, statement_timeout: 10000, application_name: 'knowledge-ingestion-checkpoints' }, { configuration: new AppError(CODES.CHECKPOINT_CONFIGURATION_ERROR, 'Ingestion checkpoints require PostgreSQL'), databaseCode: CODES.CHECKPOINT_DATABASE_ERROR, event: 'ingestion-checkpoint.connection.failed' })
+    this.pool = createPostgresPool({
+      connectionString,
+      max: 2,
+      connectionTimeoutMillis: 3000,
+      statement_timeout: 10000,
+      application_name: 'knowledge-ingestion-checkpoints',
+    }, {
+      configuration: new AppError(CODES.CHECKPOINT_CONFIGURATION_ERROR, 'Ingestion checkpoints require PostgreSQL'),
+      databaseCode: CODES.CHECKPOINT_DATABASE_ERROR,
+      event: 'ingestion-checkpoint.connection.failed',
+    })
   }
 
   private query<T extends QueryResultRow>(sql: string, values: unknown[] = []): Promise<T[]> {
@@ -79,22 +89,34 @@ export class DocumentIngestionDao {
   }
 
   async create(job: Pick<IngestionJob, 'id' | 'fingerprint' | 'version' | 'input'>): Promise<void> {
-    await this.query('INSERT INTO document_ingestions (id, fingerprint, version, input, status) VALUES ($1, $2, $3, $4::jsonb, \'running\')', [job.id, job.fingerprint, job.version, JSON.stringify(job.input)])
+    await this.query(`INSERT INTO document_ingestions (id, fingerprint, version, input, status)
+      VALUES ($1, $2, $3, $4::jsonb, 'running')`, [job.id, job.fingerprint, job.version, JSON.stringify(job.input)])
   }
 
   async start(id: string, requestId: string | null): Promise<void> {
-    await this.query('UPDATE document_ingestions SET status = \'running\', request_id = $2, error = NULL, cancel_requested = false, updated_at = now() WHERE id = $1', [id, requestId])
+    await this.query(`UPDATE document_ingestions
+      SET status = 'running', request_id = $2, error = NULL, cancel_requested = false, updated_at = now()
+      WHERE id = $1`, [id, requestId])
   }
 
   async finish(id: string, status: IngestionJob['status'], error: IngestionJob['error'], result: IngestDocumentResult | null = null): Promise<void> {
-    await this.query('UPDATE document_ingestions SET status = $2, error = $3::jsonb, result = $4::jsonb, updated_at = now() WHERE id = $1', [id, status, error === null ? null : JSON.stringify(error), result === null ? null : JSON.stringify(result)])
+    await this.query(`UPDATE document_ingestions
+      SET status = $2, error = $3::jsonb, result = $4::jsonb, updated_at = now()
+      WHERE id = $1`, [
+      id,
+      status,
+      error === null ? null : JSON.stringify(error),
+      result === null ? null : JSON.stringify(result),
+    ])
   }
 
   checkpoints(id: string): IngestionCheckpointStore {
     return {
       load: async <T>(key: string) => (await this.query<{ value: T }>('SELECT value FROM document_ingestion_checkpoints WHERE ingestion_id = $1 AND key = $2', [id, key]))[0]?.value,
       save: async (key, value) => {
-        await this.query('INSERT INTO document_ingestion_checkpoints (ingestion_id, key, value) VALUES ($1, $2, $3::jsonb) ON CONFLICT (ingestion_id, key) DO UPDATE SET value = EXCLUDED.value', [id, key, JSON.stringify(value)])
+        await this.query(`INSERT INTO document_ingestion_checkpoints (ingestion_id, key, value)
+          VALUES ($1, $2, $3::jsonb)
+          ON CONFLICT (ingestion_id, key) DO UPDATE SET value = EXCLUDED.value`, [id, key, JSON.stringify(value)])
       },
     }
   }

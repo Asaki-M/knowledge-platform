@@ -289,3 +289,84 @@ test('single and dual searches reuse parameterized SQL on one repeatable-read co
     }
   }
 })
+
+test('snapshot and document writes keep receipts, cleanup and rollback on one transaction connection', async (t) => {
+  const documentId = vectors.chunks[0].sources[0].documentId
+  const records = [...vectors.chunks, ...vectors.wikiNodes].sort((a, b) => a.id.localeCompare(b.id))
+  const storedReceipt = { knowledgeBaseId: vectors.knowledgeBaseId, revision: 'committed-revision' }
+  for (const mode of ['snapshot', 'document', 'receipt', 'revision-conflict', 'shared', 'write-failure', 'cancelled']) {
+    await t.test(mode, async (t) => {
+      const statements = []
+      const controller = new AbortController()
+      const client = {
+        async query(sql, params) {
+          statements.push({ sql, params })
+          if (sql.includes('SELECT fingerprint, result')) {
+            return { rows: mode === 'receipt' ? [{ fingerprint: contentHash([null, vectors]), result: storedReceipt }] : [] }
+          }
+          if (sql.includes('FROM rag_vector_snapshots'))
+            return { rows: mode === 'revision-conflict' ? [{ revision: 'concurrent-revision' }] : [] }
+          if (sql.includes('SELECT 1 FROM rag_vectors'))
+            return { rows: [], rowCount: mode === 'shared' ? 1 : 0 }
+          if (sql.includes('INSERT INTO rag_vectors') && mode === 'write-failure')
+            throw new Error('Local simulated SQL failure')
+          if (sql.startsWith('DELETE FROM rag_vectors') && mode === 'cancelled')
+            controller.abort()
+          if (sql.includes('SELECT kind, metadata')) {
+            return { rows: records.map(({ vector, ...metadata }) => ({ kind: metadata.kind, metadata, vector: JSON.stringify(vector) })) }
+          }
+          return { rows: [] }
+        },
+        release(discard) { statements.push({ release: discard }) },
+      }
+      const connect = t.mock.method(Pool.prototype, 'connect', async () => client)
+      const store = new PgVectorStore({ connectionString: 'postgresql://stub:stub@127.0.0.1:1/stub' })
+      try {
+        const options = { expectedRevision: null, writeKey: 'local-write', signal: controller.signal }
+        const write = () => ['document', 'shared'].includes(mode)
+          ? store.replaceDocument(vectors, documentId, options)
+          : store.replaceSnapshot(vectors, options)
+        const failureCodes = {
+          'revision-conflict': 'VECTOR_STORE_CONFLICT',
+          'shared': 'VECTOR_STORE_CONFLICT',
+          'write-failure': 'VECTOR_STORE_DATABASE_ERROR',
+          'cancelled': 'VECTOR_STORE_ABORTED',
+        }
+        if (failureCodes[mode]) {
+          await assert.rejects(write(), { code: failureCodes[mode] })
+          assert.equal(statements.at(-2).sql, 'ROLLBACK')
+          assert.ok(!statements.some(item => item.sql?.startsWith('INSERT INTO rag_vector_write_receipts')))
+        }
+        else {
+          const result = await write()
+          assert.equal(statements.at(-2).sql, 'COMMIT')
+          if (mode === 'receipt') {
+            assert.deepEqual(result, storedReceipt)
+            assert.ok(!statements.some(item => item.sql?.includes('FROM rag_vector_snapshots') || item.sql?.startsWith('INSERT')))
+          }
+          else {
+            assert.equal(result.chunks, vectors.chunks.length)
+            assert.equal(result.wikiNodes, vectors.wikiNodes.length)
+            const deletion = statements.find(item => item.sql?.startsWith('DELETE FROM rag_vectors'))
+            const receipt = statements.find(item => item.sql?.startsWith('INSERT INTO rag_vector_write_receipts'))
+            assert.deepEqual(deletion.params.slice(0, 2), [vectors.knowledgeBaseId, records.map(record => record.id)])
+            assert.ok(statements.indexOf(receipt) > statements.indexOf(deletion))
+            assert.deepEqual(JSON.parse(receipt.params[3]), result)
+            if (mode === 'document') {
+              assert.deepEqual(JSON.parse(deletion.params[2]), [{ documentId }])
+              assert.ok(statements.some(item => item.sql?.startsWith('UPDATE rag_vector_snapshots')))
+            }
+          }
+        }
+        assert.equal(connect.mock.callCount(), 1)
+        assert.equal(statements[0].sql, 'BEGIN')
+        assert.ok(statements[1].sql.includes('pg_advisory_xact_lock'))
+        assert.deepEqual(statements.at(-1), { release: false })
+      }
+      finally {
+        connect.mock.restore()
+        await store.close()
+      }
+    })
+  }
+})

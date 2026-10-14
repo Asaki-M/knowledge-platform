@@ -5,6 +5,10 @@ import { DeepSeekAdapter, LlmClient, OpenAIAdapter } from '../../llm/index.js'
 import { EmbeddingClient, GoogleEmbeddingAdapter, SiliconFlowEmbeddingAdapter, supportsEmbeddingDimensions } from '../../rag/embedding/index.js'
 import { isNonEmptyString, isRecord } from '../../utils/type-guards.js'
 
+const maxModelCharacters = 256
+const maxEmbeddingDimensions = 16000
+const enrichmentOutputBudgets = { deepseek: 32768, openai: 10000 } as const
+
 /** 每次调用读取当前配置，工作台选项与请求默认值使用同一来源；不向选项暴露凭据。 */
 function modelConfiguration() {
   return {
@@ -33,16 +37,31 @@ export interface EmbeddingSelection {
   dimensions?: number
 }
 
-function selection(value: unknown): Record<string, unknown> {
-  if (!isRecord(value) || !isNonEmptyString(value.provider) || Object.keys(value).some(key => !['provider', 'model', 'dimensions'].includes(key))
-    || (value.model !== undefined && (!isNonEmptyString(value.model) || value.model.length > 256))) {
-    throw new AppError(HTTP_ERROR_CODES.INVALID_INPUT, '模型配置需要 provider 和可选的 model，不能传入凭据或服务地址。')
-  }
-  return value
+interface LlmSelection {
+  provider: 'deepseek' | 'openai'
+  model: string
 }
 
-export function llmOptions(value: unknown) {
-  const input = value === undefined ? { provider: 'deepseek' } : selection(value)
+interface ParsedModelSelection {
+  provider: string
+  model?: string
+  dimensions?: unknown
+}
+
+function parseModelSelection(value: unknown): ParsedModelSelection {
+  if (!isRecord(value) || !isNonEmptyString(value.provider) || Object.keys(value).some(key => !['provider', 'model', 'dimensions'].includes(key))
+    || (value.model !== undefined && (!isNonEmptyString(value.model) || value.model.length > maxModelCharacters))) {
+    throw new AppError(HTTP_ERROR_CODES.INVALID_INPUT, '模型配置需要 provider 和可选的 model，不能传入凭据或服务地址。')
+  }
+  return {
+    provider: value.provider,
+    ...(typeof value.model === 'string' ? { model: value.model } : {}),
+    ...(value.dimensions === undefined ? {} : { dimensions: value.dimensions }),
+  }
+}
+
+export function llmOptions(value: unknown): LlmSelection {
+  const input = value === undefined ? { provider: 'deepseek' } : parseModelSelection(value)
   const provider = input.provider === 'ds' ? 'deepseek' : input.provider
   if ((provider !== 'deepseek' && provider !== 'openai') || input.dimensions !== undefined)
     throw new AppError(HTTP_ERROR_CODES.INVALID_INPUT, 'llm.provider 支持 deepseek（或 ds）和 openai。')
@@ -56,7 +75,7 @@ export function llmOptions(value: unknown) {
 export function ingestionLlmOptions(value: unknown) {
   const selected = llmOptions(value)
   const configured = process.env.ENRICHMENT_MAX_OUTPUT_TOKENS?.trim()
-  const maxOutputTokens = configured ? Number(configured) : selected.provider === 'deepseek' ? 32768 : 10000
+  const maxOutputTokens = configured ? Number(configured) : enrichmentOutputBudgets[selected.provider]
   if (!Number.isSafeInteger(maxOutputTokens) || maxOutputTokens < 1)
     throw new AppError(ENRICHMENT_ERROR_CODES.CONFIGURATION_ERROR, 'ENRICHMENT_MAX_OUTPUT_TOKENS must be a positive integer')
   return { ...selected, maxOutputTokens }
@@ -65,13 +84,18 @@ export function ingestionLlmOptions(value: unknown) {
 export function embeddingSelection(value: unknown): EmbeddingSelection | undefined {
   if (value === undefined)
     return undefined
-  const input = selection(value)
+  const input = parseModelSelection(value)
   const provider = input.provider === 'gemini' ? 'google' : input.provider
   if (provider !== 'google' && provider !== 'siliconflow')
     throw new AppError(HTTP_ERROR_CODES.INVALID_INPUT, 'embedding.provider 支持 gemini（或 google）和 siliconflow。')
-  if (input.dimensions !== undefined && (typeof input.dimensions !== 'number' || !Number.isSafeInteger(input.dimensions) || input.dimensions < 1 || input.dimensions > 16000))
+  const dimensions = input.dimensions
+  if (dimensions !== undefined && (typeof dimensions !== 'number' || !Number.isSafeInteger(dimensions) || dimensions < 1 || dimensions > maxEmbeddingDimensions))
     throw new AppError(HTTP_ERROR_CODES.INVALID_INPUT, 'embedding.dimensions 必须为 1–16000 的整数。')
-  return { provider, ...(input.model === undefined ? {} : { model: (input.model as string).trim() }), ...(input.dimensions === undefined ? {} : { dimensions: input.dimensions as number }) }
+  return {
+    provider,
+    ...(input.model === undefined ? {} : { model: input.model.trim() }),
+    ...(typeof dimensions === 'number' ? { dimensions } : {}),
+  }
 }
 
 export function ingestionEmbeddingOptions(value: unknown) {
@@ -88,8 +112,14 @@ export function ingestionEmbeddingOptions(value: unknown) {
 export function createLlmClient(purpose: 'query' | 'enrichment' = 'query') {
   return new LlmClient([
     // 完整提取可能超过一分钟；延长单次等待且关闭 SDK 重试，避免重复消耗预算。
-    { provider: 'deepseek', generate: input => new DeepSeekAdapter(purpose === 'enrichment' ? { timeoutMs: 180000, maxRetries: 0 } : {}).generate(input) },
-    { provider: 'openai', generate: input => new OpenAIAdapter({ maxRetries: 0 }).generate(input) },
+    {
+      provider: 'deepseek',
+      generate: input => new DeepSeekAdapter(purpose === 'enrichment' ? { timeoutMs: 180000, maxRetries: 0 } : {}).generate(input),
+    },
+    {
+      provider: 'openai',
+      generate: input => new OpenAIAdapter({ maxRetries: 0 }).generate(input),
+    },
   ])
 }
 

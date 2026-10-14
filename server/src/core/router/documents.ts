@@ -17,7 +17,7 @@ export const documentsRouter = new Hono<OperationLogEnv>()
     }))
     const operation = c.get('operationLog')
     if (c.req.header('Accept') !== 'application/x-ndjson')
-      return c.json(await ingest(body, c.req.raw.signal, operation, undefined, c.get('requestId')))
+      return c.json(await ingest(body, { signal: c.req.raw.signal, operation, requestId: c.get('requestId') }))
 
     operation.completionDeferred = true
     c.header('Content-Type', 'application/x-ndjson; charset=utf-8')
@@ -42,7 +42,12 @@ export const documentsRouter = new Hono<OperationLogEnv>()
       }, 15000)
       try {
         await send({ type: 'start', requestId: c.get('requestId'), ...(isRecord(body) && typeof body.ingestionId === 'string' && /^[0-9a-f-]{36}$/i.test(body.ingestionId) ? { ingestionId: body.ingestionId } : {}) })
-        const result = await ingest(body, signal, operation, stage => send({ type: 'stage', stage }), c.get('requestId'))
+        const result = await ingest(body, {
+          signal,
+          operation,
+          onStage: stage => send({ type: 'stage', stage }),
+          requestId: c.get('requestId'),
+        })
         await operation.finish(200)
         await send({ type: 'result', result })
       }

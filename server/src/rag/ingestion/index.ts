@@ -6,7 +6,7 @@ export type { IngestionCheckpointStore } from './checkpoints.js'
 export { indexAndStore } from './index-and-store.js'
 
 export type { IndexAndStoreOptions } from './index-and-store.js'
-export { ingestDocument } from './ingest-document.js'
+export { ingestDocument, ingestionLimits } from './ingest-document.js'
 
-export type { IngestDocumentRequest, IngestDocumentResult } from './ingest-document.js'
+export type { IngestDocumentDependencies, IngestDocumentOptions, IngestDocumentRequest, IngestDocumentResult } from './ingest-document.js'
 export type { IngestionObserver, IngestionStageEvent, IngestionStageId } from './stages.js'
