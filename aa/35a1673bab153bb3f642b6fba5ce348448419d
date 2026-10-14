@@ -1,0 +1,51 @@
+server/src/rag/indexing/validation.ts
+  s_7a1465ab4aa73c::t_2c27552d138bb1 15-17,29-35,125
+  s_7a1465ab4aa73c::t_ac4e01e16d85e2 1,9-10,12,20-28,36-45,48-64,66-78,81-90,92-94,97,99-100,102,104-124,126-130,132-135,138,158-180,185,191-193
+server/src/rag/vector-store/pgvector.ts
+  s_7a1465ab4aa73c::t_e777d06c0275f0 152-157,168-177,209-212
+  s_7a1465ab4aa73c::t_f70781049df7c1 2,21-22,36-46,106-109,113-120,122,129-151,158-167,178-208,213-223
+  s_7a1465ab4aa73c::t_49e3aaf7e098ab 224
+server/src/rag/ingestion/index.ts
+  s_7a1465ab4aa73c::t_6d6a5995b9a05e 9,11
+server/src/rag/ingestion/ingest-document.ts
+  s_7a1465ab4aa73c::t_6d6a5995b9a05e 29-50,52,54-58,78-84,87,112-117,119-123,129-135,137-143
+server/src/core/service/model-options.ts
+  s_7a1465ab4aa73c::t_0047565d973c34 40-44,63
+  s_7a1465ab4aa73c::t_444e0194c74473 8-11,45-51,53,56-60,64,78,87,91-92,94-98,115-122
+server/src/rag/wiki/nodes/build.ts
+  s_7a1465ab4aa73c::t_9f4a0b763159bf 1,9,11-21,34,43,46-47,69-74,85,94,96-104,106,110,121,123-126,136,140-143,149-154,160-167,170-189
+  s_7a1465ab4aa73c::t_2c27552d138bb1 10
+server/src/rag/ingestion/README.md
+  s_7a1465ab4aa73c::t_2c27552d138bb1 32-33
+server/src/core/router/documents.ts
+  s_7a1465ab4aa73c::t_6380e6ca5d065c 20,45-50
+server/src/core/service/documents.ts
+  s_7a1465ab4aa73c::t_6380e6ca5d065c 2,8,17,20-23,27-33,40,51-58,60-63,66-120,125,130-131,143-150,153-157,171,180,188,194-203,211
+server/src/core/dao/document-ingestions.ts
+  s_7a1465ab4aa73c::t_444e0194c74473 35-45,92-93,97-99,103-110,117-119
+server/src/core/README.md
+  s_7a1465ab4aa73c::t_2c27552d138bb1 5-6
+server/test/vector-store.test.mjs
+  s_7a1465ab4aa73c::t_1b1e5c3dfdda51 292-372
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aa35a1673bab153bb3f642b6fba5ce348448419d",
+  "prompts": {},
+  "humans": {
+    "h_8d050896203f0f": {
+      "author": "qinghuan <1041220793@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_7a1465ab4aa73c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1387d-a2d6-7c60-a128-e5eb5da5c95d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "qinghuan <1041220793@qq.com>"
+    }
+  }
+}
