@@ -1,0 +1,64 @@
+server/test/ingestion-checkpoint-database.test.mjs
+  s_7a1465ab4aa73c::t_3f948e22194cea 15-17,19-21
+  s_7a1465ab4aa73c::t_cf247dcf7f0007 11-14,18,22-93
+server/src/rag/enrichment/README.md
+  s_7a1465ab4aa73c::t_0128c4956b9ee1 53-60
+server/test/ingestion-resume.test.mjs
+  s_7a1465ab4aa73c::t_0128c4956b9ee1 246-248
+  s_7a1465ab4aa73c::t_2ce66a00624756 287
+  s_7a1465ab4aa73c::t_6989b30adb018d 17-20,217-245,249-286,288-294
+server/src/rag/enrichment/index.ts
+  s_7a1465ab4aa73c::t_0aee22d032f90b 7-8
+server/test/postgres.test.mjs
+  s_7a1465ab4aa73c::t_f4233f23cef75a 3,8,87-188
+  s_7a1465ab4aa73c::t_051d4813628400 2
+server/src/rag/ingestion/README.md
+  s_7a1465ab4aa73c::t_ce29891b364e44 52-53
+  s_7a1465ab4aa73c::t_b0d3fc37ae8686 34-35
+server/src/core/dao/document-ingestions.ts
+  s_7a1465ab4aa73c::t_0aee22d032f90b 2,12
+  s_7a1465ab4aa73c::t_ce29891b364e44 33,50-59,155
+server/src/core/error-presentation.ts
+  s_7a1465ab4aa73c::t_2ce66a00624756 35
+server/src/utils/postgres.ts
+  s_7a1465ab4aa73c::t_ce29891b364e44 15
+  s_7a1465ab4aa73c::t_282102b6c540d0 14,16-25
+server/src/rag/enrichment/provided.ts
+  s_7a1465ab4aa73c::t_0aee22d032f90b 1,3-33,48-58,60-77
+  s_7a1465ab4aa73c::t_2ce66a00624756 2,34-47,59
+server/test/vector-store.test.mjs
+  s_7a1465ab4aa73c::t_938f25a31d39e1 315-319
+server/src/core/service/documents.ts
+  s_7a1465ab4aa73c::t_0aee22d032f90b 8,35-42
+server/src/rag/ingestion/ingest-document.ts
+  s_7a1465ab4aa73c::t_0aee22d032f90b 3,13,45
+  s_7a1465ab4aa73c::t_0128c4956b9ee1 94-97
+server/src/core/README.md
+  s_7a1465ab4aa73c::t_6989b30adb018d 48-79
+server/src/rag/vector-store/README.md
+  s_7a1465ab4aa73c::t_ce29891b364e44 58
+  s_7a1465ab4aa73c::t_938f25a31d39e1 60
+server/src/rag/vector-store/pgvector.ts
+  s_7a1465ab4aa73c::t_938f25a31d39e1 208-213,218
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8ed60977381bdac3a162264f94205ada6e4eb42f",
+  "prompts": {},
+  "humans": {
+    "h_8d050896203f0f": {
+      "author": "qinghuan <1041220793@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_7a1465ab4aa73c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1387d-a2d6-7c60-a128-e5eb5da5c95d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "qinghuan <1041220793@qq.com>"
+    }
+  }
+}
