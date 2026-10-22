@@ -50,6 +50,14 @@ console.log(extracted.title, result.enrichment.summary)
 
 供应商和模型显式传入，接入复用现有 LLM Adapter。本模块不扫描目录、不提供 CLI、不自动批量调用、重试或修复输出。
 
+### 外部提取结果
+
+`parseProvidedEnrichment(value)` 校验 `schemaVersion: 1`、声明来源 `source: { provider, model }` 和完整 `sections` 数组。每项为 `{ sectionId, sectionRevision, enrichment }`，语义字段沿用同一严格 schema 与默认分类。
+
+`prepareProvidedEnrichment(value, sections)` 要求当前完整章节集合的 ID 和 revision 一一匹配，不缺节、不重复；使用在线提取相同的逐字证据、引用、去重和复查规则。全部通过后返回逐节读取函数，补齐规则提取字段与 `EnrichedSection`；来源使用提供方标签、`provided:` 内容指纹和 `usage: null`。声明来源不是远程模型身份认证，不伪造供应商响应 ID 或 Token 用量。此入口不调用模型，也不因校验失败回退在线提取。
+
+`ingestDocument` 可通过 `options.enrichment` 显式选择此流程；外部结果参与 HTTP 任务的不可变配置指纹和检查点恢复，之后的 Wiki、双索引、向量生成和事务持久化沿用已有实现。
+
 ## 规则数据：extracted
 
 | 字段          | 来源与规则                                                                                          |

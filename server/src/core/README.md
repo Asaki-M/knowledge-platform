@@ -45,6 +45,38 @@ OpenAI 继续使用现有 **Responses API** 适配器，`OPENAI_BASE_URL` 必须
 - 第一笔入库会幂等初始化表结构。所有模型调用完成后，单个数据库事务替换该文档的双索引，删除该文档失效的旧记录，保留其他文档。失败不提交部分索引；并发快照冲突返回 409，不自动重跑模型。
 - 当前节点按文档 / 章节的独立身份构建，不做自动同名合并。若更新目标涉及已有跨文档共享 Wiki 节点，返回 409，需使用完整 Wiki / 知识库重建流程。
 
+### 使用外部知识提取结果
+
+离线审阅或其他提取工具已生成知识时，可在同一请求中传入 `enrichment`，同时省略 `llm`。仍需传入原始 `document` 和 `embedding`，请求体上限仍为 1 MiB。
+
+```json
+{
+  "schemaVersion": 1,
+  "source": { "provider": "codex", "model": "codex-session" },
+  "sections": [
+    {
+      "sectionId": "标准化并分节后的真实 Section ID",
+      "sectionRevision": "对应正文的真实 revision",
+      "enrichment": {
+        "summary": "本节摘要",
+        "keywords": [],
+        "aliases": [],
+        "questions": [],
+        "entities": [],
+        "concepts": [],
+        "relations": [],
+        "facts": [],
+        "knowledgeType": "reference"
+      }
+    }
+  ]
+}
+```
+
+以上为 `enrichment` 字段的结构。Section ID 和 revision 由 `NormalizationClient` + `splitSections` 按同一文档 ID、正文确定；结果必须覆盖全部章节且不重复。每节知识使用与在线提取相同的严格字段、分类、逐字证据、局部 ID 引用和去重校验，节缺失、正文版本不符或校验失败都直接失败，不回退调用 LLM，不生成部分向量。来源标签由提供方声明，标明导入来源，不是远程模型身份认证；后端生成 `provided:` 内容指纹并把用量记为 `null`，不伪造 SDK 调用记录。
+
+通过校验后继续执行原有 Wiki、双索引、Embedding 和事务入库。外部产物和来源随任务快照持久化，并参与不可变指纹；继续任务仍只传 `ingestionId`。更换正文、模型或外部产物需要新建任务。
+
 成功返回 `status: stored`，包含：
 
 - `ingestionId`、`knowledgeBaseId`、`documentId`。

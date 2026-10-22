@@ -1,6 +1,6 @@
 import type { LlmClient } from '../../llm/index.js'
 import type { EmbeddingClient } from '../embedding/index.js'
-import type { EnrichedSection, EnrichmentOptions } from '../enrichment/index.js'
+import type { EnrichedSection, EnrichmentOptions, ProvidedEnrichment } from '../enrichment/index.js'
 import type { DualIndexEmbeddingOptions } from '../indexing/index.js'
 import type { DocumentVectorStore, VectorSnapshotInfo } from '../vector-store/index.js'
 import type { IngestionCheckpointStore } from './checkpoints.js'
@@ -10,7 +10,7 @@ import { AppError } from '../../errors.js'
 import { isNonEmptyString } from '../../utils/type-guards.js'
 import { buildChunks } from '../chunking/index.js'
 import { resolveEmbeddingDimensions } from '../embedding/index.js'
-import { KnowledgeEnricher } from '../enrichment/index.js'
+import { KnowledgeEnricher, prepareProvidedEnrichment } from '../enrichment/index.js'
 import { buildIndexDocuments, embedDualIndex } from '../indexing/index.js'
 import { NextraMdxAdapter, NormalizationClient } from '../normalization/index.js'
 import { splitSections } from '../sections/index.js'
@@ -42,6 +42,7 @@ export interface IngestDocumentDependencies {
 
 export interface IngestDocumentOptions {
   llm: EnrichmentOptions
+  enrichment?: ProvidedEnrichment
   embedding: Omit<DualIndexEmbeddingOptions, 'signal'>
   onStage?: IngestionObserver
   checkpoint?: IngestionCheckpointStore
@@ -89,8 +90,11 @@ export async function ingestDocument(request: IngestDocumentRequest, dependencie
     return result
   }, sectionsPreview)
   const chunks = await stages.run('chunks', () => sections.flatMap(section => buildChunks(section).chunks), chunksPreview)
-  const enricher = new KnowledgeEnricher(dependencies.llm, { ...options.llm, maxOutputTokens: options.llm.maxOutputTokens ?? 10000 })
   const inputs = await stages.run('enrichment', async () => {
+    // 显式提供离线结果时只校验和复用；缺失、过期或证据错误都失败，不调用在线 LLM。
+    const enricher = options.enrichment
+      ? { enrich: prepareProvidedEnrichment(options.enrichment, sections) }
+      : new KnowledgeEnricher(dependencies.llm, { ...options.llm, maxOutputTokens: options.llm.maxOutputTokens ?? 10000 })
     const result = []
     await stages.progress(0, sections.length)
     for (const section of sections) {

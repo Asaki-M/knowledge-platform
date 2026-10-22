@@ -32,7 +32,7 @@ register([VECTOR_STORE_ERROR_CODES.INCONSISTENT_SPACE], { category: 'vector-spac
 register([VECTOR_STORE_ERROR_CODES.CONFLICT, INGESTION_ERROR_CODES.TASK_CONFLICT], { category: 'conflict', status: 409, message: '知识库版本或文档共享节点发生冲突。' })
 register([...groups.flatMap(group => 'DATABASE_ERROR' in group ? [group.DATABASE_ERROR] : []), INGESTION_ERROR_CODES.CHECKPOINT_DATABASE_ERROR], { category: 'database', status: 502, message: '数据库操作失败。' })
 register([NORMALIZATION_ERROR_CODES.PARSE_ERROR], { category: 'parse', status: 400, message: '文档语法无法解析。', httpMessage: '文档语法无效，请检查 MDX 内容。' })
-register([HTTP_ERROR_CODES.INVALID_INPUT, INGESTION_ERROR_CODES.INVALID_DOCUMENT, QUERY_ERROR_CODES.INVALID_INPUT, QUERY_ERROR_CODES.CONTEXT_TOO_LARGE], { category: 'invalid', status: 400, message: '请求参数或内容无效。', exposeMessage: true })
+register([HTTP_ERROR_CODES.INVALID_INPUT, ENRICHMENT_ERROR_CODES.INVALID_INPUT, INGESTION_ERROR_CODES.INVALID_DOCUMENT, QUERY_ERROR_CODES.INVALID_INPUT, QUERY_ERROR_CODES.CONTEXT_TOO_LARGE], { category: 'invalid', status: 400, message: '请求参数或内容无效。', exposeMessage: true })
 
 // 特定操作的 HTTP 提示不进入摘要日志，日志仅保存安全的基础说明。
 presentations.set(WORKSPACE_ERROR_CODES.CONFLICT, { category: 'conflict', status: 409, httpMessage: '已存在同名知识库，请换一个名称。' })

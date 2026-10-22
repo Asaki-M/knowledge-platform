@@ -312,8 +312,11 @@ test('snapshot and document writes keep receipts, cleanup and rollback on one tr
             throw new Error('Local simulated SQL failure')
           if (sql.startsWith('DELETE FROM rag_vectors') && mode === 'cancelled')
             controller.abort()
-          if (sql.includes('SELECT kind, metadata')) {
-            return { rows: records.map(({ vector, ...metadata }) => ({ kind: metadata.kind, metadata, vector: JSON.stringify(vector) })) }
+          if (sql.includes('AS "metadataRevision"')) {
+            assert.ok(sql.includes('sha256(convert_to(metadata::text'))
+            assert.ok(sql.includes('sha256(convert_to(embedding::text'))
+            assert.ok(sql.includes('ORDER BY id'))
+            return { rows: records.map(({ vector, ...metadata }) => ({ kind: metadata.kind, metadataRevision: contentHash(metadata), vectorRevision: contentHash(vector) })) }
           }
           return { rows: [] }
         },

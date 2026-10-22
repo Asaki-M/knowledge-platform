@@ -14,6 +14,10 @@ import { AppError } from '../dist/errors.js'
 import { LlmClient } from '../dist/llm/index.js'
 // eslint-disable-next-line antfu/no-import-dist -- 向量模型替身不访问网络。
 import { EmbeddingClient } from '../dist/rag/embedding/index.js'
+// eslint-disable-next-line antfu/no-import-dist -- 外部提取产物绑定真实标准化后的 Section。
+import { NextraMdxAdapter } from '../dist/rag/normalization/index.js'
+// eslint-disable-next-line antfu/no-import-dist -- 使用公开分节契约，不手写版本哈希。
+import { splitSections } from '../dist/rag/sections/index.js'
 // eslint-disable-next-line antfu/no-import-dist -- 替换事务写入边界。
 import { PgVectorStore } from '../dist/rag/vector-store/index.js'
 import { stubIngestionCheckpoints } from './ingestion-checkpoint-stub.mjs'
@@ -209,4 +213,82 @@ test('vector cleanup failure preserves committed success and original model fail
   assert.equal((await failure.json()).error.code, 'CONNECTION_ERROR')
   assert.equal(fixture.jobs.get(failed.ingestionId).status, 'failed')
   assert.equal(fixture.locks.size, 0)
+})
+
+async function providedRequest() {
+  const request = body(2)
+  delete request.llm
+  const document = await new NextraMdxAdapter().normalize({ source: { id: request.document.id }, content: request.document.content })
+  request.enrichment = {
+    schemaVersion: 1,
+    source: { provider: 'codex', model: 'offline-review' },
+    sections: splitSections(document).map(section => ({
+      sectionId: section.id,
+      sectionRevision: section.revision,
+      enrichment: {
+        summary: '说明当前章节。',
+        keywords: [],
+        aliases: [],
+        questions: [],
+        entities: [],
+        concepts: [{ id: 'c1', name: section.title, aliases: [], description: '当前章节主题。', evidence: [section.title] }],
+        relations: [],
+        facts: [{ statement: section.text, nodeIds: ['c1'], evidence: [section.markdown] }],
+        knowledgeType: 'reference',
+      },
+    })),
+  }
+  return request
+}
+
+test('provided knowledge builds both indexes without LLM calls and resumes with immutable offline provenance', async (t) => {
+  const fixture = setup(t)
+  fixture.failLlm(() => {
+    throw new Error('An offline task must never call the LLM')
+  })
+  const request = await providedRequest()
+  fixture.failStorage(true)
+  assert.equal((await post(request)).status, 502)
+  assert.equal(fixture.calls.llm.length, 0)
+  assert.equal(fixture.calls.embedding.length, 1)
+  assert.ok(fixture.calls.embedding[0].some(text => text.includes('当前章节主题')))
+  const changed = structuredClone(request)
+  changed.enrichment.sections[0].enrichment.summary = '不同的提取结果。'
+  assert.equal((await post(changed)).status, 409)
+  fixture.failStorage(false)
+  const response = await post({ ingestionId: request.ingestionId })
+  assert.equal(response.status, 200)
+  const result = await response.json()
+  assert.equal(result.counts.wikiNodes, 2)
+  assert.ok(result.enrichment.every(section => section.provider === 'codex' && section.model === 'offline-review' && section.usage === null && section.responseId.startsWith('provided:')))
+  assert.equal(fixture.calls.llm.length, 0)
+  assert.equal(fixture.calls.embedding.length, 1)
+  assert.equal(fixture.calls.writes, 1)
+})
+
+test('invalid, missing, duplicated or stale provided sections never fall back to LLM or consume embeddings', async (t) => {
+  const fixture = setup(t)
+  const original = await providedRequest()
+  const changes = [
+    request => request.enrichment.sections.pop(),
+    request => request.enrichment.sections.push(structuredClone(request.enrichment.sections[0])),
+    request => request.enrichment.sections[0].sectionRevision = 'stale-revision',
+    request => request.enrichment.sections[0].sectionId = 'unknown-section',
+    request => request.enrichment.sections[0].enrichment.facts[0].evidence = ['原文不存在的证据'],
+    request => request.enrichment.sections[0].enrichment.facts[0].nodeIds = ['unknown-node'],
+    request => request.enrichment.sections[0].enrichment.concepts[0].type = 'unexpected',
+    request => request.llm = { provider: 'deepseek', model: 'must-not-run' },
+  ]
+  for (const change of changes) {
+    const request = structuredClone(original)
+    request.ingestionId = randomUUID()
+    change(request)
+    const response = await post(request)
+    assert.equal(response.status, 400, 'Invalid client-provided knowledge must be reported as an input error')
+    const text = await response.text()
+    assert.ok(!text.includes('原文不存在的证据'))
+  }
+  assert.equal(fixture.calls.llm.length, 0)
+  assert.equal(fixture.calls.embedding.length, 0)
+  assert.equal(fixture.calls.writes, 0)
 })

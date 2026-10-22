@@ -1,5 +1,5 @@
 import type { Pool, PoolClient, QueryResultRow } from 'pg'
-import type { EnrichmentOptions } from '../../rag/enrichment/index.js'
+import type { EnrichmentOptions, ProvidedEnrichment } from '../../rag/enrichment/index.js'
 import type { DualIndexEmbeddingOptions } from '../../rag/indexing/index.js'
 import type { IngestDocumentRequest, IngestDocumentResult, IngestionCheckpointStore, IngestionStageEvent } from '../../rag/ingestion/index.js'
 import process from 'node:process'
@@ -9,7 +9,7 @@ import { createPostgresPool, queryRows, withPostgresTransaction } from '../../ut
 
 export interface IngestionJobInput {
   request: Omit<IngestDocumentRequest, 'signal'>
-  options: { llm: EnrichmentOptions, embedding: Omit<DualIndexEmbeddingOptions, 'signal' | 'checkpoint'> }
+  options: { llm: EnrichmentOptions, embedding: Omit<DualIndexEmbeddingOptions, 'signal' | 'checkpoint'>, enrichment?: ProvidedEnrichment }
 }
 
 export interface IngestionJob {
@@ -30,6 +30,7 @@ const lockSeed = 731952683
 export class DocumentIngestionDao {
   private readonly pool: Pool
   private client?: PoolClient
+  private pendingQuery: Promise<unknown> = Promise.resolve()
 
   constructor(connectionString = process.env.VECTOR_DATABASE_URL) {
     this.pool = createPostgresPool({
@@ -46,7 +47,16 @@ export class DocumentIngestionDao {
   }
 
   private query<T extends QueryResultRow>(sql: string, values: unknown[] = []): Promise<T[]> {
-    return queryRows<T>(this.client ?? this.pool, sql, values, new AppError(CODES.CHECKPOINT_DATABASE_ERROR, 'Ingestion checkpoint database operation failed'))
+    // 取消轮询与检查点读写共用持锁连接，必须等前一查询结束再交给 pg。
+    const result = this.pendingQuery.then(() => queryRows<T>(
+      this.client ?? this.pool,
+      sql,
+      values,
+      new AppError(CODES.CHECKPOINT_DATABASE_ERROR, 'Ingestion checkpoint database operation failed'),
+    ))
+    // 单次失败不能阻断后续的状态回写或清理；原请求仍收到自己的异常。
+    this.pendingQuery = result.catch(() => {})
+    return result
   }
 
   async initialize(): Promise<void> {
@@ -142,6 +152,7 @@ export class DocumentIngestionDao {
   }
 
   async close(): Promise<void> {
+    await this.pendingQuery
     if (this.client) {
       // 丢弃持锁连接，由数据库释放会话锁，连接故障也不会把原始 SQL 异常透出。
       this.client.release(true)

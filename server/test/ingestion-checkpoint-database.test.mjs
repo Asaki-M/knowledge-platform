@@ -8,6 +8,89 @@ import { DocumentIngestionDao } from '../dist/core/dao/document-ingestions.js'
 
 const connectionString = process.env.VECTOR_STORE_TEST_DATABASE_URL
 
+test('checkpoint reads, cancellation checks and writes serialize on the task lock connection', async (t) => {
+  for (const fails of [false, true]) {
+    await t.test(fails ? 'failed read does not block subsequent queries' : 'successful read keeps its place in the queue', async (t) => {
+      let releaseRead
+      const readGate = new Promise((resolve) => {
+        releaseRead = resolve
+      })
+      let notifyRead
+      const readStarted = new Promise((resolve) => {
+        notifyRead = resolve
+      })
+      const queries = []
+      let active = 0
+      let maximumActive = 0
+      let released = false
+      const client = {
+        async query(sql) {
+          if (sql.includes('pg_try_advisory_lock'))
+            return { rows: [{ acquired: true }] }
+          active++
+          maximumActive = Math.max(maximumActive, active)
+          try {
+            if (sql.startsWith('SELECT value')) {
+              queries.push('read')
+              notifyRead()
+              await readGate
+              if (fails)
+                throw new Error('Local simulated checkpoint failure')
+              return { rows: [{ value: { completed: true } }] }
+            }
+            if (sql.startsWith('SELECT cancel_requested')) {
+              queries.push('cancel')
+              return { rows: [{ cancelled: false }] }
+            }
+            queries.push('write')
+            return { rows: [] }
+          }
+          finally {
+            active--
+          }
+        },
+        release(discard) {
+          assert.equal(discard, true)
+          assert.equal(active, 0)
+          released = true
+        },
+      }
+      t.mock.method(Pool.prototype, 'connect', async () => client)
+      const dao = new DocumentIngestionDao('postgresql://local:local@127.0.0.1:1/local')
+      let outcomes
+      try {
+        await dao.acquire('local-task')
+        const checkpoints = dao.checkpoints('local-task')
+        const read = checkpoints.load('stage:embedding')
+        await readStarted
+        const cancellation = dao.cancellationRequested('local-task')
+        const write = checkpoints.save('progress:storage', { status: 'running' })
+        outcomes = Promise.allSettled([read, cancellation, write])
+        // 给后续查询的 Promise 一个调度机会；它们必须仍在 DAO 层等待。
+        await Promise.resolve()
+        assert.deepEqual(queries, ['read'])
+        releaseRead()
+        const results = await outcomes
+        assert.equal(results[0].status, fails ? 'rejected' : 'fulfilled')
+        if (fails)
+          assert.equal(results[0].reason.code, 'INGESTION_CHECKPOINT_DATABASE_ERROR')
+        else
+          assert.deepEqual(results[0].value, { completed: true })
+        assert.deepEqual(results.slice(1).map(result => result.status), ['fulfilled', 'fulfilled'])
+        assert.equal(results[1].value, false)
+        assert.deepEqual(queries, ['read', 'cancel', 'write'])
+        assert.equal(maximumActive, 1)
+      }
+      finally {
+        releaseRead()
+        await outcomes
+        await dao.close()
+      }
+      assert.equal(released, true)
+    })
+  }
+})
+
 test('ingestion checkpoints survive reconnects and process-like lock release, with cancellation and isolated job data', { skip: !connectionString, timeout: 60000 }, async (t) => {
   const database = `knowledge_checkpoint_test_${randomBytes(6).toString('hex')}`
   const admin = new Pool({ connectionString, max: 1 })

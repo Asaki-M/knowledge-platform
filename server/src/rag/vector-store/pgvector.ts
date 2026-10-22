@@ -205,14 +205,17 @@ export class PgVectorStore implements VectorSnapshotStore {
   }
 
   private async refreshSnapshotInfo(client: PoolClient, info: VectorSnapshotInfo): Promise<void> {
-    // 从数据库实际内容计算整个知识库版本与数量，保留其他文档并保证重复写入幂等。
-    const all = (await client.query<{ kind: string, metadata: unknown, vector: string }>(
-      'SELECT kind, metadata, embedding::text AS vector FROM rag_vectors WHERE knowledge_base_id = $1 ORDER BY id',
+    // 数据库内计算逐条指纹，只回读小结果；避免每篇写入都传输全库正文和向量。
+    const all = (await client.query<{ kind: string, metadataRevision: string, vectorRevision: string }>(
+      `SELECT kind,
+        encode(sha256(convert_to(metadata::text, 'UTF8')), 'hex') AS "metadataRevision",
+        encode(sha256(convert_to(embedding::text, 'UTF8')), 'hex') AS "vectorRevision"
+        FROM rag_vectors WHERE knowledge_base_id = $1 ORDER BY id`,
       [info.knowledgeBaseId],
     )).rows
     info.chunks = all.filter(record => record.kind === 'chunk').length
     info.wikiNodes = all.filter(record => record.kind === 'wiki').length
-    info.revision = contentHash([info.provider, info.requestedModel, info.model, info.dimensions, all])
+    info.revision = contentHash(['record-fingerprints-v1', info.provider, info.requestedModel, info.model, info.dimensions, all])
     await client.query('UPDATE rag_vector_snapshots SET revision = $2, chunk_count = $3, wiki_count = $4 WHERE knowledge_base_id = $1', [info.knowledgeBaseId, info.revision, info.chunks, info.wikiNodes])
   }
 

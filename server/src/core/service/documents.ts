@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto'
 import { HTTP_ERROR_CODES, INGESTION_ERROR_CODES } from '../../error-codes.js'
 import { AppError } from '../../errors.js'
 import { contentHash } from '../../rag/content-hash.js'
+import { parseProvidedEnrichment } from '../../rag/enrichment/index.js'
 import { ingestDocument, ingestionLimits } from '../../rag/ingestion/index.js'
 import { PgVectorStore } from '../../rag/vector-store/index.js'
 import { closePostgresResources } from '../../utils/postgres.js'
@@ -31,7 +32,14 @@ function parseIngestionInput(body: unknown): IngestionJobInput {
     content: body.document.content,
     ...(typeof sourcePath === 'string' ? { sourcePath } : {}),
   }
-  const options = { llm: ingestionLlmOptions(body.llm), embedding: ingestionEmbeddingOptions(body.embedding) }
+  const enrichment = body.enrichment === undefined ? undefined : parseProvidedEnrichment(body.enrichment)
+  if (enrichment && body.llm !== undefined)
+    throw new AppError(HTTP_ERROR_CODES.INVALID_INPUT, '外部提取结果与 llm 不能同时指定；修改提取来源请新建任务。')
+  const options = {
+    llm: enrichment ? enrichment.source : ingestionLlmOptions(body.llm),
+    embedding: ingestionEmbeddingOptions(body.embedding),
+    ...(enrichment ? { enrichment } : {}),
+  }
   return { request, options }
 }
 

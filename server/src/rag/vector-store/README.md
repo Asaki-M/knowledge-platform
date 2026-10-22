@@ -55,7 +55,9 @@ export async function writeKnowledgeBase(input: IndexBuildInput) {
 - 先完成全部 Embedding 调用，再开始数据库写事务；模型失败不会产生部分写入。
 - 每个事务使用同一个连接，通过知识库级事务锁和 `expectedRevision` 检查避免并发覆盖，包括两个首次写入任务。
 - 每批最多写 128 条，但所有批次、旧记录删除和快照更新共用一次提交。SQL 失败或提交前取消会回滚整个事务，已开始的 SQL 受 `statementTimeoutMs` 约束（默认 30 秒）。取消不强制中断正在执行的 SQL，而是在后续检查点回滚；提交已完成后不报告取消成功。
+- PostgreSQL 连接同时启用客户端读取超时与 TCP keepalive；默认读取超时取 SQL 执行预算加 5 秒与 60 秒中的较大值，为完整检查点和向量结果留出传输时间，同时覆盖数据库已执行完但结果读取停滞的情况。超时后尝试回滚，回滚失败丢弃连接；借出连接的异常也记录脱敏事件，避免单个数据库连接断开导致 HTTP 进程退出。不自动重试写入或模型调用。
 - 版本由内容、来源与模型空间确定，相同快照重复写入保持同一版本。用量、批次请求 ID 不参与版本。
+- 单文档更新的全库版本使用数据库内生成的逐条元数据和向量 SHA-256 指纹，按记录 ID 排序后汇总；不再将全库正文和向量传回应用。版本仍为不透明的并发比较值，已有版本可继续传入 `expectedRevision`，下次单文档写入后使用新的指纹算法；回执仍与数据原子提交。
 - 参数使用 [node-postgres 参数化查询](https://node-postgres.com/features/queries)，[事务复用同一连接](https://node-postgres.com/features/transactions)。错误使用统一 AppError / VECTOR_STORE_ERROR_CODES，不返回数据库原始报错、连接串或 SQL 参数。
 
 ## 数据库查询

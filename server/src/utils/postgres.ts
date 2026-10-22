@@ -11,8 +11,18 @@ export function createPostgresPool(config: PoolConfig, errors: { configuration: 
       throw errors.configuration
   }
   catch { throw errors.configuration }
-  const pool = new Pool(config)
-  pool.on('error', () => log.error(errors.event, { 'error.code': errors.databaseCode }))
+  // statement_timeout 只限制数据库执行；客户端还需覆盖结果读取和网络停滞。
+  const readTimeout = config.query_timeout ?? Math.min(Math.max(60000, (config.statement_timeout || 30000) + 5000), 2147483647)
+  const pool = new Pool({
+    ...config,
+    query_timeout: readTimeout,
+    keepAlive: config.keepAlive ?? true,
+    keepAliveInitialDelayMillis: config.keepAliveInitialDelayMillis ?? 10000,
+  })
+  const connectionFailed = () => log.error(errors.event, { 'error.code': errors.databaseCode })
+  // Pool 只监听空闲连接；事务或会话锁借出的连接断开时也必须接住 error 事件。
+  pool.on('connect', client => client.on('error', connectionFailed))
+  pool.on('error', connectionFailed)
   return pool
 }
 

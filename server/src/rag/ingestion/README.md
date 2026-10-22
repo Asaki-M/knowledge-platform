@@ -31,6 +31,8 @@
 
 公共入口导出 `IngestDocumentRequest`、`IngestDocumentDependencies`、`IngestDocumentOptions` 和 `IngestDocumentResult`。依赖显式包含 `llm`、`embedding`、`store`；选项包含模型配置、阶段观察者、检查点与写入回执键。`ingestionLimits` 统一文档标识、正文、来源路径和章节数量限制，HTTP 与独立 RAG 入口仍分别执行校验。
 
+已有离线知识时，`options.enrichment` 可提供绑定完整 Section ID / revision 的外部结果。通过 `prepareProvidedEnrichment` 完成与在线流程一致的严格字段、证据和引用校验后，跳过 LLM 调用，继续 Wiki、双索引和向量入库。缺节、重复、过期或无效结果明确失败，不回退在线模型；来源声明和外部产物参与任务不可变指纹，并随检查点保存。
+
 读取当前知识库版本后才开始模型调用；写入检查同一版本，冲突不覆盖。节点保持各文档 / 章节独立身份；重传同文档 ID 会完整重建该文档并删除它的旧索引，保留其他文档。涉及既有跨文档共享节点时失败，要求通过完整快照重建。不同文档不能混用 Embedding 空间。
 
 返回标准化警告、各阶段数量、逐节 LLM 与 Embedding 用量、整个知识库的写入版本和数量。原始文件不存档；传入 checkpoint 时保存完整中间产物，用于同任务恢复，不做跨任务变更节复用。
@@ -46,5 +48,7 @@
 options.checkpoint 注入 IngestionCheckpointStore（异步 load/save），各阶段结果、初次知识库版本、逐节 enrichment 和 Embedding 批次分别保存。命中仍报告完成事件并标记 reused；单节失败保留此前成功结果。options.writeKey 传给向量库事务回执，覆盖提交后断线窗口。expectedRevision 在恢复时不刷新，防止覆盖并发更新。
 
 HTTP 层保存输入/配置指纹与版本并持有 PostgreSQL 任务会话锁，RAG 不依赖 HTTP、DAO 或具体数据库。只保存校验成功的结果，不接受截断、拒答或非法证据，不自动重跑模型。服务重启后可按任务 ID 显式继续，未保存的在途调用无法复用。
+
+持锁连接上的检查点读写、状态回写和取消轮询在 DAO 中串行提交，避免同时向同一个 `pg client` 排队；客户端读取超时从真正开始执行查询时计时。单次查询失败仍允许后续状态回写，关闭时先等待已提交的 DAO 查询结束，再释放会话锁。
 
 阶段展示投影集中在同模块的 `previews.ts`；`ingestDocument` 保留阶段顺序、检查点、取消检查与写入编排，`stages.ts` 继续统一事件和预览截取。预览字段、数量限制与恢复行为保持一致。
